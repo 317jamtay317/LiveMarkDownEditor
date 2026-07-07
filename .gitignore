@@ -63,28 +63,8 @@ TestResults/
 # JetBrains Rider
 # ---------------------------------------------
 # Rider stores project-specific settings under .idea/.
-# Rider auto-generates a .gitignore inside .idea/ that excludes
-# user-specific files while keeping shareable settings. If you
-# prefer to ignore the whole folder, uncomment the next line:
-# .idea/
-
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/**/usage.statistics.xml
-.idea/**/dictionaries
-.idea/**/shelf
-.idea/**/contentModel.xml
-.idea/**/dataSources/
-.idea/**/dataSources.ids
-.idea/**/dataSources.local.xml
-.idea/**/sqlDataSources.xml
-.idea/**/dynamic.xml
-.idea/**/httpRequests
-.idea/httpRequests/
-.idea/caches/
-.idea/**/*.iml
-.idea/modules.xml
-.idea/*.iml
+# Ignore the entire folder.
+.idea/
 *.iml
 
 # Rider / ReSharper
