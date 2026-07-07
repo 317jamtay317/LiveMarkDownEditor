@@ -1,0 +1,109 @@
+# ---------------------------------------------
+# .gitignore for a .NET application in JetBrains Rider
+# ---------------------------------------------
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build tool / compiler
+*.tlog
+*.pidb
+*.svclog
+*.scc
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+.nuget/
+
+# MSBuild binary and structured logs
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+TestResults/
+.coverage/
+
+# ---------------------------------------------
+# JetBrains Rider
+# ---------------------------------------------
+# Rider stores project-specific settings under .idea/.
+# Rider auto-generates a .gitignore inside .idea/ that excludes
+# user-specific files while keeping shareable settings. If you
+# prefer to ignore the whole folder, uncomment the next line:
+# .idea/
+
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/httpRequests
+.idea/httpRequests/
+.idea/caches/
+.idea/**/*.iml
+.idea/modules.xml
+.idea/*.iml
+*.iml
+
+# Rider / ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ---------------------------------------------
+# OS-generated files
+# ---------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------
+# Misc
+# ---------------------------------------------
+*.tmp
+*.bak
+*.cache
