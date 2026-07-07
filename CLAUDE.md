@@ -33,6 +33,17 @@ domain, verify both documents are still accurate and update them in the same cha
 - Every invariant in `docs/Invariants.md` has at least one corresponding test.
 - Do not write production code that is not driven by a failing test.
 
+### MVVM (WPF UI)
+- The UI **always** uses MVVM. State and behaviour live in ViewModels; Views only bind.
+- **Zero code-behind.** A View's `.xaml.cs` contains nothing but the `InitializeComponent()` call
+  the designer generates — no event handlers, no logic, no field assignments. Wire everything
+  through bindings, commands, and behaviors instead.
+- The **only** exception is a custom **Control**. A Control is authored as a class plus a
+  ResourceDictionary (the default style/template), not as a View with code-behind. Put its
+  interaction logic in the control class, and its look in the ResourceDictionary.
+- Application bootstrap (`App`, `Program`) is composition-root wiring, not a View, and is exempt
+  from the zero-code-behind rule.
+
 ### Testing Stack
 - **xUnit** is the test framework. Use `[Fact]` for single cases and `[Theory]` / `[InlineData]`
   for parameterized cases.
