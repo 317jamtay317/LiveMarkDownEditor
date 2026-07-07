@@ -20,13 +20,61 @@ and tested.
 - **Statement:** A Markdown Document's source text is never `null`. An empty document is represented
   by an empty string, not `null`.
 - **Enforced by:** Constructor guard on the Markdown Document.
-- **Tested by:** _(add test reference)_
+- **Tested by:** `MarkdownSourceTests.Construct_GivenNullText_ThrowsAndPreservesInvariant`,
+  `MarkdownDocumentTests.Construct_GivenNullSource_ThrowsAndPreservesInvariant`.
 
 ### INV-002 — Rendering is deterministic
 - **Statement:** Rendering the same Markdown Document source text always produces the same Rendered
   Output.
-- **Enforced by:** Pure Render operation with no hidden state.
-- **Tested by:** _(add test reference)_
+- **Enforced by:** The `IMarkdownRenderer` port contract; the Markdig adapter is a pure function
+  of the source text over a fixed pipeline with no per-render state.
+- **Tested by:** `MarkdigMarkdownRendererTests.Render_GivenSameSourceTwice_ProducesIdenticalOutput_INV002`.
+
+### INV-003 — Projecting is deterministic
+- **Statement:** Projecting the same Markdown Document source text always produces the same Visual
+  Document. Project has no hidden state.
+- **Enforced by:** Pure Project operation driven solely by the source text
+  (`MarkdownToFlowDocumentProjector`).
+- **Tested by:** `WysiwygRoundTripTests.RoundTrip_IsIdempotent_INV005` (a deterministic Project is a
+  precondition of the stable Round-Trip). _(Dedicated projection-determinism test to be added as
+  more constructs land.)_
+
+### INV-004 — A Round-Trip preserves semantic content
+- **Statement:** For any supported Markdown Document, Capturing its Projected Visual Document yields
+  source text that is semantically equal to the original — it renders to the same Rendered Output.
+  Formatting is expressed through the Visual Document, never as literal Markdown syntax the user can
+  see. (Fidelity is guaranteed only for the currently supported set of Markdown constructs; support
+  grows one tested construct at a time.)
+- **Enforced by:** Project and Capture being inverse transformations over the supported constructs.
+- **Tested by:** `WysiwygRoundTripTests.RoundTrip_PreservesSemantics_INV004` (verified against the
+  `MarkdigMarkdownRenderer` HTML oracle). Currently supported: headings, paragraphs, bold, italic,
+  strikethrough, inline code.
+
+### INV-005 — Capture is idempotent over Round-Trips
+- **Statement:** Once a Markdown Document has been Round-Tripped, Round-Tripping the result again
+  produces identical source text. Capture converges — repeated Round-Trips never keep mutating the
+  document (no whitespace drift, no escaping churn).
+- **Enforced by:** Capture emitting normalised, canonical Markdown (`FlowDocumentToMarkdownCapturer`).
+- **Tested by:** `WysiwygRoundTripTests.RoundTrip_IsIdempotent_INV005`.
+
+### INV-006 — A Conflict never silently discards either side
+- **Statement:** When an External Change to the Watched File is detected while the Editor Session
+  has unsaved edits, a Conflict is raised and surfaced to the user for a decision. Neither the
+  on-disk contents nor the unsaved edits are overwritten without an explicit choice.
+- **Enforced by:** `ExternalChangeReconciler.Reconcile` and the Editor Session's
+  `HandleExternalChangeAsync`, which raise a Conflict (rather than applying disk contents) when
+  unsaved edits exist, and never overwrite without an explicit Keep/Reload choice.
+- **Tested by:** `ExternalChangeReconcilerTests.Reconcile_WithUnsavedEdits_RaisesConflict_INV006`,
+  `EditorSessionViewModelTests.ExternalChange_WithUnsavedEdits_RaisesConflict_AndKeepsEdits_INV006`.
+
+### INV-007 — With no unsaved edits, an External Change reloads live
+- **Statement:** When the Watched File changes and the Editor Session has **no** unsaved edits, the
+  Markdown Document (and therefore the Visual Document) is updated to the new on-disk contents
+  without prompting. This is the "live update by any user, including AI" behaviour.
+- **Enforced by:** External-change reconciliation applying disk contents directly when the session
+  is clean.
+- **Tested by:** `ExternalChangeReconcilerTests.Reconcile_WithNoUnsavedEdits_ReloadsFromDisk_INV007`,
+  `EditorSessionViewModelTests.ExternalChange_WhenSessionClean_ReloadsLive_INV007`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

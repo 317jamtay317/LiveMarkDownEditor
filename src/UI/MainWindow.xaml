@@ -1,0 +1,53 @@
+<Window x:Class="UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:UI.Controls"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Height="640" Width="960"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel>
+
+        <!-- File actions -->
+        <ToolBar DockPanel.Dock="Top">
+            <Button Content="New" Command="{Binding NewCommand}" ToolTip="Start a new document" />
+            <Button Content="Open" Command="{Binding OpenCommand}" ToolTip="Open a Markdown file" />
+            <Button Content="Save" Command="{Binding SaveCommand}" ToolTip="Save to the Markdown file" />
+        </ToolBar>
+
+        <!-- WYSIWYG formatting actions, targeting the editor via the built-in editing commands -->
+        <ToolBar DockPanel.Dock="Top">
+            <Button Content="B" FontWeight="Bold" ToolTip="Bold (Ctrl+B)"
+                    Command="EditingCommands.ToggleBold"
+                    CommandTarget="{Binding ElementName=Editor}" />
+            <Button Content="I" FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
+                    Command="EditingCommands.ToggleItalic"
+                    CommandTarget="{Binding ElementName=Editor}" />
+        </ToolBar>
+
+        <!-- Conflict banner: shown when the Watched File changed on disk while there are unsaved
+             edits. Neither side is discarded without an explicit choice (INV-006). -->
+        <Border DockPanel.Dock="Top" Background="#FFF4E5" BorderBrush="#E0A800" BorderThickness="0,0,0,1"
+                Padding="12,8"
+                Visibility="{Binding HasConflict, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Keep my edits" Margin="4,0" Padding="8,2"
+                            Command="{Binding KeepMyEditsCommand}" />
+                    <Button Content="Reload from disk" Margin="4,0" Padding="8,2"
+                            Command="{Binding ReloadFromDiskCommand}" />
+                </StackPanel>
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
+                           Text="This file was changed on disk while you had unsaved edits. Keep your edits or reload the file?" />
+            </DockPanel>
+        </Border>
+
+        <!-- The single-pane WYSIWYG editing surface -->
+        <controls:MarkdownRichEditor x:Name="Editor"
+                                     Markdown="{Binding Markdown, UpdateSourceTrigger=PropertyChanged}" />
+
+    </DockPanel>
+</Window>
