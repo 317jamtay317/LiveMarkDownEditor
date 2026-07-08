@@ -4,6 +4,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- The active palette (Palette.Light/Dark) is merged at runtime by WpfThemeService.
+                     Control styles reference palette brushes via DynamicResource, so it need not be
+                     present at parse time. -->
+                <ResourceDictionary Source="Themes/Controls.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />
             </ResourceDictionary.MergedDictionaries>
 

@@ -1,0 +1,142 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Flat, rounded control styles for the editor shell. All colours are DynamicResource lookups
+         into the active palette (Palette.Light.xaml / Palette.Dark.xaml) so a theme swap recolours
+         everything live. -->
+
+    <!-- A flat text button for the command bar (New / Open / Save). -->
+    <Style x:Key="CommandButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BorderBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Bold / Italic formatting buttons: same flat look, fixed width, larger glyph. Not focusable,
+         so clicking them keeps focus (and the visible selection) in the editor they target. -->
+    <Style x:Key="FormatButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+        <Setter Property="MinWidth" Value="36" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+
+    <!-- Square icon button (theme toggle, new-tab "+"). -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+        <Setter Property="MinWidth" Value="34" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
+    <!-- Thin vertical divider between command-bar groups. -->
+    <Style x:Key="CommandSeparator" TargetType="Rectangle">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Margin" Value="7,7" />
+        <Setter Property="Fill" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- The tab strip: a horizontal ListBox with no chrome. -->
+    <Style x:Key="TabStrip" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="6,0,0,0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A single Tab: transparent when inactive, editor-coloured with an accent top edge when active. -->
+    <Style x:Key="TabItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="8,8,0,0" Margin="1,4,1,0">
+                        <Border x:Name="Accent" BorderThickness="0,2,0,0" BorderBrush="Transparent"
+                                CornerRadius="8,8,0,0" Padding="12,7">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
+                            <Setter TargetName="Accent" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The small "×" that closes a Tab; turns red on hover. -->
+    <Style x:Key="TabCloseButton" TargetType="Button">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CloseHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource CloseHoverTextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Muted status-bar text. -->
+    <Style x:Key="StatusText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+</ResourceDictionary>

@@ -27,6 +27,9 @@ file on disk stays plain Markdown and updates live when changed by anyone — an
 | **Watched File** | The file on disk that backs the Editor Session. Its contents are the persisted Markdown Document source text, and it is monitored for External Change. |
 | **External Change** | A modification to the Watched File made outside the Editor Session (by another user, process, or AI) while the session is open. |
 | **Conflict** | The situation where an External Change is detected while the Editor Session has unsaved edits — the disk and the in-memory Markdown Document have diverged. A Conflict is never resolved by silently discarding either side; it is surfaced to the user for a decision (keep edits, reload from disk, or view the difference). |
+| **Workspace** | The set of open Editor Sessions the user is working with at once, presented as Tabs, with exactly one of them the Active Session. The editor's shell: it is what lets several Markdown Documents be open and edited side by side. A Workspace is never empty — it always holds at least one Editor Session. |
+| **Active Session** | The single Editor Session in the Workspace currently shown in the editing pane and targeted by the save and formatting actions. Selecting a Tab changes which Editor Session is the Active Session. |
+| **Tab** | The visual handle representing one Editor Session within the Workspace. Selecting a Tab makes its Editor Session the Active Session; closing a Tab ends that Editor Session (never discarding unsaved edits without a decision — see Invariants). |
 
 <!--
 Add new terms above. Each term should have:

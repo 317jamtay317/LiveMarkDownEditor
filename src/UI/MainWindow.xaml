@@ -5,49 +5,129 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:UI.Controls"
         mc:Ignorable="d"
-        Title="{Binding Title}"
-        Height="640" Width="960"
-        WindowStartupLocation="CenterScreen">
+        Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor'}"
+        Height="680" Width="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        TextOptions.TextFormattingMode="Ideal">
 
-    <DockPanel>
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Ctrl" Key="N" Command="{Binding NewCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="O" Command="{Binding OpenCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
+                    CommandParameter="{Binding ActiveSession}" />
+    </Window.InputBindings>
 
-        <!-- File actions -->
-        <ToolBar DockPanel.Dock="Top">
-            <Button Content="New" Command="{Binding NewCommand}" ToolTip="Start a new document" />
-            <Button Content="Open" Command="{Binding OpenCommand}" ToolTip="Open a Markdown file" />
-            <Button Content="Save" Command="{Binding SaveCommand}" ToolTip="Save to the Markdown file" />
-        </ToolBar>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-        <!-- WYSIWYG formatting actions, targeting the editor via the built-in editing commands -->
-        <ToolBar DockPanel.Dock="Top">
-            <Button Content="B" FontWeight="Bold" ToolTip="Bold (Ctrl+B)"
-                    Command="EditingCommands.ToggleBold"
-                    CommandTarget="{Binding ElementName=Editor}" />
-            <Button Content="I" FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
-                    Command="EditingCommands.ToggleItalic"
-                    CommandTarget="{Binding ElementName=Editor}" />
-        </ToolBar>
+        <!-- Single command bar: file actions, formatting, and the theme toggle. -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="False" Margin="8,6">
+                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="New"
+                        Command="{Binding NewCommand}" ToolTip="New document (Ctrl+N)" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Open"
+                        Command="{Binding OpenCommand}" ToolTip="Open a Markdown file (Ctrl+O)" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Save"
+                        Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)" />
 
-        <!-- Conflict banner: shown when the Watched File changed on disk while there are unsaved
-             edits. Neither side is discarded without an explicit choice (INV-006). -->
-        <Border DockPanel.Dock="Top" Background="#FFF4E5" BorderBrush="#E0A800" BorderThickness="0,0,0,1"
-                Padding="12,8"
-                Visibility="{Binding HasConflict, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
+
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="B"
+                        FontWeight="Bold" ToolTip="Bold (Ctrl+B)"
+                        Command="EditingCommands.ToggleBold" CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="I"
+                        FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
+                        Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}" />
+
+                <!-- Theme toggle: shows the theme you'd switch to. -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
+                        Command="{Binding Appearance.ToggleThemeCommand}"
+                        ToolTip="Toggle light / dark theme">
+                    <TextBlock>
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#x263E;" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Appearance.IsDarkTheme}" Value="True">
+                                        <Setter Property="Text" Value="&#x2600;" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Button>
+            </DockPanel>
+        </Border>
+
+        <!-- Tab strip: one Tab per open Editor Session, plus a new-tab button. -->
+        <Border Grid.Row="1" Background="{DynamicResource WindowBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="+"
+                        FontSize="18" Margin="4,4,8,4" Command="{Binding NewCommand}"
+                        ToolTip="New document (Ctrl+N)" />
+                <ListBox Style="{StaticResource TabStrip}" ItemContainerStyle="{StaticResource TabItem}"
+                         ItemsSource="{Binding Sessions}"
+                         SelectedItem="{Binding ActiveSession, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center"
+                                         Fill="{DynamicResource DirtyDotBrush}"
+                                         Visibility="{Binding HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                <Button Style="{StaticResource TabCloseButton}" Content="&#x2715;"
+                                        ToolTip="Close (Ctrl+W)"
+                                        Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Conflict banner for the Active Session: the Watched File changed on disk while there were
+             unsaved edits. Neither side is discarded without an explicit choice (INV-006). -->
+        <Border Grid.Row="2" Background="{DynamicResource ConflictBackgroundBrush}"
+                BorderBrush="{DynamicResource ConflictBorderBrush}" BorderThickness="0,0,0,1" Padding="14,9"
+                Visibility="{Binding ActiveSession.HasConflict, Converter={StaticResource BooleanToVisibilityConverter}}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Keep my edits" Margin="4,0" Padding="8,2"
-                            Command="{Binding KeepMyEditsCommand}" />
-                    <Button Content="Reload from disk" Margin="4,0" Padding="8,2"
-                            Command="{Binding ReloadFromDiskCommand}" />
+                    <Button Content="Keep my edits" Style="{StaticResource CommandButton}"
+                            Command="{Binding ActiveSession.KeepMyEditsCommand}" Margin="4,0" />
+                    <Button Content="Reload from disk" Style="{StaticResource CommandButton}"
+                            Command="{Binding ActiveSession.ReloadFromDiskCommand}" Margin="4,0" />
                 </StackPanel>
                 <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
+                           Foreground="{DynamicResource ConflictTextBrush}"
                            Text="This file was changed on disk while you had unsaved edits. Keep your edits or reload the file?" />
             </DockPanel>
         </Border>
 
-        <!-- The single-pane WYSIWYG editing surface -->
-        <controls:MarkdownRichEditor x:Name="Editor"
-                                     Markdown="{Binding Markdown, UpdateSourceTrigger=PropertyChanged}" />
+        <!-- The single-pane WYSIWYG editing surface, bound to the Active Session. -->
+        <controls:MarkdownRichEditor x:Name="Editor" Grid.Row="3"
+                                     Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
 
-    </DockPanel>
+        <!-- Slim status bar: the Watched File path and an unsaved-changes hint. -->
+        <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusText}" Text="Unsaved changes"
+                           Margin="12,0,0,0"
+                           Visibility="{Binding ActiveSession.HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource StatusText}"
+                           Text="{Binding ActiveSession.FilePath, TargetNullValue='Unsaved document'}" />
+            </DockPanel>
+        </Border>
+    </Grid>
 </Window>

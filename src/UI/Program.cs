@@ -76,8 +76,11 @@ public static class Program
 
             RegisterGlobalExceptionHandling(application, host.Services);
 
+            // Install the initial palette before the window renders so DynamicResource brushes resolve.
+            host.Services.GetRequiredService<Core.IThemeService>().Apply(Core.AppTheme.Light);
+
             var window = host.Services.GetRequiredService<MainWindow>();
-            window.DataContext = host.Services.GetRequiredService<ViewModels.EditorSessionViewModel>();
+            window.DataContext = host.Services.GetRequiredService<ViewModels.WorkspaceViewModel>();
             application.Run(window);
         }
         catch (Exception exception)

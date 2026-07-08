@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Light palette. Every key here also exists in Palette.Dark.xaml; the WpfThemeService swaps
+         which one is merged, and the control styles reference these via DynamicResource, so the
+         whole UI recolours live. -->
+
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F0F1F3" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="TextBrush" Color="#1F2328" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#6E7781" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#E2E4E8" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#4F46E5" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#E9EAEE" />
+
+    <SolidColorBrush x:Key="CaretBrush" Color="#1F2328" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#C7D2FE" />
+    <SolidColorBrush x:Key="DirtyDotBrush" Color="#4F46E5" />
+
+    <SolidColorBrush x:Key="ConflictBackgroundBrush" Color="#FFF4E5" />
+    <SolidColorBrush x:Key="ConflictBorderBrush" Color="#E0A800" />
+    <SolidColorBrush x:Key="ConflictTextBrush" Color="#7A5A00" />
+
+    <SolidColorBrush x:Key="CloseHoverBrush" Color="#F1DADB" />
+    <SolidColorBrush x:Key="CloseHoverTextBrush" Color="#C0342B" />
+
+</ResourceDictionary>

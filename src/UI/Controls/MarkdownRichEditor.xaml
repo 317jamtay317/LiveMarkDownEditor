@@ -6,13 +6,19 @@
          alongside the MarkdownRichEditor class, per the project's Control conventions. -->
     <Style TargetType="{x:Type controls:MarkdownRichEditor}"
            BasedOn="{StaticResource {x:Type RichTextBox}}">
-        <Setter Property="Padding" Value="12" />
+        <Setter Property="Padding" Value="20,16" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="AcceptsTab" Value="True" />
         <Setter Property="SpellCheck.IsEnabled" Value="True" />
+        <!-- Themed via the active palette so the editing surface follows light/dark. The projector
+             sets no foreground colour, so all projected content inherits Foreground. -->
+        <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource CaretBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
     </Style>
 
 </ResourceDictionary>

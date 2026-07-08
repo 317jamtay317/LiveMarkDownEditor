@@ -7,16 +7,16 @@ using UI.Core;
 namespace UI.ViewModels;
 
 /// <summary>
-/// The Editor Session realised for the UI: it holds the current Markdown Document's source text
-/// (bound two-way to the WYSIWYG editor as the canonical model), the associated Watched File, and
-/// whether unsaved edits exist, and it exposes the open, save, and new behaviours as commands.
-/// It also reacts to External Change on the Watched File — reloading live when clean, or raising a
-/// Conflict when there are unsaved edits (INV-006/007).
+/// One Editor Session realised for the UI — a single Tab in the Workspace. It holds the current
+/// Markdown Document's source text (bound two-way to the WYSIWYG editor as the canonical model), the
+/// associated Watched File, and whether unsaved edits exist. It loads and saves its own Watched File
+/// and reacts to External Change on it — reloading live when clean, or raising a Conflict when there
+/// are unsaved edits (INV-006/007). Choosing files and managing Tabs belong to the
+/// <see cref="WorkspaceViewModel"/>, not here.
 /// </summary>
-public sealed class EditorSessionViewModel : ObservableObject
+public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 {
     private readonly IDocumentStore _store;
-    private readonly IFilePicker _filePicker;
     private readonly IDocumentWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
 
@@ -26,27 +26,18 @@ public sealed class EditorSessionViewModel : ObservableObject
     private bool _hasConflict;
     private string _conflictingDiskText = string.Empty;
 
-    /// <summary>Creates an Editor Session over the given store, picker, watcher, and dispatcher.</summary>
+    /// <summary>Creates a new, empty Editor Session over the given store, watcher, and dispatcher.</summary>
     /// <param name="store">The port used to load and save the Watched File.</param>
-    /// <param name="filePicker">The abstraction used to prompt for Watched File paths.</param>
-    /// <param name="watcher">The port that raises External Change for the Watched File.</param>
+    /// <param name="watcher">The port that raises External Change for this session's Watched File.</param>
     /// <param name="dispatcher">Marshals External Change handling onto the UI thread.</param>
-    public EditorSessionViewModel(
-        IDocumentStore store,
-        IFilePicker filePicker,
-        IDocumentWatcher watcher,
-        IUiDispatcher dispatcher)
+    public EditorSessionViewModel(IDocumentStore store, IDocumentWatcher watcher, IUiDispatcher dispatcher)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
 
         _watcher.Changed += OnWatcherChanged;
 
-        NewCommand = new RelayCommand(New);
-        OpenCommand = new AsyncRelayCommand(OpenAsync);
-        SaveCommand = new AsyncRelayCommand(SaveAsync, () => HasUnsavedEdits || FilePath is null);
         KeepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
         ReloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
     }
@@ -75,6 +66,7 @@ public sealed class EditorSessionViewModel : ObservableObject
         {
             if (Set(ref _filePath, value))
             {
+                Raise(nameof(Name));
                 Raise(nameof(Title));
             }
         }
@@ -103,24 +95,11 @@ public sealed class EditorSessionViewModel : ObservableObject
         private set => Set(ref _hasConflict, value);
     }
 
-    /// <summary>A display title: the Watched File name (or "Untitled") with a "*" when edits are unsaved.</summary>
-    public string Title
-    {
-        get
-        {
-            var name = FilePath is null ? "Untitled" : Path.GetFileName(FilePath);
-            return HasUnsavedEdits ? $"{name} *" : name;
-        }
-    }
+    /// <summary>The Watched File's name, or "Untitled" when unsaved. Shown on the session's Tab.</summary>
+    public string Name => FilePath is null ? "Untitled" : Path.GetFileName(FilePath);
 
-    /// <summary>Starts a new, empty Markdown Document with no Watched File.</summary>
-    public ICommand NewCommand { get; }
-
-    /// <summary>Opens an existing Markdown file chosen by the user into the session.</summary>
-    public ICommand OpenCommand { get; }
-
-    /// <summary>Saves the current Markdown Document to its Watched File, prompting for a path if needed.</summary>
-    public ICommand SaveCommand { get; }
+    /// <summary>The <see cref="Name"/> with a "*" suffix when edits are unsaved; used as the window title.</summary>
+    public string Title => HasUnsavedEdits ? $"{Name} *" : Name;
 
     /// <summary>Resolves a Conflict by keeping the unsaved edits and discarding the disk change.</summary>
     public ICommand KeepMyEditsCommand { get; }
@@ -128,25 +107,10 @@ public sealed class EditorSessionViewModel : ObservableObject
     /// <summary>Resolves a Conflict by discarding unsaved edits and loading the on-disk contents.</summary>
     public ICommand ReloadFromDiskCommand { get; }
 
-    /// <summary>Resets the session to a new, empty Markdown Document.</summary>
-    public void New()
+    /// <summary>Loads the Markdown file at <paramref name="path"/> into this session and watches it.</summary>
+    /// <param name="path">The absolute path of the Watched File to load.</param>
+    public async Task LoadAsync(string path)
     {
-        _watcher.StopWatching();
-        SetSourceText(string.Empty);
-        FilePath = null;
-        HasUnsavedEdits = false;
-        ClearConflict();
-    }
-
-    /// <summary>Prompts for a Markdown file and loads it into the session.</summary>
-    public async Task OpenAsync()
-    {
-        var path = _filePicker.PickOpen();
-        if (path is null)
-        {
-            return;
-        }
-
         var document = await _store.LoadAsync(path).ConfigureAwait(true);
         SetSourceText(document.Source.Text);
         FilePath = path;
@@ -155,15 +119,10 @@ public sealed class EditorSessionViewModel : ObservableObject
         _watcher.Watch(path);
     }
 
-    /// <summary>Saves the session, prompting for a Watched File path when the session has none.</summary>
-    public async Task SaveAsync()
+    /// <summary>Saves this session's Markdown Document to <paramref name="path"/> and watches it.</summary>
+    /// <param name="path">The absolute path of the Watched File to save to.</param>
+    public async Task SaveAsync(string path)
     {
-        var path = FilePath ?? _filePicker.PickSave(suggestedFileName: "Untitled.md");
-        if (path is null)
-        {
-            return;
-        }
-
         await _store.SaveAsync(path, new MarkdownDocument(Markdown)).ConfigureAwait(true);
         FilePath = path;
         HasUnsavedEdits = false;
@@ -211,6 +170,13 @@ public sealed class EditorSessionViewModel : ObservableObject
         }
     }
 
+    /// <summary>Stops watching the Watched File and releases this session's watcher subscription.</summary>
+    public void Dispose()
+    {
+        _watcher.Changed -= OnWatcherChanged;
+        _watcher.StopWatching();
+    }
+
     private void KeepMyEdits() => ClearConflict();
 
     private void ReloadFromDisk()
@@ -229,7 +195,7 @@ public sealed class EditorSessionViewModel : ObservableObject
     private void OnWatcherChanged(object? sender, ExternalChange change) =>
         _dispatcher.Post(() => _ = HandleExternalChangeAsync(change.Path));
 
-    /// <summary>Replaces the source text without marking the session dirty (used by load/new/reload).</summary>
+    /// <summary>Replaces the source text without marking the session dirty (used by load/reload).</summary>
     private void SetSourceText(string text)
     {
         _markdown = text;
