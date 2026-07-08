@@ -43,13 +43,17 @@ computed by the pure `UI.Wysiwyg.SectionMap`.
 | `Unfold(Block heading)` | Restores the Section's Section Body. |
 | `ToggleFold(Block heading)` | Folds if Unfolded, Unfolds if Folded. |
 | `ToggleFoldAtCaret()` | Toggles the Fold of the Section containing the caret. |
+| `CollapseAllFolds()` | Folds every Section, collapsing the document to its top-level Section Headings. |
 | `ExpandAllFolds()` | Unfolds every Folded Section. |
 | `IsFolded(Block heading)` | Whether the Section is currently Folded. |
+| `IsSectionHeading(Block block)` | Whether the block is a Section Heading (a foldable heading). Used by the Editor Gutter to place a Fold Toggle. |
 | `Capture()` | Captures the full logical document (visible blocks with Folded bodies spliced back in) to canonical Markdown. |
 
 Folds are driven from the UI through the `UI.Controls.MarkdownEditingCommands` routed commands
-(`ToggleFold` — Ctrl+M; `ExpandAllFolds` — Ctrl+Shift+M), which the control handles via command
-bindings. Folds are presentation state and are cleared whenever `Markdown` is re-Projected.
+(`ToggleFold` — Ctrl+M; `CollapseAllFolds`; `ExpandAllFolds` — Ctrl+Shift+M), which the control
+handles via command bindings, and through the per-heading Fold Toggle chevrons in the
+[Editor Gutter](EditorGutter.md). Folds are presentation state and are cleared whenever `Markdown`
+is re-Projected.
 
 ## Events
 

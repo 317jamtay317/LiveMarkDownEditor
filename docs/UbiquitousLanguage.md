@@ -32,6 +32,10 @@ file on disk stays plain Markdown and updates live when changed by anyone — an
 | **Tab** | The visual handle representing one Editor Session within the Workspace. Selecting a Tab makes its Editor Session the Active Session; closing a Tab ends that Editor Session (never discarding unsaved edits without a decision — see Invariants). |
 | **Section** | A heading together with all Visual Document content that follows it, up to (but not including) the next heading of equal or higher level. A Section's heading is its **Section Heading**; the content it owns is its **Section Body**. Sections nest: a Section Body may contain lower-level Sections. |
 | **Fold** | A view-only operation on the Visual Document that hides a Section's Section Body while leaving its Section Heading visible, the way Visual Studio collapses a method or region. The inverse is **Unfold**. Fold state is presentation-only: it is never part of the Markdown Document and never changes its source text or the result of a Capture. |
+| **Collapse All / Expand All** | The two Workspace-level fold actions: **Collapse All** Folds every Section; **Expand All** Unfolds every Folded Section. Like any Fold, they are view-only and never change the Markdown Document. |
+| **Editor Gutter** | The margin strip along the left edge of the WYSIWYG editing surface. It is pure presentation — it shows a **Line Number** for each visible line and a **Fold Toggle** beside each Section Heading — and is never part of the Markdown Document. |
+| **Line Number** | The 1-based ordinal of a visible line of the Visual Document — one per rendered line, counting each soft-wrapped continuation as its own line the way a code editor does — shown in the Editor Gutter. Line Numbers are presentation-only; the lines of a Folded (hidden) Section Body are not numbered. |
+| **Fold Toggle** | The chevron shown in the Editor Gutter beside a Section Heading — pointing down when the Section is Unfolded, right when it is Folded. Activating a Fold Toggle Folds or Unfolds that Section. |
 
 <!--
 Add new terms above. Each term should have:

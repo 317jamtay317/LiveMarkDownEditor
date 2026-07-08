@@ -147,6 +147,96 @@ public sealed class MarkdownRichEditorTests
     }
 
     [Fact]
+    public void CollapseAllFolds_FoldsEveryTopLevelSection()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var alphaHeading = editor.Document.Blocks.FirstBlock!;
+
+            editor.CollapseAllFolds();
+
+            // Folding the outer Sections hides everything but the top-level Section Headings.
+            editor.IsFolded(alphaHeading).ShouldBeTrue();
+            var betaHeading = editor.Document.Blocks.LastBlock!;
+            editor.IsFolded(betaHeading).ShouldBeTrue();
+            editor.Document.Blocks.Count.ShouldBe(2);
+            var visibleText = new TextRange(editor.Document.ContentStart, editor.Document.ContentEnd).Text;
+            visibleText.ShouldContain("Alpha");
+            visibleText.ShouldContain("Beta");
+            visibleText.ShouldNotContain("Alpha body");
+            visibleText.ShouldNotContain("Sub body");
+            visibleText.ShouldNotContain("Beta body");
+        });
+    }
+
+    [Fact]
+    public void CollapseAllFolds_DoesNotChangeCapturedMarkdown_INV011()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var unfolded = editor.Capture();
+
+            editor.CollapseAllFolds();
+
+            // INV-011: Collapse All is a Fold across every Section — still view-only.
+            editor.Capture().ShouldBe(unfolded);
+        });
+    }
+
+    [Fact]
+    public void ExpandAllFolds_AfterCollapseAll_RestoresEveryBlock()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var blockCountBefore = editor.Document.Blocks.Count;
+            editor.CollapseAllFolds();
+
+            editor.ExpandAllFolds();
+
+            editor.Document.Blocks.Count.ShouldBe(blockCountBefore);
+        });
+    }
+
+    [Fact]
+    public void CollapseAllFoldsCommand_ExecutedAgainstEditor_FoldsAllSections()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+
+            MarkdownEditingCommands.CollapseAllFolds.Execute(parameter: null, target: editor);
+
+            editor.IsFolded(editor.Document.Blocks.FirstBlock!).ShouldBeTrue();
+            editor.IsFolded(editor.Document.Blocks.LastBlock!).ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void IsSectionHeading_ForHeadingBlock_ReturnsTrue()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "# Title" };
+
+            editor.IsSectionHeading(editor.Document.Blocks.FirstBlock!).ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void IsSectionHeading_ForNonHeadingBlock_ReturnsFalse()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "Just a paragraph." };
+
+            editor.IsSectionHeading(editor.Document.Blocks.FirstBlock!).ShouldBeFalse();
+        });
+    }
+
+    [Fact]
     public void Fold_NonHeadingBlock_Throws()
     {
         StaThread.Run(() =>

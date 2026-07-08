@@ -25,6 +25,12 @@ public sealed class MarkdownToFlowDocumentProjector
 {
     private static readonly FontFamily MonospaceFont = new("Consolas, Cascadia Mono, Courier New");
 
+    // WPF's default Paragraph margin double-spaces the Visual Document, which reads as large gaps
+    // between lines. A small, uniform block spacing looks like a real editor; a heading gets a little
+    // extra room above so it stands off the preceding Section.
+    private static readonly Thickness BodySpacing = new(0, 0, 0, 6);
+    private static readonly Thickness HeadingSpacing = new(0, 12, 0, 4);
+
     /// <summary>Projects Markdown source text into a Visual Document.</summary>
     /// <param name="markdown">The Markdown source text. <see langword="null"/> is treated as empty.</param>
     /// <returns>A <see cref="FlowDocument"/> presenting the formatted content.</returns>
@@ -58,6 +64,7 @@ public sealed class MarkdownToFlowDocumentProjector
                 {
                     Tag = new HeadingRole(heading.Level),
                     FontSize = HeadingFontSize(heading.Level),
+                    Margin = HeadingSpacing,
                 };
                 AppendInlines(paragraph.Inlines, heading.Inline);
                 return paragraph;
@@ -65,7 +72,7 @@ public sealed class MarkdownToFlowDocumentProjector
 
             case ParagraphBlock paragraphBlock:
             {
-                var paragraph = new Paragraph();
+                var paragraph = new Paragraph { Margin = BodySpacing };
                 AppendInlines(paragraph.Inlines, paragraphBlock.Inline);
                 return paragraph;
             }

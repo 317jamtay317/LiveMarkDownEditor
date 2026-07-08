@@ -95,4 +95,30 @@ public sealed class WysiwygRoundTripTests
             new FlowDocumentToMarkdownCapturer().Capture(document).ShouldBe("plain **strong**");
         });
     }
+
+    [Fact]
+    public void Project_BodyParagraph_UsesTightBlockSpacing()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector().Project("A plain paragraph.");
+
+            var paragraph = (Paragraph)document.Blocks.FirstBlock;
+
+            paragraph.Margin.ShouldBe(new Thickness(0, 0, 0, 6));
+        });
+    }
+
+    [Fact]
+    public void Project_Heading_UsesHeadingBlockSpacing()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector().Project("# Heading");
+
+            var heading = (Paragraph)document.Blocks.FirstBlock;
+
+            heading.Margin.ShouldBe(new Thickness(0, 12, 0, 4));
+        });
+    }
 }

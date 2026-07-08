@@ -107,11 +107,17 @@ and tested.
 - **Statement:** Folding a Section hides its Section Body in the Visual Document but never changes
   the Markdown Document. Capturing the Visual Document yields identical Markdown source text whether
   or not any Section is Folded — a Fold hides a Section Body without removing it from the document's
-  content. Only a Section Heading can be Folded; a non-heading block has no Section to Fold.
+  content. Only a Section Heading can be Folded; a non-heading block has no Section to Fold. Collapse
+  All and Expand All are Folds applied across every Section and are equally view-only; the Editor
+  Gutter (Line Numbers and Fold Toggles) is presentation-only and likewise never changes the
+  Markdown Document.
 - **Enforced by:** `MarkdownRichEditor` folding, which retains each Folded Section Body and Captures
   the full logical block sequence (visible blocks with Folded bodies spliced back in), so Capture is
-  unaffected by fold state. Section boundaries are computed by the pure `SectionMap`.
+  unaffected by fold state — including `CollapseAllFolds` / `ExpandAllFolds`. Section boundaries are
+  computed by the pure `SectionMap`. The `EditorGutter` only reads the editor's blocks and fold state;
+  it never mutates the document.
 - **Tested by:** `MarkdownRichEditorTests.Fold_DoesNotChangeCapturedMarkdown_INV011`,
+  `MarkdownRichEditorTests.CollapseAllFolds_DoesNotChangeCapturedMarkdown_INV011`,
   `SectionMapTests.FindBody_*`.
 
 <!--

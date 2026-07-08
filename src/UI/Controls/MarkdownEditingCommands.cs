@@ -17,6 +17,12 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands),
         [new KeyGesture(Key.M, ModifierKeys.Control)]);
 
+    /// <summary>Folds every Section, collapsing the document to its Section Headings.</summary>
+    public static RoutedUICommand CollapseAllFolds { get; } = new(
+        "Collapse all sections",
+        nameof(CollapseAllFolds),
+        typeof(MarkdownEditingCommands));
+
     /// <summary>Unfolds every Folded Section, restoring the full document (Ctrl+Shift+M).</summary>
     public static RoutedUICommand ExpandAllFolds { get; } = new(
         "Expand all sections",

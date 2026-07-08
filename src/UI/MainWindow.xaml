@@ -50,12 +50,12 @@
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2013;"
-                        ToolTip="Collapse / expand the section at the caret (Ctrl+M)"
-                        Command="controls:MarkdownEditingCommands.ToggleFold"
+                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Collapse all"
+                        Focusable="False" ToolTip="Collapse all sections"
+                        Command="controls:MarkdownEditingCommands.CollapseAllFolds"
                         CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2261;"
-                        ToolTip="Expand all sections (Ctrl+Shift+M)"
+                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Expand all"
+                        Focusable="False" ToolTip="Expand all sections (Ctrl+Shift+M)"
                         Command="controls:MarkdownEditingCommands.ExpandAllFolds"
                         CommandTarget="{Binding ElementName=Editor}" />
 
@@ -125,9 +125,17 @@
             </DockPanel>
         </Border>
 
-        <!-- The single-pane WYSIWYG editing surface, bound to the Active Session. -->
-        <controls:MarkdownRichEditor x:Name="Editor" Grid.Row="3"
-                                     Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+        <!-- The single-pane WYSIWYG editing surface, bound to the Active Session, with the Editor
+             Gutter (line numbers + fold chevrons) alongside it. -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+            <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
+                                         Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
 
         <!-- Slim status bar: the Watched File path and an unsaved-changes hint. -->
         <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}"

@@ -54,6 +54,8 @@ public sealed class MarkdownRichEditor : RichTextBox
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.CollapseAllFolds, (_, _) => CollapseAllFolds()));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ExpandAllFolds, (_, _) => ExpandAllFolds()));
     }
 
@@ -68,6 +70,14 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <param name="heading">The Section Heading block to query.</param>
     /// <returns><see langword="true"/> if the Section is Folded; otherwise <see langword="false"/>.</returns>
     public bool IsFolded(Block heading) => _foldedBodies.ContainsKey(heading);
+
+    /// <summary>
+    /// Whether <paramref name="block"/> is a Section Heading — a heading block that leads a Section
+    /// and can therefore be Folded. Used by the Editor Gutter to place a Fold Toggle.
+    /// </summary>
+    /// <param name="block">The block to classify.</param>
+    /// <returns><see langword="true"/> if the block is a Section Heading; otherwise <see langword="false"/>.</returns>
+    public bool IsSectionHeading(Block block) => LevelOf(block) is not null;
 
     /// <summary>
     /// Folds the Section led by <paramref name="heading"/>, hiding its Section Body while leaving the
@@ -166,6 +176,26 @@ public sealed class MarkdownRichEditor : RichTextBox
             {
                 ToggleFold(blocks[index]);
                 return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Folds every Section, collapsing the Visual Document down to its top-level Section Headings.
+    /// Folding an outer Section hides the Section Headings nested within it, so only the outermost
+    /// Sections remain Folded — Expanding them restores the whole document. A view-only operation
+    /// (INV-011).
+    /// </summary>
+    public void CollapseAllFolds()
+    {
+        // Snapshot the currently visible headings: Folding a Section removes its nested headings from
+        // the visible document, so we only ever Fold the outermost Sections still present.
+        var headings = Document.Blocks.Where(IsSectionHeading).ToList();
+        foreach (var heading in headings)
+        {
+            if (Document.Blocks.Contains(heading) && !IsFolded(heading))
+            {
+                Fold(heading);
             }
         }
     }
