@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:UI.Controls">
+
+    <!-- Default style for the Editor Gutter. Authored as the control's ResourceDictionary alongside
+         the EditorGutter class, per the project's Control conventions. Colours are DynamicResource
+         lookups into the active palette so the gutter follows the light/dark theme. -->
+    <Style TargetType="{x:Type controls:EditorGutter}">
+        <Setter Property="Width" Value="52" />
+        <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
+        <Setter Property="LineNumberBrush" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="ChevronBrush" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="ChevronHoverBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
+</ResourceDictionary>

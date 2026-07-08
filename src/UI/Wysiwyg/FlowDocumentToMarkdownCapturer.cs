@@ -33,18 +33,33 @@ public sealed class FlowDocumentToMarkdownCapturer
     public string Capture(FlowDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        return Capture(document.Blocks);
+    }
 
-        var blocks = new List<string>();
-        foreach (var block in document.Blocks)
+    /// <summary>Captures an explicit sequence of blocks as canonical Markdown source text.</summary>
+    /// <remarks>
+    /// Used to capture the full logical document even when some Section Bodies are Folded: the editor
+    /// supplies the visible blocks with each Folded body spliced back in at its Section Heading, so a
+    /// Fold never changes the captured source (INV-011).
+    /// </remarks>
+    /// <param name="blocks">The blocks to serialise, in document order.</param>
+    /// <returns>The canonical Markdown source text.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="blocks"/> is <see langword="null"/>.</exception>
+    public string Capture(IEnumerable<Block> blocks)
+    {
+        ArgumentNullException.ThrowIfNull(blocks);
+
+        var captured = new List<string>();
+        foreach (var block in blocks)
         {
-            var captured = CaptureBlock(block);
-            if (captured is not null)
+            var text = CaptureBlock(block);
+            if (text is not null)
             {
-                blocks.Add(captured);
+                captured.Add(text);
             }
         }
 
-        return string.Join("\n\n", blocks);
+        return string.Join("\n\n", captured);
     }
 
     private static string? CaptureBlock(Block block) => block switch

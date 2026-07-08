@@ -9,6 +9,7 @@
                      present at parse time. -->
                 <ResourceDictionary Source="Themes/Controls.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />
+                <ResourceDictionary Source="Controls/EditorGutter.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />

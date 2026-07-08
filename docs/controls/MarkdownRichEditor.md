@@ -30,6 +30,31 @@ two directions echoing each other.
 | --- | --- | --- | --- |
 | `Markdown` | `string` | `""` | The canonical Markdown source text. **Binds two-way by default.** Setting it Projects a new Visual Document; editing the surface Captures back into it. |
 
+## Folding (collapsible Sections)
+
+The editor can **Fold** a Section — hide a heading's Section Body up to the next heading of equal or
+higher level, the way Visual Studio collapses a region. Folding is **view-only**: Folded bodies are
+retained and Captured in place, so a Fold never changes `Markdown` (INV-011). Section boundaries are
+computed by the pure `UI.Wysiwyg.SectionMap`.
+
+| Member | Description |
+| --- | --- |
+| `Fold(Block heading)` | Folds the Section led by `heading`. Throws `ArgumentException` if the block is not a Section Heading. |
+| `Unfold(Block heading)` | Restores the Section's Section Body. |
+| `ToggleFold(Block heading)` | Folds if Unfolded, Unfolds if Folded. |
+| `ToggleFoldAtCaret()` | Toggles the Fold of the Section containing the caret. |
+| `CollapseAllFolds()` | Folds every Section, collapsing the document to its top-level Section Headings. |
+| `ExpandAllFolds()` | Unfolds every Folded Section. |
+| `IsFolded(Block heading)` | Whether the Section is currently Folded. |
+| `IsSectionHeading(Block block)` | Whether the block is a Section Heading (a foldable heading). Used by the Editor Gutter to place a Fold Toggle. |
+| `Capture()` | Captures the full logical document (visible blocks with Folded bodies spliced back in) to canonical Markdown. |
+
+Folds are driven from the UI through the `UI.Controls.MarkdownEditingCommands` routed commands
+(`ToggleFold` — Ctrl+M; `CollapseAllFolds`; `ExpandAllFolds` — Ctrl+Shift+M), which the control
+handles via command bindings, and through the per-heading Fold Toggle chevrons in the
+[Editor Gutter](EditorGutter.md). Folds are presentation state and are cleared whenever `Markdown`
+is re-Projected.
+
 ## Events
 
 Inherits `RichTextBox` events. The control overrides `OnTextChanged` internally to drive Capture;
