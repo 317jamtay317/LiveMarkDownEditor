@@ -30,6 +30,8 @@ file on disk stays plain Markdown and updates live when changed by anyone — an
 | **Workspace** | The set of open Editor Sessions the user is working with at once, presented as Tabs, with exactly one of them the Active Session. The editor's shell: it is what lets several Markdown Documents be open and edited side by side. A Workspace is never empty — it always holds at least one Editor Session. |
 | **Active Session** | The single Editor Session in the Workspace currently shown in the editing pane and targeted by the save and formatting actions. Selecting a Tab changes which Editor Session is the Active Session. |
 | **Tab** | The visual handle representing one Editor Session within the Workspace. Selecting a Tab makes its Editor Session the Active Session; closing a Tab ends that Editor Session (never discarding unsaved edits without a decision — see Invariants). |
+| **Section** | A heading together with all Visual Document content that follows it, up to (but not including) the next heading of equal or higher level. A Section's heading is its **Section Heading**; the content it owns is its **Section Body**. Sections nest: a Section Body may contain lower-level Sections. |
+| **Fold** | A view-only operation on the Visual Document that hides a Section's Section Body while leaving its Section Heading visible, the way Visual Studio collapses a method or region. The inverse is **Unfold**. Fold state is presentation-only: it is never part of the Markdown Document and never changes its source text or the result of a Capture. |
 
 <!--
 Add new terms above. Each term should have:

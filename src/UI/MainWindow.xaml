@@ -48,6 +48,17 @@
                         FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
                         Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}" />
 
+                <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
+
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2013;"
+                        ToolTip="Collapse / expand the section at the caret (Ctrl+M)"
+                        Command="controls:MarkdownEditingCommands.ToggleFold"
+                        CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2261;"
+                        ToolTip="Expand all sections (Ctrl+Shift+M)"
+                        Command="controls:MarkdownEditingCommands.ExpandAllFolds"
+                        CommandTarget="{Binding ElementName=Editor}" />
+
                 <!-- Theme toggle: shows the theme you'd switch to. -->
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
                         Command="{Binding Appearance.ToggleThemeCommand}"

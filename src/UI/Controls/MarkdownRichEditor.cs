@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Input;
 using UI.Wysiwyg;
 
 namespace UI.Controls;
@@ -15,6 +17,11 @@ namespace UI.Controls;
 /// <see cref="Markdown"/> Projects it into the Visual Document; editing the Visual Document Captures
 /// it back into <see cref="Markdown"/>. A re-entrancy guard prevents the two directions from
 /// echoing each other.
+/// <para>
+/// The control also supports Folding a Section — hiding a Section Heading's Section Body the way
+/// Visual Studio collapses a region. Folding is view-only: Folded bodies are retained and spliced
+/// back in when Capturing, so a Fold never changes the Markdown source (INV-011).
+/// </para>
 /// </remarks>
 public sealed class MarkdownRichEditor : RichTextBox
 {
@@ -33,8 +40,22 @@ public sealed class MarkdownRichEditor : RichTextBox
 
     private readonly MarkdownToFlowDocumentProjector _projector = new();
     private readonly FlowDocumentToMarkdownCapturer _capturer = new();
+
+    // Each Folded Section Heading mapped to the Section Body blocks removed from the visible Document.
+    // The blocks are retained (not discarded) so Capture can reproduce the full source (INV-011).
+    private readonly Dictionary<Block, IReadOnlyList<Block>> _foldedBodies = new();
+
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
+
+    /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
+    public MarkdownRichEditor()
+    {
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ExpandAllFolds, (_, _) => ExpandAllFolds()));
+    }
 
     /// <summary>The canonical Markdown source text shown, and edited, as a Visual Document.</summary>
     public string Markdown
@@ -42,6 +63,134 @@ public sealed class MarkdownRichEditor : RichTextBox
         get => (string)GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
     }
+
+    /// <summary>Whether the Section led by <paramref name="heading"/> is currently Folded.</summary>
+    /// <param name="heading">The Section Heading block to query.</param>
+    /// <returns><see langword="true"/> if the Section is Folded; otherwise <see langword="false"/>.</returns>
+    public bool IsFolded(Block heading) => _foldedBodies.ContainsKey(heading);
+
+    /// <summary>
+    /// Folds the Section led by <paramref name="heading"/>, hiding its Section Body while leaving the
+    /// Section Heading visible. A Fold is view-only and never changes <see cref="Markdown"/>.
+    /// </summary>
+    /// <param name="heading">The Section Heading block to Fold.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="heading"/> is not a Section Heading.</exception>
+    public void Fold(Block heading)
+    {
+        ArgumentNullException.ThrowIfNull(heading);
+        if (LevelOf(heading) is null)
+        {
+            throw new ArgumentException("Only a Section Heading can be Folded.", nameof(heading));
+        }
+
+        if (IsFolded(heading))
+        {
+            return;
+        }
+
+        var blocks = Document.Blocks.ToList();
+        var index = blocks.IndexOf(heading);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var levels = blocks.ConvertAll(LevelOf);
+        var body = SectionMap.FindBody(levels, index);
+        if (body.Count == 0)
+        {
+            return;
+        }
+
+        var bodyBlocks = blocks.GetRange(body.Start, body.Count);
+        MutateVisualDocument(() =>
+        {
+            foreach (var block in bodyBlocks)
+            {
+                Document.Blocks.Remove(block);
+            }
+        });
+
+        _foldedBodies[heading] = bodyBlocks;
+    }
+
+    /// <summary>Unfolds the Section led by <paramref name="heading"/>, restoring its Section Body.</summary>
+    /// <param name="heading">The Section Heading block to Unfold.</param>
+    public void Unfold(Block heading)
+    {
+        ArgumentNullException.ThrowIfNull(heading);
+        if (!_foldedBodies.TryGetValue(heading, out var bodyBlocks))
+        {
+            return;
+        }
+
+        _foldedBodies.Remove(heading);
+        MutateVisualDocument(() =>
+        {
+            Block cursor = heading;
+            foreach (var block in bodyBlocks)
+            {
+                Document.Blocks.InsertAfter(cursor, block);
+                cursor = block;
+            }
+        });
+    }
+
+    /// <summary>Folds the Section if it is Unfolded, or Unfolds it if it is Folded.</summary>
+    /// <param name="heading">The Section Heading block to toggle.</param>
+    public void ToggleFold(Block heading)
+    {
+        if (IsFolded(heading))
+        {
+            Unfold(heading);
+        }
+        else
+        {
+            Fold(heading);
+        }
+    }
+
+    /// <summary>Toggles the Fold of the Section that contains the caret.</summary>
+    public void ToggleFoldAtCaret()
+    {
+        var caretParagraph = CaretPosition?.Paragraph;
+        if (caretParagraph is null)
+        {
+            return;
+        }
+
+        var blocks = Document.Blocks.ToList();
+        for (var index = blocks.IndexOf(caretParagraph); index >= 0; index--)
+        {
+            if (LevelOf(blocks[index]) is not null)
+            {
+                ToggleFold(blocks[index]);
+                return;
+            }
+        }
+    }
+
+    /// <summary>Unfolds every Folded Section, restoring the full Visual Document.</summary>
+    public void ExpandAllFolds()
+    {
+        while (_foldedBodies.Count > 0)
+        {
+            var visibleFold = _foldedBodies.Keys.FirstOrDefault(heading => Document.Blocks.Contains(heading));
+            if (visibleFold is null)
+            {
+                break;
+            }
+
+            Unfold(visibleFold);
+        }
+    }
+
+    /// <summary>
+    /// Captures the current Visual Document — including any Folded Section Bodies — back into
+    /// canonical Markdown source. Folding never changes this result (INV-011).
+    /// </summary>
+    /// <returns>The canonical Markdown source text.</returns>
+    public string Capture() => _capturer.Capture(BuildLogicalBlocks());
 
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -66,6 +215,8 @@ public sealed class MarkdownRichEditor : RichTextBox
         _isSynchronising = true;
         try
         {
+            // Fold state references the outgoing document's blocks; a fresh projection clears it.
+            _foldedBodies.Clear();
             Document = _projector.Project(markdown);
         }
         finally
@@ -86,7 +237,7 @@ public sealed class MarkdownRichEditor : RichTextBox
         _isSynchronising = true;
         try
         {
-            _lastCaptured = _capturer.Capture(Document);
+            _lastCaptured = _capturer.Capture(BuildLogicalBlocks());
             SetCurrentValue(MarkdownProperty, _lastCaptured);
         }
         finally
@@ -94,4 +245,45 @@ public sealed class MarkdownRichEditor : RichTextBox
             _isSynchronising = false;
         }
     }
+
+    // The full logical block sequence: every visible block, with each Folded Section Body spliced
+    // back in at its Section Heading (recursively, so nested Folds are preserved).
+    private List<Block> BuildLogicalBlocks()
+    {
+        var logical = new List<Block>();
+        foreach (var block in Document.Blocks)
+        {
+            AppendLogical(block, logical);
+        }
+
+        return logical;
+    }
+
+    private void AppendLogical(Block block, List<Block> logical)
+    {
+        logical.Add(block);
+        if (_foldedBodies.TryGetValue(block, out var bodyBlocks))
+        {
+            foreach (var child in bodyBlocks)
+            {
+                AppendLogical(child, logical);
+            }
+        }
+    }
+
+    private void MutateVisualDocument(Action mutate)
+    {
+        _isSynchronising = true;
+        try
+        {
+            mutate();
+        }
+        finally
+        {
+            _isSynchronising = false;
+        }
+    }
+
+    private static int? LevelOf(Block block) =>
+        block is Paragraph { Tag: HeadingRole role } ? role.Level : null;
 }
