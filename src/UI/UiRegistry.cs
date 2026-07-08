@@ -14,7 +14,8 @@ public static class UiRegistry
     {
         /// <summary>
         /// Registers the UI layer: the snackbar service, the global exception handler, the file
-        /// picker, the Editor Session ViewModel, and the application's windows.
+        /// picker, the unsaved-edits prompt, the theme service, the Editor Session factory, the
+        /// Workspace and appearance ViewModels, and the application's windows.
         /// </summary>
         public void AddUi()
         {
@@ -22,7 +23,16 @@ public static class UiRegistry
             services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
             services.AddSingleton<IFilePicker, Win32FilePicker>();
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
-            services.AddSingleton<EditorSessionViewModel>();
+            services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
+            services.AddSingleton<IThemeService, WpfThemeService>();
+
+            // A fresh Editor Session (with its own Watched File watcher) is minted per Tab.
+            services.AddTransient<EditorSessionViewModel>();
+            services.AddSingleton<EditorSessionFactory>(
+                provider => () => provider.GetRequiredService<EditorSessionViewModel>());
+
+            services.AddSingleton<AppearanceViewModel>();
+            services.AddSingleton<WorkspaceViewModel>();
             services.AddSingleton<MainWindow>();
         }
     }

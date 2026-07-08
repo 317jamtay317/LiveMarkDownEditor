@@ -76,6 +76,33 @@ and tested.
 - **Tested by:** `ExternalChangeReconcilerTests.Reconcile_WithNoUnsavedEdits_ReloadsFromDisk_INV007`,
   `EditorSessionViewModelTests.ExternalChange_WhenSessionClean_ReloadsLive_INV007`.
 
+### INV-008 — A Workspace always has at least one Editor Session
+- **Statement:** A Workspace is never empty and always has exactly one Active Session. It opens with
+  one empty Editor Session, and closing the last remaining Editor Session immediately opens a fresh
+  empty one so there is always a Tab to edit in.
+- **Enforced by:** `WorkspaceViewModel` — it creates an initial Editor Session in its constructor,
+  keeps `ActiveSession` non-null, and re-seeds an empty session when the last Tab is closed.
+- **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithOneEmptyActiveSession_INV008`,
+  `WorkspaceViewModelTests.Close_LastTab_OpensFreshEmpty_INV008`.
+
+### INV-009 — A Watched File is open in at most one Editor Session
+- **Statement:** The same Watched File is never open in two Tabs at once. Opening a file that is
+  already open in the Workspace activates its existing Editor Session rather than creating a
+  duplicate Tab.
+- **Enforced by:** `WorkspaceViewModel.Open`, which matches the chosen path against the open Editor
+  Sessions' Watched Files and activates the match instead of loading a second copy.
+- **Tested by:** `WorkspaceViewModelTests.Open_WhenFileAlreadyOpen_ActivatesExistingTab_INV009`.
+
+### INV-010 — Closing an Editor Session never silently discards unsaved edits
+- **Statement:** When an Editor Session with unsaved edits is closed, the user is asked to Save,
+  Discard, or Cancel. Cancel aborts the close and keeps the Tab; Save persists before closing;
+  Discard closes without saving. Unsaved edits are never dropped without an explicit choice. (This
+  is the close-time counterpart of INV-006.)
+- **Enforced by:** `WorkspaceViewModel.CloseSession` via the `IUnsavedEditsPrompt` port.
+- **Tested by:** `WorkspaceViewModelTests.Close_WithUnsavedEdits_Save_Persists_INV010`,
+  `WorkspaceViewModelTests.Close_WithUnsavedEdits_Discard_Closes_INV010`,
+  `WorkspaceViewModelTests.Close_WithUnsavedEdits_Cancel_KeepsTab_INV010`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

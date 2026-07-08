@@ -6,38 +6,37 @@ using Xunit;
 namespace UI.Tests.ViewModels;
 
 /// <summary>
-/// Tests for <see cref="EditorSessionViewModel"/> — the Editor Session realised for the UI:
-/// the current Markdown Document source, its Watched File, unsaved-edit tracking, the open/save/new
-/// behaviours, and External Change handling (INV-006/007).
+/// Tests for <see cref="EditorSessionViewModel"/> — one Tab's Editor Session: its Markdown Document
+/// source, its Watched File, unsaved-edit tracking, load/save, and External Change handling
+/// (INV-006/007). File selection and Tab management live in <see cref="WorkspaceViewModel"/>.
 /// </summary>
 public sealed class EditorSessionViewModelTests
 {
     private const string Path = @"C:\docs\note.md";
 
     private readonly FakeDocumentStore _store = new();
-    private readonly StubFilePicker _picker = new();
     private readonly FakeDocumentWatcher _watcher = new();
     private readonly InlineUiDispatcher _dispatcher = new();
 
-    private EditorSessionViewModel CreateSession() => new(_store, _picker, _watcher, _dispatcher);
+    private EditorSessionViewModel CreateSession() => new(_store, _watcher, _dispatcher);
 
-    private async Task<EditorSessionViewModel> OpenedSessionAsync(string content)
+    private async Task<EditorSessionViewModel> LoadedSessionAsync(string content)
     {
         _store.Seed(Path, content);
-        _picker.OpenResult = Path;
         var session = CreateSession();
-        await session.OpenAsync();
+        await session.LoadAsync(Path);
         return session;
     }
 
     [Fact]
-    public void New_StartsEmptyWithNoWatchedFileAndNoUnsavedEdits()
+    public void Constructed_StartsEmptyWithNoWatchedFileAndNoUnsavedEdits()
     {
         var session = CreateSession();
 
         session.Markdown.ShouldBe("");
         session.FilePath.ShouldBeNull();
         session.HasUnsavedEdits.ShouldBeFalse();
+        session.Name.ShouldBe("Untitled");
     }
 
     [Fact]
@@ -51,58 +50,46 @@ public sealed class EditorSessionViewModelTests
     }
 
     [Fact]
-    public async Task OpenAsync_LoadsFileContent_SetsWatchedFile_AndStartsWatching()
+    public async Task LoadAsync_LoadsFileContent_SetsWatchedFile_AndStartsWatching()
     {
-        var session = await OpenedSessionAsync("# Loaded\n\nBody.");
+        var session = await LoadedSessionAsync("# Loaded\n\nBody.");
 
         session.Markdown.ShouldBe("# Loaded\n\nBody.");
+        session.FilePath.ShouldBe(Path);
+        session.Name.ShouldBe("note.md");
+        session.HasUnsavedEdits.ShouldBeFalse();
+        _watcher.WatchedPath.ShouldBe(Path);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ToPath_PersistsAndClearsUnsavedEdits_AndWatches()
+    {
+        var session = CreateSession();
+        session.Markdown = "# Brand new";
+
+        await session.SaveAsync(Path);
+
+        _store.SavedText(Path).ShouldBe("# Brand new");
         session.FilePath.ShouldBe(Path);
         session.HasUnsavedEdits.ShouldBeFalse();
         _watcher.WatchedPath.ShouldBe(Path);
     }
 
     [Fact]
-    public async Task OpenAsync_WhenUserCancels_LeavesSessionUnchanged()
+    public async Task Dispose_StopsWatching()
     {
-        _picker.OpenResult = null;
-        var session = CreateSession();
-        session.Markdown = "# Keep me";
+        var session = await LoadedSessionAsync("# Loaded");
+        _watcher.WatchedPath.ShouldBe(Path);
 
-        await session.OpenAsync();
+        session.Dispose();
 
-        session.Markdown.ShouldBe("# Keep me");
-    }
-
-    [Fact]
-    public async Task SaveAsync_WithKnownWatchedFile_PersistsAndClearsUnsavedEdits()
-    {
-        var session = await OpenedSessionAsync("old");
-        session.Markdown = "# Changed";
-
-        await session.SaveAsync();
-
-        _store.SavedText(Path).ShouldBe("# Changed");
-        session.HasUnsavedEdits.ShouldBeFalse();
-    }
-
-    [Fact]
-    public async Task SaveAsync_WithNoWatchedFile_PromptsForPath_ThenPersists()
-    {
-        _picker.SaveResult = @"C:\docs\new.md";
-        var session = CreateSession();
-        session.Markdown = "# Brand new";
-
-        await session.SaveAsync();
-
-        _store.SavedText(@"C:\docs\new.md").ShouldBe("# Brand new");
-        session.FilePath.ShouldBe(@"C:\docs\new.md");
-        session.HasUnsavedEdits.ShouldBeFalse();
+        _watcher.WatchedPath.ShouldBeNull();
     }
 
     [Fact]
     public async Task ExternalChange_WhenSessionClean_ReloadsLive_INV007()
     {
-        var session = await OpenedSessionAsync("# Original");
+        var session = await LoadedSessionAsync("# Original");
 
         _store.Seed(Path, "# Changed by AI");
         _watcher.RaiseChanged(Path);
@@ -116,7 +103,7 @@ public sealed class EditorSessionViewModelTests
     [Fact]
     public async Task ExternalChange_WithUnsavedEdits_RaisesConflict_AndKeepsEdits_INV006()
     {
-        var session = await OpenedSessionAsync("# Original");
+        var session = await LoadedSessionAsync("# Original");
         session.Markdown = "# My unsaved edit";
 
         _store.Seed(Path, "# Changed on disk");
@@ -130,7 +117,7 @@ public sealed class EditorSessionViewModelTests
     [Fact]
     public async Task ExternalChange_ThatMatchesSession_IsIgnored_NoConflict()
     {
-        var session = await OpenedSessionAsync("# Same");
+        var session = await LoadedSessionAsync("# Same");
 
         // Simulate the watcher firing for the app's own save (disk == session content).
         _watcher.RaiseChanged(Path);
@@ -142,7 +129,7 @@ public sealed class EditorSessionViewModelTests
     [Fact]
     public async Task ResolveConflict_ReloadFromDisk_DiscardsEditsAndLoadsDisk()
     {
-        var session = await OpenedSessionAsync("# Original");
+        var session = await LoadedSessionAsync("# Original");
         session.Markdown = "# My edit";
         _store.Seed(Path, "# Disk wins");
         _watcher.RaiseChanged(Path);
@@ -158,7 +145,7 @@ public sealed class EditorSessionViewModelTests
     [Fact]
     public async Task ResolveConflict_KeepMyEdits_KeepsEditsAndClearsConflict()
     {
-        var session = await OpenedSessionAsync("# Original");
+        var session = await LoadedSessionAsync("# Original");
         session.Markdown = "# My edit";
         _store.Seed(Path, "# Disk change");
         _watcher.RaiseChanged(Path);
