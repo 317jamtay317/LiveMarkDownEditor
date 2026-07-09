@@ -144,6 +144,29 @@ and tested.
   `MarkdownRichEditorTests.Outline_ListsHeadingsInsideFoldedSections_INV012`,
   `OutlineViewTests.VisibleEntries_UnderCollapsedAncestor_AreHidden`.
 
+### INV-013 — The Source Panel and the Visual Document share one Markdown Document
+- **Statement:** The Source Panel and the Visual Document are two views of the *same* Markdown
+  Document source text and never diverge. Editing the Source Panel edits the source directly, which
+  Projects an updated Visual Document; editing the Visual Document Captures back into the source,
+  which the Source Panel reflects. A change originating in one view is never echoed back to re-edit
+  the other (no feedback loop), and after either edit both views represent identical Markdown source
+  text.
+- **Enforced by:** Both views binding two-way to the single canonical `EditorSessionViewModel.Markdown`
+  source text, and the `MarkdownRichEditor` re-entrancy guard (`_isSynchronising` / `_lastCaptured`)
+  that projects an incoming source change and captures an outgoing edit without the two directions
+  echoing each other.
+- **Tested by:** `MarkdownRichEditorTests.AssigningSource_ProjectsVisualDocument_AndVisualEdit_UpdatesSource_INV013`.
+
+### INV-014 — Toggling the Source Panel is view-only
+- **Statement:** Showing or hiding the Source Panel never changes the Markdown Document. The Source
+  Panel is hidden until the user toggles it on, and toggling it alters neither the Active Session's
+  source text nor any Fold, Outline, or Navigation state. (This is the Source Panel counterpart of
+  INV-011/012.)
+- **Enforced by:** `WorkspaceViewModel.IsSourcePanelVisible` and `ToggleSourcePanelCommand`, which
+  drive only presentation state and never touch any Editor Session's Markdown.
+- **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithSourcePanelHidden_INV014`,
+  `WorkspaceViewModelTests.ToggleSourcePanel_TogglesVisibility_WithoutChangingDocument_INV014`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

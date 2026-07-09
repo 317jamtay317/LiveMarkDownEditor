@@ -79,6 +79,33 @@ public sealed class MarkdownRichEditorTests
         });
     }
 
+    [Fact]
+    public void AssigningSource_ProjectsVisualDocument_AndVisualEdit_UpdatesSource_INV013()
+    {
+        StaThread.Run(() =>
+        {
+            // The Source Panel and the Visual Document are two views of one Markdown Document, kept in
+            // sync through the shared Markdown source (INV-013). This locks that contract at the point
+            // both views bind to: MarkdownRichEditor.Markdown.
+            var editor = new MarkdownRichEditor();
+
+            // Source Panel → Visual Document: assigning raw source Projects a formatted, syntax-free view.
+            editor.Markdown = "# Heading";
+            var visibleText = new TextRange(editor.Document.ContentStart, editor.Document.ContentEnd).Text;
+            visibleText.ShouldContain("Heading");
+            visibleText.ShouldNotContain("#");
+
+            // Visual Document → Source Panel: editing the visual document Captures back into the source
+            // the Source Panel shows, without echoing back to re-edit the visual document.
+            var paragraph = new Paragraph();
+            paragraph.Inlines.Add(new Run("plain "));
+            paragraph.Inlines.Add(new Run("strong") { FontWeight = FontWeights.Bold });
+            editor.Document = new FlowDocument(paragraph);
+
+            editor.Markdown.ShouldBe("plain **strong**");
+        });
+    }
+
     private const string TwoSectionDocument =
         "# Alpha\n\nAlpha body.\n\n## Alpha one\n\nSub body.\n\n# Beta\n\nBeta body.";
 

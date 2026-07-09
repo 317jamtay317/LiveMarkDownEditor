@@ -76,6 +76,21 @@
                     </Button.Style>
                 </Button>
 
+                <!-- Source Panel toggle: highlighted while the raw-source pane is shown. -->
+                <Button DockPanel.Dock="Left" Content="Source" Focusable="False"
+                        Command="{Binding ToggleSourcePanelCommand}"
+                        ToolTip="Toggle the raw Markdown source panel">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSourcePanelVisible}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <!-- Theme toggle: shows the theme you'd switch to. -->
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
                         Command="{Binding Appearance.ToggleThemeCommand}"
@@ -147,14 +162,16 @@
              has been closed (INV-008). -->
         <Grid Grid.Row="3">
 
-            <!-- The single-pane WYSIWYG editing surface, bound to the Active Session, with the Editor
-                 Gutter (line numbers + fold chevrons) alongside it and the Navigation Panel (the
-                 toggleable Outline) to its left. -->
+            <!-- The WYSIWYG editing surface, bound to the Active Session, with the Editor Gutter (line
+                 numbers + fold chevrons) alongside it, the Navigation Panel (the toggleable Outline) to
+                 its left, and the toggleable Source Panel (raw Markdown source) split to its right. -->
             <Grid Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Navigation Panel: the Active Session's Outline. Hidden until toggled on (INV-012). -->
@@ -172,6 +189,37 @@
                 <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
                 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+
+                <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
+                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center"
+                              VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
+                              Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- Source Panel: the Active Session's raw, editable Markdown source, two-way bound to
+                     the same canonical Markdown as the Visual Document so the two stay in sync
+                     (INV-013). It is the one surface that shows Markdown syntax. Hidden until toggled
+                     on (INV-014). -->
+                <Border Grid.Column="4" Background="{DynamicResource EditorBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
+                        Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="SOURCE" Margin="14,12,14,6"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                        <!-- Delay debounces the source→Visual-Document projection: keystrokes coalesce
+                             so a full re-Project runs once typing pauses, not on every key. The TextBox
+                             (the binding target) stays instantly responsive. -->
+                        <TextBox AutomationProperties.AutomationId="SourcePanel"
+                                 Text="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged, Delay=120}"
+                                 AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                                 HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"
+                                 Background="Transparent" BorderThickness="0" Padding="12,4,12,12"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 CaretBrush="{DynamicResource TextBrush}"
+                                 SpellCheck.IsEnabled="False" />
+                    </DockPanel>
+                </Border>
             </Grid>
 
             <!-- Empty-Workspace Placeholder: shown when no Tab is open. -->

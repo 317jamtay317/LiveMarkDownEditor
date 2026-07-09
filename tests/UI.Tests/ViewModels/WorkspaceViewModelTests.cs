@@ -68,6 +68,32 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
+    public void Constructor_StartsWithSourcePanelHidden_INV014()
+    {
+        var workspace = CreateWorkspace();
+
+        // The Source Panel is hidden until the user toggles it on.
+        workspace.IsSourcePanelVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ToggleSourcePanel_TogglesVisibility_WithoutChangingDocument_INV014()
+    {
+        var workspace = CreateWorkspace();
+        workspace.ActiveSession!.Markdown = "# Title";
+        var sourceBefore = workspace.ActiveSession.Markdown;
+
+        workspace.ToggleSourcePanelCommand.Execute(null);
+        workspace.IsSourcePanelVisible.ShouldBeTrue();
+
+        workspace.ToggleSourcePanelCommand.Execute(null);
+        workspace.IsSourcePanelVisible.ShouldBeFalse();
+
+        // Toggling the Source Panel is view-only: the Markdown Document is untouched (INV-014).
+        workspace.ActiveSession.Markdown.ShouldBe(sourceBefore);
+    }
+
+    [Fact]
     public void New_AddsEmptySession_AndActivatesIt()
     {
         var workspace = CreateWorkspace();

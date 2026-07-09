@@ -22,6 +22,7 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     private EditorSessionViewModel? _activeSession;
     private bool _isNavigationPanelVisible;
+    private bool _isSourcePanelVisible;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -46,6 +47,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
         ToggleNavigationPanelCommand = new RelayCommand(ToggleNavigationPanel);
+        ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
 
         New();
     }
@@ -92,6 +94,17 @@ public sealed class WorkspaceViewModel : ObservableObject
         private set => Set(ref _isNavigationPanelVisible, value);
     }
 
+    /// <summary>
+    /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown
+    /// alongside the Visual Document — is visible. Hidden until the user toggles it on.
+    /// Presentation-only: toggling it never changes any Markdown Document (INV-014).
+    /// </summary>
+    public bool IsSourcePanelVisible
+    {
+        get => _isSourcePanelVisible;
+        private set => Set(ref _isSourcePanelVisible, value);
+    }
+
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }
 
@@ -106,6 +119,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Shows the Navigation Panel if hidden, or hides it if shown.</summary>
     public ICommand ToggleNavigationPanelCommand { get; }
+
+    /// <summary>Shows the Source Panel if hidden, or hides it if shown.</summary>
+    public ICommand ToggleSourcePanelCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -178,6 +194,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     }
 
     private void ToggleNavigationPanel() => IsNavigationPanelVisible = !IsNavigationPanelVisible;
+
+    private void ToggleSourcePanel() => IsSourcePanelVisible = !IsSourcePanelVisible;
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);
