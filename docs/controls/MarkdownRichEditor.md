@@ -55,10 +55,26 @@ handles via command bindings, and through the per-heading Fold Toggle chevrons i
 [Editor Gutter](EditorGutter.md). Folds are presentation state and are cleared whenever `Markdown`
 is re-Projected.
 
+## Outline &amp; Navigation
+
+The editor exposes its **Outline** — every Section Heading, in document order — so the
+[Navigation Panel](OutlinePanel.md) can list them and jump between them. The Outline lists *all*
+Section Headings, including ones inside a Folded Section Body, so it always mirrors the whole
+document. Reading the Outline and Navigating are **view-only**: neither changes `Markdown` (INV-012).
+
+| Member | Description |
+| --- | --- |
+| `Outline` | `IReadOnlyList<SectionHeading>` — every Section Heading (level + text) in document order, Folded ones included. Each `SectionHeading` is an Outline Entry. |
+| `Navigate(SectionHeading heading)` | Reveals the heading (Unfolding its enclosing Section if hidden), selects it, and scrolls it into view. |
+| `CurrentSection` | The `SectionHeading` whose Section most immediately encloses the caret, or `null`. |
+| `OutlineChanged` (event) | Raised when the Outline may have changed (re-Projection or a structural edit). |
+| `CurrentSectionChanged` (event) | Raised when the Current Section may have changed (caret move or re-Projection). |
+
 ## Events
 
-Inherits `RichTextBox` events. The control overrides `OnTextChanged` internally to drive Capture;
-consumers bind to `Markdown` rather than handling text-changed directly.
+Inherits `RichTextBox` events, plus `OutlineChanged` and `CurrentSectionChanged` (above). The control
+overrides `OnTextChanged` internally to drive Capture; consumers bind to `Markdown` rather than
+handling text-changed directly.
 
 ## Behaviour notes
 

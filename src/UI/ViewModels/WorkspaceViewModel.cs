@@ -20,7 +20,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     private readonly IUnsavedEditsPrompt _unsavedEditsPrompt;
     private readonly ObservableCollection<EditorSessionViewModel> _sessions = [];
 
-    private EditorSessionViewModel _activeSession = default!;
+    private EditorSessionViewModel? _activeSession;
+    private bool _isNavigationPanelVisible;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -44,6 +45,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
+        ToggleNavigationPanelCommand = new RelayCommand(ToggleNavigationPanel);
 
         New();
     }
@@ -51,15 +53,44 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <summary>The open Editor Sessions, one per Tab, in Tab order.</summary>
     public ReadOnlyObservableCollection<EditorSessionViewModel> Sessions { get; }
 
-    /// <summary>The Active Session: the Tab currently shown in the editing pane and targeted by Save.</summary>
-    public EditorSessionViewModel ActiveSession
+    /// <summary>
+    /// The Active Session: the Tab currently shown in the editing pane and targeted by Save, or
+    /// <see langword="null"/> when the Workspace is empty (every Tab has been closed).
+    /// </summary>
+    public EditorSessionViewModel? ActiveSession
     {
         get => _activeSession;
-        set => Set(ref _activeSession, value);
+        set
+        {
+            if (Set(ref _activeSession, value))
+            {
+                Raise(nameof(HasOpenSessions));
+                Raise(nameof(IsWorkspaceEmpty));
+            }
+        }
     }
+
+    /// <summary>Whether the Workspace has at least one open Editor Session (a Tab to edit in).</summary>
+    public bool HasOpenSessions => ActiveSession is not null;
+
+    /// <summary>
+    /// Whether the Workspace is empty — no open Editor Session. When true the editing area shows the
+    /// Empty-Workspace Placeholder instead of an editor.
+    /// </summary>
+    public bool IsWorkspaceEmpty => ActiveSession is null;
 
     /// <summary>The visual-theme ViewModel for the shell's chrome (light/dark toggle).</summary>
     public AppearanceViewModel Appearance { get; }
+
+    /// <summary>
+    /// Whether the Navigation Panel — the left-edge Outline of the Active Session — is shown. Hidden
+    /// until the user toggles it on. Presentation-only: toggling it never changes any document (INV-012).
+    /// </summary>
+    public bool IsNavigationPanelVisible
+    {
+        get => _isNavigationPanelVisible;
+        private set => Set(ref _isNavigationPanelVisible, value);
+    }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }
@@ -72,6 +103,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Closes a Tab, prompting to save when it has unsaved edits (INV-010). Parameter: the session.</summary>
     public ICommand CloseSessionCommand { get; }
+
+    /// <summary>Shows the Navigation Panel if hidden, or hides it if shown.</summary>
+    public ICommand ToggleNavigationPanelCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -109,7 +143,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     }
 
     /// <summary>Saves the Active Session, prompting for a path when it has no Watched File yet.</summary>
-    public Task SaveActiveAsync() => TrySaveAsync(ActiveSession);
+    public Task SaveActiveAsync() =>
+        ActiveSession is null ? Task.CompletedTask : TrySaveAsync(ActiveSession);
 
     /// <summary>
     /// Closes the given Tab. When it has unsaved edits the user is asked to Save, Discard, or Cancel;
@@ -141,6 +176,8 @@ public sealed class WorkspaceViewModel : ObservableObject
 
         RemoveSession(session);
     }
+
+    private void ToggleNavigationPanel() => IsNavigationPanelVisible = !IsNavigationPanelVisible;
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);
@@ -178,7 +215,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
         if (_sessions.Count == 0)
         {
-            New(); // INV-008: never empty
+            // INV-008: the Workspace may be empty — leave it with no Active Session (do not re-seed).
+            // The shell shows the Empty-Workspace Placeholder until the user opens or creates a document.
+            ActiveSession = null;
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Threading;
 using UI.Wysiwyg;
 
 namespace UI.Controls;
@@ -47,6 +48,7 @@ public sealed class MarkdownRichEditor : RichTextBox
 
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
+    private List<SectionHeading>? _outline;
 
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
@@ -57,13 +59,85 @@ public sealed class MarkdownRichEditor : RichTextBox
             MarkdownEditingCommands.CollapseAllFolds, (_, _) => CollapseAllFolds()));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ExpandAllFolds, (_, _) => ExpandAllFolds()));
+
+        // Moving the caret can change which Section the user is editing within; the Navigation Panel
+        // listens to keep the Current Section's Outline Entry highlighted.
+        SelectionChanged += (_, _) => CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Raised when the <see cref="Outline"/> may have changed — after a re-projection or an edit that
+    /// alters the Section Headings. The Navigation Panel refreshes its Outline Entries in response.
+    /// </summary>
+    public event EventHandler? OutlineChanged;
+
+    /// <summary>
+    /// Raised when the <see cref="CurrentSection"/> may have changed — when the caret moves or the
+    /// document is re-projected. The Navigation Panel re-highlights the Current Section in response.
+    /// </summary>
+    public event EventHandler? CurrentSectionChanged;
 
     /// <summary>The canonical Markdown source text shown, and edited, as a Visual Document.</summary>
     public string Markdown
     {
         get => (string)GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
+    }
+
+    /// <summary>
+    /// The Outline: every Section Heading of the Visual Document in document order, each an Outline
+    /// Entry carrying its level and text. Headings inside a Folded Section Body are still listed, so
+    /// the Outline always mirrors the whole document. Reading the Outline is view-only (INV-012).
+    /// </summary>
+    public IReadOnlyList<SectionHeading> Outline => _outline ??= BuildOutline();
+
+    /// <summary>
+    /// The Current Section: the <see cref="SectionHeading"/> whose Section most immediately encloses
+    /// the caret, or <see langword="null"/> when the caret precedes every heading. Used by the
+    /// Navigation Panel to highlight where the user is editing.
+    /// </summary>
+    public SectionHeading? CurrentSection
+    {
+        get
+        {
+            var caretParagraph = CaretPosition?.Paragraph;
+            if (caretParagraph is null)
+            {
+                return null;
+            }
+
+            var blocks = Document.Blocks.ToList();
+            for (var index = blocks.IndexOf(caretParagraph); index >= 0; index--)
+            {
+                if (LevelOf(blocks[index]) is not null)
+                {
+                    return Outline.FirstOrDefault(entry => ReferenceEquals(entry.Block, blocks[index]));
+                }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Navigates to <paramref name="heading"/>: reveals it (Unfolding its enclosing Section if it is
+    /// hidden inside a Folded Section Body), selects it, and scrolls it into view. Navigation is
+    /// view-only — it never changes <see cref="Markdown"/> (INV-012).
+    /// </summary>
+    /// <param name="heading">The Outline Entry to Navigate to.</param>
+    public void Navigate(SectionHeading heading)
+    {
+        ArgumentNullException.ThrowIfNull(heading);
+
+        Reveal(heading.Block);
+        if (heading.Block is not Paragraph paragraph || !Document.Blocks.Contains(paragraph))
+        {
+            return;
+        }
+
+        Selection.Select(paragraph.ContentStart, paragraph.ContentEnd);
+        Focus();
+        BringHeadingIntoView(paragraph);
     }
 
     /// <summary>Whether the Section led by <paramref name="heading"/> is currently Folded.</summary>
@@ -253,6 +327,14 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             _isSynchronising = false;
         }
+
+        // Track the source now shown so the echo check in OnMarkdownChanged reflects the current
+        // Visual Document. Without this, re-binding to a different session whose Markdown happens to
+        // equal the stale value (e.g. switching back to an empty tab) would be mistaken for an echo
+        // and skip re-projection, leaving the previous document visible.
+        _lastCaptured = markdown;
+
+        InvalidateOutline();
     }
 
     /// <inheritdoc />
@@ -274,6 +356,9 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             _isSynchronising = false;
         }
+
+        // An edit may have added, removed, or retitled a Section Heading.
+        InvalidateOutline();
     }
 
     // The full logical block sequence: every visible block, with each Folded Section Body spliced
@@ -313,6 +398,84 @@ public sealed class MarkdownRichEditor : RichTextBox
             _isSynchronising = false;
         }
     }
+
+    private List<SectionHeading> BuildOutline()
+    {
+        var outline = new List<SectionHeading>();
+        foreach (var block in BuildLogicalBlocks())
+        {
+            if (LevelOf(block) is int level)
+            {
+                outline.Add(new SectionHeading(level, HeadingText(block), block));
+            }
+        }
+
+        return outline;
+    }
+
+    private void InvalidateOutline()
+    {
+        _outline = null;
+        OutlineChanged?.Invoke(this, EventArgs.Empty);
+        CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Unfolds outward until the target block is a visible block of the document. Each Unfold restores
+    // one Folded Section Body; a body may itself contain further Folded Sections, so this repeats
+    // until the target surfaces. View-only — Unfold never changes the Markdown source (INV-011/012).
+    private void Reveal(Block target)
+    {
+        while (!Document.Blocks.Contains(target))
+        {
+            var owner = _foldedBodies.Keys.FirstOrDefault(heading =>
+                Document.Blocks.Contains(heading) && BodyContains(_foldedBodies[heading], target));
+            if (owner is null)
+            {
+                break;
+            }
+
+            Unfold(owner);
+        }
+    }
+
+    private bool BodyContains(IReadOnlyList<Block> body, Block target)
+    {
+        foreach (var block in body)
+        {
+            if (ReferenceEquals(block, target))
+            {
+                return true;
+            }
+
+            if (_foldedBodies.TryGetValue(block, out var nested) && BodyContains(nested, target))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void BringHeadingIntoView(Paragraph paragraph)
+    {
+        if (!Document.Blocks.Contains(paragraph))
+        {
+            return;
+        }
+
+        var rect = paragraph.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+        if (rect == Rect.Empty)
+        {
+            // Layout after an Unfold can be pending; retry once it settles.
+            Dispatcher.BeginInvoke(() => BringHeadingIntoView(paragraph), DispatcherPriority.Loaded);
+            return;
+        }
+
+        ScrollToVerticalOffset(VerticalOffset + rect.Top);
+    }
+
+    private static string HeadingText(Block block) =>
+        new TextRange(block.ContentStart, block.ContentEnd).Text.Trim();
 
     private static int? LevelOf(Block block) =>
         block is Paragraph { Tag: HeadingRole role } ? role.Level : null;
