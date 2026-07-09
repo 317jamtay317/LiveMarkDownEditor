@@ -42,6 +42,7 @@ file on disk stays plain Markdown and updates live when changed by anyone — an
 | **Navigate** | The act of moving the editing surface to a Section Heading and selecting it, in response to activating its Outline Entry. If the Section Heading is inside a Folded Section Body, the enclosing Section is first Unfolded so the heading is revealed. Navigation is view-only: it selects and scrolls, but never changes the Markdown Document. |
 | **Navigation Panel** | The toggleable panel along the left edge of the Workspace that presents the Active Session's Outline for Navigation. It is presentation-only — showing, hiding, or Navigating from it never changes any Markdown Document — and is hidden until the user toggles it on. |
 | **Current Section** | The Section whose Section Heading most immediately precedes the caret in the Visual Document — the Section the user is currently editing within. The Navigation Panel highlights the Current Section's Outline Entry so the user can see where they are as they edit or scroll. |
+| **Source Panel** | The toggleable panel that shows the Active Session's Markdown Document as raw, editable Markdown **source text** — the plain-text counterpart to the Visual Document, shown alongside it. It is the one surface that *deliberately* exposes Markdown syntax (a heading shows as `# Title`), where the Visual Document never does. It is not a separate Render: it displays the Markdown Document's own source text. Editing the Source Panel edits that source directly, which **Projects** an updated Visual Document; editing the Visual Document **Captures** back into the source, which the Source Panel reflects. The two are always kept in sync — they are two views of the same Markdown Document (see Invariants). Like the Navigation Panel it is presentation-only chrome and is hidden until the user toggles it on. |
 
 <!--
 Add new terms above. Each term should have:
@@ -49,7 +50,11 @@ Add new terms above. Each term should have:
 - no overlap or synonym with an existing term
 When a term changes meaning, update every usage in code and tests in the same change.
 
-Note: an earlier draft defined "Live Preview" as rendered output shown ALONGSIDE the source in a
-split view. That model was superseded by the single-pane WYSIWYG model (Visual Document). The term
-"Live Preview" is retired — do not reintroduce it.
+Note: an earlier draft defined "Live Preview" as *rendered output* (HTML) shown ALONGSIDE the
+source in a split view. That model was superseded by the WYSIWYG model (Visual Document), and the
+term "Live Preview" is retired — do not reintroduce it. The **Source Panel** is a distinct concept
+and does NOT un-retire it: it shows the Markdown Document's own editable *source text*, not rendered
+HTML, and reuses the existing Project/Capture Round-Trip rather than a separate Render. The Visual
+Document remains the primary editing surface (shown by default); the Source Panel is optional chrome
+the user toggles on beside it.
 -->
