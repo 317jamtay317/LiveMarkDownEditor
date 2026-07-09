@@ -29,6 +29,40 @@ public sealed class MarkdownRichEditorTests
     }
 
     [Fact]
+    public void SettingMarkdown_BackToEmptyAfterContent_ClearsTheVisualDocument()
+    {
+        StaThread.Run(() =>
+        {
+            // Reproduces closing a document tab back onto the empty "Untitled" tab: the shared editor
+            // is re-bound from loaded content to an empty session and must re-Project to empty, not
+            // keep showing the closed document.
+            var editor = new MarkdownRichEditor { Markdown = "# Loaded" };
+
+            editor.Markdown = string.Empty;
+
+            var visibleText = new TextRange(editor.Document.ContentStart, editor.Document.ContentEnd).Text;
+            visibleText.ShouldNotContain("Loaded");
+            editor.Outline.ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
+    public void SwitchingMarkdown_BetweenTwoDocuments_ShowsTheNewContent()
+    {
+        StaThread.Run(() =>
+        {
+            // Switching tabs re-binds the shared editor; the visible document must follow the source.
+            var editor = new MarkdownRichEditor { Markdown = "# First" };
+
+            editor.Markdown = "# Second";
+
+            var visibleText = new TextRange(editor.Document.ContentStart, editor.Document.ContentEnd).Text;
+            visibleText.ShouldContain("Second");
+            visibleText.ShouldNotContain("First");
+        });
+    }
+
+    [Fact]
     public void EditingTheVisualDocument_CapturesBackToMarkdown()
     {
         StaThread.Run(() =>
@@ -245,6 +279,117 @@ public sealed class MarkdownRichEditorTests
 
             // Only a Section Heading can be Folded (INV-011).
             Should.Throw<ArgumentException>(() => editor.Fold(editor.Document.Blocks.FirstBlock!));
+        });
+    }
+
+    [Fact]
+    public void Outline_ListsSectionHeadingsInDocumentOrder_WithLevelsAndText()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+
+            var outline = editor.Outline;
+
+            // Alpha (1) / Alpha one (2) / Beta (1), in document order, non-heading blocks excluded.
+            outline.Count.ShouldBe(3);
+            outline[0].Level.ShouldBe(1);
+            outline[0].Text.ShouldBe("Alpha");
+            outline[1].Level.ShouldBe(2);
+            outline[1].Text.ShouldBe("Alpha one");
+            outline[2].Level.ShouldBe(1);
+            outline[2].Text.ShouldBe("Beta");
+        });
+    }
+
+    [Fact]
+    public void Outline_ListsHeadingsInsideFoldedSections_INV012()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            editor.Fold(editor.Document.Blocks.FirstBlock!); // Fold Alpha, hiding "## Alpha one".
+
+            // The Outline lists every Section Heading, including ones inside a Folded Section Body.
+            editor.Outline.Select(entry => entry.Text).ShouldBe(["Alpha", "Alpha one", "Beta"]);
+        });
+    }
+
+    [Fact]
+    public void Outline_IsViewOnly_DoesNotChangeCapturedMarkdown_INV012()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var before = editor.Capture();
+
+            _ = editor.Outline;
+
+            editor.Capture().ShouldBe(before);
+        });
+    }
+
+    [Fact]
+    public void Navigate_SelectsTheSectionHeading()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var beta = editor.Outline.First(entry => entry.Text == "Beta");
+
+            editor.Navigate(beta);
+
+            var selected = editor.Selection.Text;
+            selected.ShouldContain("Beta");
+            selected.ShouldNotContain("Beta body");
+        });
+    }
+
+    [Fact]
+    public void Navigate_ToHeadingInFoldedSection_UnfoldsAndRevealsIt()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var alphaHeading = (Paragraph)editor.Document.Blocks.FirstBlock!;
+            editor.Fold(alphaHeading); // "## Alpha one" is now hidden inside Alpha's folded body.
+
+            editor.Navigate(editor.Outline.First(entry => entry.Text == "Alpha one"));
+
+            // Navigating a hidden heading Unfolds its enclosing Section and selects it.
+            editor.IsFolded(alphaHeading).ShouldBeFalse();
+            editor.Selection.Text.ShouldContain("Alpha one");
+        });
+    }
+
+    [Fact]
+    public void Navigate_DoesNotChangeCapturedMarkdown_INV012()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var before = editor.Capture();
+            editor.Fold(editor.Document.Blocks.FirstBlock!);
+
+            editor.Navigate(editor.Outline.First(entry => entry.Text == "Alpha one"));
+
+            // INV-012: Navigating (even when it Unfolds) never changes the Markdown Document.
+            editor.Capture().ShouldBe(before);
+        });
+    }
+
+    [Fact]
+    public void CurrentSection_ReflectsTheHeadingEnclosingTheCaret()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var subBody = (Paragraph)editor.Document.Blocks.ToList()[3]; // the "Sub body" paragraph.
+            editor.CaretPosition = subBody.ContentStart;
+
+            // The caret sits under "## Alpha one", the nearest preceding Section Heading.
+            editor.CurrentSection.ShouldNotBeNull();
+            editor.CurrentSection!.Text.ShouldBe("Alpha one");
         });
     }
 }

@@ -42,8 +42,29 @@ public sealed class WorkspaceViewModelTests
 
         workspace.Sessions.Count.ShouldBe(1);
         workspace.ActiveSession.ShouldBe(workspace.Sessions[0]);
-        workspace.ActiveSession.Markdown.ShouldBe("");
+        workspace.ActiveSession!.Markdown.ShouldBe("");
         workspace.ActiveSession.FilePath.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Constructor_StartsWithNavigationPanelHidden()
+    {
+        var workspace = CreateWorkspace();
+
+        // The Navigation Panel is hidden until the user toggles it on.
+        workspace.IsNavigationPanelVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ToggleNavigationPanel_TogglesItsVisibility()
+    {
+        var workspace = CreateWorkspace();
+
+        workspace.ToggleNavigationPanelCommand.Execute(null);
+        workspace.IsNavigationPanelVisible.ShouldBeTrue();
+
+        workspace.ToggleNavigationPanelCommand.Execute(null);
+        workspace.IsNavigationPanelVisible.ShouldBeFalse();
     }
 
     [Fact]
@@ -55,7 +76,7 @@ public sealed class WorkspaceViewModelTests
 
         workspace.Sessions.Count.ShouldBe(2);
         workspace.ActiveSession.ShouldBe(workspace.Sessions[1]);
-        workspace.ActiveSession.Markdown.ShouldBe("");
+        workspace.ActiveSession!.Markdown.ShouldBe("");
     }
 
     [Fact]
@@ -68,7 +89,7 @@ public sealed class WorkspaceViewModelTests
         await workspace.OpenAsync();
 
         workspace.Sessions.Count.ShouldBe(2);
-        workspace.ActiveSession.FilePath.ShouldBe(Path);
+        workspace.ActiveSession!.FilePath.ShouldBe(Path);
         workspace.ActiveSession.Markdown.ShouldBe("# Loaded");
         workspace.ActiveSession.Name.ShouldBe("note.md");
     }
@@ -107,7 +128,7 @@ public sealed class WorkspaceViewModelTests
         _picker.OpenResult = Path;
         var workspace = CreateWorkspace();
         await workspace.OpenAsync();
-        workspace.ActiveSession.Markdown = "# Changed";
+        workspace.ActiveSession!.Markdown = "# Changed";
 
         await workspace.SaveActiveAsync();
 
@@ -120,7 +141,7 @@ public sealed class WorkspaceViewModelTests
     {
         _picker.SaveResult = OtherPath;
         var workspace = CreateWorkspace();
-        workspace.ActiveSession.Markdown = "# Brand new";
+        workspace.ActiveSession!.Markdown = "# Brand new";
 
         await workspace.SaveActiveAsync();
 
@@ -136,7 +157,7 @@ public sealed class WorkspaceViewModelTests
         _picker.OpenResult = Path;
         var workspace = CreateWorkspace();
         await workspace.OpenAsync();
-        var opened = workspace.ActiveSession;
+        var opened = workspace.ActiveSession!;
         var openedWatcher = _watchers[1]; // [0] is the initial empty tab's watcher
         openedWatcher.WatchedPath.ShouldBe(Path);
 
@@ -147,17 +168,30 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
-    public async Task Close_LastTab_OpensFreshEmpty_INV008()
+    public async Task Close_LastTab_LeavesWorkspaceEmpty_INV008()
     {
         var workspace = CreateWorkspace();
         var only = workspace.ActiveSession;
 
         await workspace.CloseSessionAsync(only);
 
+        // Closing the last Tab empties the Workspace — it does not re-seed a fresh Tab (INV-008).
+        workspace.Sessions.ShouldBeEmpty();
+        workspace.ActiveSession.ShouldBeNull();
+        workspace.HasOpenSessions.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void New_FromEmptyWorkspace_OpensATabAndActivatesIt_INV008()
+    {
+        var workspace = CreateWorkspace();
+        workspace.CloseSessionCommand.Execute(workspace.ActiveSession); // empty the Workspace
+
+        workspace.New();
+
         workspace.Sessions.Count.ShouldBe(1);
-        workspace.ActiveSession.ShouldNotBe(only);
-        workspace.ActiveSession.Markdown.ShouldBe("");
-        workspace.ActiveSession.FilePath.ShouldBeNull();
+        workspace.ActiveSession.ShouldBe(workspace.Sessions[0]);
+        workspace.HasOpenSessions.ShouldBeTrue();
     }
 
     [Fact]
@@ -167,7 +201,7 @@ public sealed class WorkspaceViewModelTests
         _picker.OpenResult = Path;
         var workspace = CreateWorkspace();
         await workspace.OpenAsync();
-        var opened = workspace.ActiveSession;
+        var opened = workspace.ActiveSession!;
         opened.Markdown = "# Edited";
         _prompt.Decision = UnsavedEditsDecision.Save;
 
@@ -185,7 +219,7 @@ public sealed class WorkspaceViewModelTests
         _picker.OpenResult = Path;
         var workspace = CreateWorkspace();
         await workspace.OpenAsync();
-        var opened = workspace.ActiveSession;
+        var opened = workspace.ActiveSession!;
         opened.Markdown = "# Edited but discarded";
         _prompt.Decision = UnsavedEditsDecision.Discard;
 
@@ -203,7 +237,7 @@ public sealed class WorkspaceViewModelTests
         _picker.OpenResult = Path;
         var workspace = CreateWorkspace();
         await workspace.OpenAsync();
-        var opened = workspace.ActiveSession;
+        var opened = workspace.ActiveSession!;
         opened.Markdown = "# Edited";
         _prompt.Decision = UnsavedEditsDecision.Cancel;
 
@@ -223,7 +257,7 @@ public sealed class WorkspaceViewModelTests
         var workspace = CreateWorkspace();
         var initialEmpty = workspace.ActiveSession;
         await workspace.OpenAsync();
-        var opened = workspace.ActiveSession;
+        var opened = workspace.ActiveSession!;
 
         await workspace.CloseSessionAsync(initialEmpty);
 

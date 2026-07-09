@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:UI.Controls"
         mc:Ignorable="d"
-        Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor'}"
+        Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor', FallbackValue='LiveMarkDownEditor'}"
         Height="680" Width="1000"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackgroundBrush}"
@@ -59,6 +59,23 @@
                         Command="controls:MarkdownEditingCommands.ExpandAllFolds"
                         CommandTarget="{Binding ElementName=Editor}" />
 
+                <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
+
+                <!-- Navigation Panel toggle: highlighted while the panel is shown. -->
+                <Button DockPanel.Dock="Left" Content="Outline" Focusable="False"
+                        Command="{Binding ToggleNavigationPanelCommand}"
+                        ToolTip="Toggle the navigation panel">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsNavigationPanelVisible}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <!-- Theme toggle: shows the theme you'd switch to. -->
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
                         Command="{Binding Appearance.ToggleThemeCommand}"
@@ -111,7 +128,7 @@
              unsaved edits. Neither side is discarded without an explicit choice (INV-006). -->
         <Border Grid.Row="2" Background="{DynamicResource ConflictBackgroundBrush}"
                 BorderBrush="{DynamicResource ConflictBorderBrush}" BorderThickness="0,0,0,1" Padding="14,9"
-                Visibility="{Binding ActiveSession.HasConflict, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Visibility="{Binding ActiveSession.HasConflict, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="Keep my edits" Style="{StaticResource CommandButton}"
@@ -125,22 +142,55 @@
             </DockPanel>
         </Border>
 
-        <!-- The single-pane WYSIWYG editing surface, bound to the Active Session, with the Editor
-             Gutter (line numbers + fold chevrons) alongside it. -->
+        <!-- Editing area. Shows the WYSIWYG surface (with the Editor Gutter and the toggleable
+             Navigation Panel) while a Tab is open, or the Empty-Workspace Placeholder when every Tab
+             has been closed (INV-008). -->
         <Grid Grid.Row="3">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
-            <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
-                                         Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+
+            <!-- The single-pane WYSIWYG editing surface, bound to the Active Session, with the Editor
+                 Gutter (line numbers + fold chevrons) alongside it and the Navigation Panel (the
+                 toggleable Outline) to its left. -->
+            <Grid Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Navigation Panel: the Active Session's Outline. Hidden until toggled on (INV-012). -->
+                <Border Grid.Column="0" Width="250" Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
+                        Visibility="{Binding IsNavigationPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="OUTLINE" Margin="14,12,14,6"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                        <controls:OutlinePanel Editor="{Binding ElementName=Editor}"
+                                               AutomationProperties.AutomationId="OutlineList" />
+                    </DockPanel>
+                </Border>
+
+                <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
+                <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
+                                             Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <!-- Empty-Workspace Placeholder: shown when no Tab is open. -->
+            <Border Background="{DynamicResource EditorBackgroundBrush}"
+                    Visibility="{Binding IsWorkspaceEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="No document open" FontSize="16" HorizontalAlignment="Center"
+                               Margin="0,0,0,6" Foreground="{DynamicResource MutedTextBrush}" />
+                    <TextBlock Text="Press + to start a new document, or Open a file"
+                               FontSize="12" HorizontalAlignment="Center"
+                               Foreground="{DynamicResource MutedTextBrush}" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Slim status bar: the Watched File path and an unsaved-changes hint. -->
         <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,4">
-            <DockPanel>
+            <DockPanel Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusText}" Text="Unsaved changes"
                            Margin="12,0,0,0"
                            Visibility="{Binding ActiveSession.HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />

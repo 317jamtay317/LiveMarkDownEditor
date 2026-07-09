@@ -76,14 +76,18 @@ and tested.
 - **Tested by:** `ExternalChangeReconcilerTests.Reconcile_WithNoUnsavedEdits_ReloadsFromDisk_INV007`,
   `EditorSessionViewModelTests.ExternalChange_WhenSessionClean_ReloadsLive_INV007`.
 
-### INV-008 — A Workspace always has at least one Editor Session
-- **Statement:** A Workspace is never empty and always has exactly one Active Session. It opens with
-  one empty Editor Session, and closing the last remaining Editor Session immediately opens a fresh
-  empty one so there is always a Tab to edit in.
+### INV-008 — The Active Session tracks the open Editor Sessions
+- **Statement:** A Workspace has exactly one Active Session while it holds any open Editor Sessions,
+  and the Active Session is always one of those open Sessions. It opens with a single empty Editor
+  Session. The Workspace **may become empty**: closing the last Tab leaves it with no open Editor
+  Session and a `null` Active Session (it does **not** re-seed a fresh Tab), and the editing area
+  shows the Empty-Workspace Placeholder. Opening or creating a document adds a Tab and makes it the
+  Active Session again.
 - **Enforced by:** `WorkspaceViewModel` — it creates an initial Editor Session in its constructor,
-  keeps `ActiveSession` non-null, and re-seeds an empty session when the last Tab is closed.
+  keeps `ActiveSession` referencing an open Session (moving it to a neighbour when the Active Tab is
+  closed), and sets `ActiveSession` to `null` when the last Tab is closed rather than re-seeding.
 - **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithOneEmptyActiveSession_INV008`,
-  `WorkspaceViewModelTests.Close_LastTab_OpensFreshEmpty_INV008`.
+  `WorkspaceViewModelTests.Close_LastTab_LeavesWorkspaceEmpty_INV008`.
 
 ### INV-009 — A Watched File is open in at most one Editor Session
 - **Statement:** The same Watched File is never open in two Tabs at once. Opening a file that is
@@ -119,6 +123,26 @@ and tested.
 - **Tested by:** `MarkdownRichEditorTests.Fold_DoesNotChangeCapturedMarkdown_INV011`,
   `MarkdownRichEditorTests.CollapseAllFolds_DoesNotChangeCapturedMarkdown_INV011`,
   `SectionMapTests.FindBody_*`.
+
+### INV-012 — The Outline and Navigation are view-only
+- **Statement:** Building the Outline, showing or hiding the Navigation Panel, and Navigating to a
+  Section Heading never change the Markdown Document. The Outline lists exactly the Active Session's
+  Section Headings in document order — every one of them, including headings inside a Folded Section
+  Body — and Navigating selects and scrolls to a Section Heading (Unfolding its enclosing Section
+  first if needed) without altering the source text. Collapsing or Expanding an Outline Entry only
+  hides or shows nested Outline Entries within the Navigation Panel — it changes neither the Markdown
+  Document nor any Fold state in the Visual Document. Capturing the Visual Document yields identical
+  Markdown source text before and after any Outline, Navigation, or Collapse/Expand action. (This is
+  the Outline/Navigation counterpart of INV-011.)
+- **Enforced by:** `MarkdownRichEditor.Outline` reading the full logical block sequence (so Folded
+  headings are still listed) and `MarkdownRichEditor.Navigate` only Unfolding, selecting, and
+  scrolling — never mutating the logical document. The `OutlinePanel` and its visibility toggle
+  (`WorkspaceViewModel.IsNavigationPanelVisible`) only read the editor's Outline and drive Navigate;
+  Collapse/Expand is computed by the pure `OutlineView` and applied to panel-only view state, never
+  touching the editor.
+- **Tested by:** `MarkdownRichEditorTests.Navigate_DoesNotChangeCapturedMarkdown_INV012`,
+  `MarkdownRichEditorTests.Outline_ListsHeadingsInsideFoldedSections_INV012`,
+  `OutlineViewTests.VisibleEntries_UnderCollapsedAncestor_AreHidden`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
