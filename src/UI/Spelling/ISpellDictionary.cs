@@ -10,4 +10,11 @@ public interface ISpellDictionary
     /// <param name="word">A single word (no surrounding punctuation).</param>
     /// <returns><see langword="true"/> if the word is misspelled; otherwise <see langword="false"/>.</returns>
     bool IsMisspelled(string word);
+
+    /// <summary>The Spelling Suggestions the Dictionary offers as replacements for <paramref name="word"/>.</summary>
+    /// <param name="word">A single word (no surrounding punctuation), usually a Misspelling.</param>
+    /// <returns>
+    /// The suggested corrections, best first; empty when the Dictionary offers none or is unavailable.
+    /// </returns>
+    IReadOnlyList<string> Suggest(string word);
 }

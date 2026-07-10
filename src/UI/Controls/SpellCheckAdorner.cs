@@ -55,6 +55,31 @@ public sealed class SpellCheckAdorner : Adorner
         QueueRescan();
     }
 
+    /// <summary>
+    /// The Misspelling whose span contains <paramref name="position"/>, or <see langword="null"/> if
+    /// none does. The editor calls this on a right-click to decide whether to offer Spelling
+    /// Suggestions for the word under the pointer. Read-only — it never changes the document.
+    /// </summary>
+    /// <param name="position">A document position, typically the right-click location.</param>
+    /// <returns>The <see cref="TextRange"/> of the Misspelling under <paramref name="position"/>, if any.</returns>
+    public TextRange? MisspellingAt(TextPointer? position)
+    {
+        if (position is null)
+        {
+            return null;
+        }
+
+        foreach (var range in _misspellings)
+        {
+            if (range.Contains(position))
+            {
+                return range;
+            }
+        }
+
+        return null;
+    }
+
     private void OnTextChanged(object? sender, TextChangedEventArgs e)
     {
         // The prior ranges belong to the outgoing document; drop them at once so a repaint before the

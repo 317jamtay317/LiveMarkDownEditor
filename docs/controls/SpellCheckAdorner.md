@@ -32,4 +32,12 @@ segmentation. Two things follow that it cannot do:
 - **Graceful degradation.** If the OS speller is unavailable, `WindowsSpellDictionary` reports every
   word as correct, so no squiggles appear and nothing fails.
 
-The adorner is presentation-only (`IsHitTestVisible = false`) and never changes the Markdown source.
+## Spelling Suggestions
+
+The adorner does not paint the squiggles interactively (`IsHitTestVisible = false`), but it does own
+the authoritative list of Misspelling ranges, so it answers one query for the editor:
+`MisspellingAt(TextPointer)` returns the Misspelling under a point, or `null`. On a right-click the
+[MarkdownRichEditor](MarkdownRichEditor.md) uses it to decide whether to head its context menu with
+Spelling Suggestions — `SpellingSuggestions.For(word, dictionary)` over the same `ISpellDictionary`.
+Choosing a suggestion replaces the Misspelling's span, which Captures back into the Markdown source
+like any other edit. Painting itself never changes the source.

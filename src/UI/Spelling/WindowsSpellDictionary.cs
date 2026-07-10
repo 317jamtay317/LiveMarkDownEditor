@@ -14,6 +14,10 @@ namespace UI.Spelling;
 /// </remarks>
 public sealed class WindowsSpellDictionary : ISpellDictionary
 {
+    // A speller can return many corrections; the OS orders them best-first, so a small cap keeps the
+    // most relevant ones without pulling the whole list across the COM boundary.
+    private const int MaximumSuggestions = 16;
+
     private readonly ISpellChecker? _checker;
     private readonly Dictionary<string, bool> _cache = new(StringComparer.Ordinal);
 
@@ -60,6 +64,46 @@ public sealed class WindowsSpellDictionary : ISpellDictionary
         return result;
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<string> Suggest(string word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        if (_checker is null || word.Length == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            // Suggest returns S_OK (0) with an enumerator of corrections for a misspelled word; any
+            // other result (e.g. S_FALSE for a correctly-spelled word) means nothing to offer.
+            if (_checker.Suggest(word, out var enumerator) != 0 || enumerator is null)
+            {
+                return [];
+            }
+
+            var suggestions = new List<string>();
+            // Next yields S_OK (0) while it fetched the requested one item; the cap guards against a
+            // speller that returns an unexpectedly long list.
+            while (suggestions.Count < MaximumSuggestions
+                && enumerator.Next(1, out var item, out var fetched) == 0 && fetched == 1)
+            {
+                var suggestion = Marshal.PtrToStringUni(item);
+                Marshal.FreeCoTaskMem(item);
+                if (!string.IsNullOrEmpty(suggestion))
+                {
+                    suggestions.Add(suggestion);
+                }
+            }
+
+            return suggestions;
+        }
+        catch (COMException)
+        {
+            return [];
+        }
+    }
+
     private bool CheckWithOs(string word)
     {
         try
@@ -97,6 +141,17 @@ public sealed class WindowsSpellDictionary : ISpellDictionary
         [PreserveSig] int Check(
             [MarshalAs(UnmanagedType.LPWStr)] string text,
             [MarshalAs(UnmanagedType.Interface)] out IEnumSpellingError value);
+
+        [PreserveSig] int Suggest(
+            [MarshalAs(UnmanagedType.LPWStr)] string word,
+            [MarshalAs(UnmanagedType.Interface)] out IEnumString value);
+    }
+
+    [ComImport, Guid("00000101-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IEnumString
+    {
+        // rgelt is a caller-owned CoTaskMem string that must be freed with Marshal.FreeCoTaskMem.
+        [PreserveSig] int Next(int celt, out IntPtr rgelt, out int fetched);
     }
 
     [ComImport, Guid("803E3BD4-2828-4410-8290-418D1D73C762"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

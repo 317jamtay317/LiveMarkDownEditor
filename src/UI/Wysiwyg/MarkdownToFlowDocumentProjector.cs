@@ -190,10 +190,11 @@ public sealed class MarkdownToFlowDocumentProjector
         return section;
     }
 
-    // A code block becomes a monospace, shaded paragraph whose inline content is the code text (one
-    // Run per line, separated by LineBreaks). The CodeBlockRole tag carries the fence language so
-    // Capture can re-emit a fenced block; the code itself is read back from the paragraph's inlines,
-    // so edits to the code survive a Round-Trip.
+    // A code block becomes a monospace paragraph whose inline content is the code text (one Run per
+    // line, separated by LineBreaks). The CodeBlockRole tag carries the fence language so Capture can
+    // re-emit a fenced block; the code itself is read back from the paragraph's inlines, so edits to
+    // the code survive a Round-Trip. Its shaded panel is Code Shading, drawn by the CodeShadingAdorner
+    // overlay rather than a Background here, so a theme recolour never re-formats the code (INV-017).
     private static WpfBlock ProjectCodeBlock(LeafBlock codeBlock, string? language)
     {
         var paragraph = new Paragraph
@@ -204,7 +205,6 @@ public sealed class MarkdownToFlowDocumentProjector
             Padding = new Thickness(8),
             Margin = BodySpacing,
         };
-        paragraph.SetResourceReference(TextElement.BackgroundProperty, "HoverBrush");
 
         var lines = ExtractCode(codeBlock).Split('\n');
         for (var i = 0; i < lines.Length; i++)
@@ -345,15 +345,17 @@ public sealed class MarkdownToFlowDocumentProjector
 
             case CodeInline code:
             {
-                // Monospace alone reads like body text; a shaded chip and accent colour make an inline
-                // code span visibly code. The Code tag (not the styling) is what Capture keys on.
+                // Monospace alone reads like body text; an accent colour plus Code Shading make an
+                // inline code span visibly code. The Code tag (not the styling) is what Capture keys
+                // on, and it is also what the CodeShadingScanner finds to shade the span. The shade is
+                // drawn by the CodeShadingAdorner overlay, not a Background here, so a theme recolour
+                // never re-formats the span (INV-017).
                 var run = new Run(code.Content)
                 {
                     Tag = InlineSemantic.Code,
                     FontFamily = MonospaceFont,
                     Language = NoProofingLanguage,
                 };
-                run.SetResourceReference(TextElement.BackgroundProperty, "HoverBrush");
                 run.SetResourceReference(TextElement.ForegroundProperty, "AccentBrush");
                 return run;
             }

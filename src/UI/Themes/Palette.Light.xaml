@@ -17,6 +17,10 @@
     <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="HoverBrush" Color="#E9EAEE" />
 
+    <!-- Code Shading: a subtle translucent tint drawn behind code by the CodeShadingAdorner overlay
+         (not as the code's own background, so a theme recolour never re-formats the document). -->
+    <SolidColorBrush x:Key="CodeShadingBrush" Color="#18000000" />
+
     <!-- Scrollbar thumb: the accent colour, muted at rest and full-strength on hover/drag. -->
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#4F46E5" Opacity="0.55" />
 

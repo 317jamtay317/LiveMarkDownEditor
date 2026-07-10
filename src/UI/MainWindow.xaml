@@ -232,7 +232,7 @@
                                      Background="Transparent" BorderThickness="0" Padding="6,4,12,12"
                                      Foreground="{DynamicResource TextBrush}"
                                      CaretBrush="{DynamicResource TextBrush}"
-                                     SpellCheck.IsEnabled="False" />
+                                     SpellCheck.IsEnabled="True" />
                         </Grid>
                     </DockPanel>
                 </Border>

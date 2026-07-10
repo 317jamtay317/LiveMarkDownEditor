@@ -16,6 +16,8 @@ public sealed class SpellCheckScannerTests
         private readonly HashSet<string> _known = new(known, StringComparer.OrdinalIgnoreCase);
 
         public bool IsMisspelled(string word) => !_known.Contains(word);
+
+        public IReadOnlyList<string> Suggest(string word) => [];
     }
 
     [Fact]

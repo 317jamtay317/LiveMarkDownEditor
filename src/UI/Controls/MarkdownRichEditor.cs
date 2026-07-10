@@ -94,6 +94,7 @@ public sealed class MarkdownRichEditor : RichTextBox
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
     private List<SectionHeading>? _outline;
+    private CodeShadingAdorner? _codeShadingAdorner;
     private SpellCheckAdorner? _spellCheckAdorner;
 
     // Find state: the current Matches as document ranges, and which one is the Current Match. All of
@@ -124,10 +125,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         // listens to keep the Current Section's Outline Entry highlighted.
         SelectionChanged += (_, _) => CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
 
-        // The custom, camelCase-aware spell checker and the Find highlights both draw through adorners,
-        // which need the editor's AdornerLayer — available only once it is in the visual tree.
+        // Right-clicking a Misspelling offers its Spelling Suggestions; the menu is built on demand so
+        // it reflects the current Misspellings and the word actually under the pointer.
+        ContextMenuOpening += OnContextMenuOpening;
+
+        // The Code Shading, the custom camelCase-aware spell checker, and the Find highlights all draw
+        // through adorners, which need the editor's AdornerLayer — available only once it is in the
+        // visual tree. Code Shading is attached first so its panels sit beneath the squiggles and
+        // Find highlights.
         Loaded += (_, _) =>
         {
+            AttachCodeShading();
             AttachSpellCheck();
             AttachFind();
         };
@@ -386,6 +394,81 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// </summary>
     /// <returns>The canonical Markdown source text.</returns>
     public string Capture() => _capturer.Capture(BuildLogicalBlocks());
+
+    // Builds the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
+    // Suggestions head the menu (choosing one replaces the word), followed by the usual clipboard
+    // commands. Over correctly-spelled text it is just the clipboard commands.
+    private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        var clickPosition = e.CursorLeft < 0
+            ? CaretPosition                                                  // opened from the keyboard
+            : GetPositionFromPoint(Mouse.GetPosition(this), snapToText: true);
+        var misspelling = _spellCheckAdorner?.MisspellingAt(clickPosition);
+
+        var menu = new ContextMenu();
+        if (misspelling is not null)
+        {
+            AddSuggestionItems(menu, misspelling);
+            menu.Items.Add(new Separator());
+        }
+
+        AddClipboardItems(menu);
+        ContextMenu = menu;
+    }
+
+    private void AddSuggestionItems(ContextMenu menu, TextRange misspelling)
+    {
+        var suggestions = SpellingSuggestions.For(misspelling.Text, SharedDictionary.Value);
+        if (suggestions.Count == 0)
+        {
+            menu.Items.Add(new MenuItem { Header = "No suggestions", IsEnabled = false });
+            return;
+        }
+
+        foreach (var suggestion in suggestions)
+        {
+            var replacement = suggestion;
+            var item = new MenuItem { Header = suggestion, FontWeight = FontWeights.SemiBold };
+            item.Click += (_, _) => ReplaceMisspelling(misspelling, replacement);
+            menu.Items.Add(item);
+        }
+    }
+
+    private void AddClipboardItems(ContextMenu menu)
+    {
+        menu.Items.Add(new MenuItem { Header = "Cut", Command = ApplicationCommands.Cut, CommandTarget = this });
+        menu.Items.Add(new MenuItem { Header = "Copy", Command = ApplicationCommands.Copy, CommandTarget = this });
+        menu.Items.Add(new MenuItem { Header = "Paste", Command = ApplicationCommands.Paste, CommandTarget = this });
+    }
+
+    // Swaps a Misspelling's span for the chosen Spelling Suggestion. Editing the Visual Document
+    // Captures back into the Markdown source, so the correction flows through like any other edit.
+    private void ReplaceMisspelling(TextRange misspelling, string replacement)
+    {
+        if (misspelling.Start.HasValidLayout && misspelling.End.HasValidLayout)
+        {
+            misspelling.Text = replacement;
+        }
+    }
+
+    // Attaches the Code Shading adorner once, when the editor first has an AdornerLayer. The adorner
+    // then watches the editor for edits and repaints the shade behind code itself.
+    private void AttachCodeShading()
+    {
+        if (_codeShadingAdorner is not null)
+        {
+            return;
+        }
+
+        var layer = AdornerLayer.GetAdornerLayer(this);
+        if (layer is null)
+        {
+            return;
+        }
+
+        _codeShadingAdorner = new CodeShadingAdorner(this);
+        layer.Add(_codeShadingAdorner);
+    }
 
     // Attaches the spell-check adorner once, when the editor first has an AdornerLayer. The adorner
     // then watches the editor for edits and repaints its squiggles itself.

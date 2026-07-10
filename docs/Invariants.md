@@ -195,6 +195,21 @@ and tested.
 - **Tested by:** `MatchFinderTests.*`,
   `MarkdownRichEditorTests.Find_DoesNotChangeCapturedMarkdown_INV016`.
 
+### INV-017 — Code Shading is view-only
+- **Statement:** Drawing Code Shading behind the Code Blocks and Code Spans of the Visual Document
+  never changes the Markdown Document. Code Shading is a read-only overlay: it computes its Code
+  Regions from the document and only paints behind them, so the Captured Markdown source text is
+  identical before and after Code Shading is drawn or recoloured. Because the shading is an overlay
+  rather than each code element's own background, recolouring it for a theme change repaints without
+  re-formatting the Visual Document. (This is the Code-Shading counterpart of INV-016.)
+- **Enforced by:** The pure `CodeShadingScanner` (which computes the ordered Code Regions from a
+  Visual Document with no reference back to the source), the `CodeShadingAdorner` (which only draws),
+  and the projector tagging code but assigning it no `Background` — the shade lives solely in the
+  overlay. None of it feeds back into Capture.
+- **Tested by:** `CodeShadingScannerTests.*`,
+  `MarkdownToFlowDocumentProjectorTests.CodeElements_CarryNoBackground_SoShadingCannotReflow_INV017`,
+  `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

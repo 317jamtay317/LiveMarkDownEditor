@@ -475,6 +475,24 @@ public sealed class MarkdownRichEditorTests
     }
 
     [Fact]
+    public void CodeShading_DoesNotChangeCapturedMarkdown_INV017()
+    {
+        StaThread.Run(() =>
+        {
+            const string withCode = "Call `Compute()` now.\n\n```\nvar x = 1;\n```";
+            var editor = new MarkdownRichEditor { Markdown = withCode };
+            var before = editor.Capture();
+
+            // Scanning the Visual Document for its Code Regions (what the Code Shading overlay does) is
+            // view-only — it never edits the source (INV-017).
+            var regions = UI.Wysiwyg.CodeShadingScanner.Scan(editor.Document);
+
+            regions.ShouldNotBeEmpty();
+            editor.Capture().ShouldBe(before);
+        });
+    }
+
+    [Fact]
     public void CurrentSection_ReflectsTheHeadingEnclosingTheCaret()
     {
         StaThread.Run(() =>
