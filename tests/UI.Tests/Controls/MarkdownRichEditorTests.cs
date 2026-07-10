@@ -406,6 +406,75 @@ public sealed class MarkdownRichEditorTests
     }
 
     [Fact]
+    public void Find_HighlightsEveryOccurrence_OfTheQuery()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+
+            editor.IsFindActive = true;
+            editor.FindQuery = "Alpha";
+
+            // "Alpha", "Alpha body", and "## Alpha one" — three occurrences of the query.
+            editor.MatchCount.ShouldBe(3);
+            editor.MatchSummary.ShouldBe("1 of 3");
+        });
+    }
+
+    [Fact]
+    public void FindNext_MovesTheCurrentMatch_AndWrapsAround()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            editor.IsFindActive = true;
+            editor.FindQuery = "Alpha"; // 3 matches, Current Match starts at "1 of 3".
+
+            MarkdownEditingCommands.FindNext.Execute(parameter: null, target: editor);
+            editor.MatchSummary.ShouldBe("2 of 3");
+
+            MarkdownEditingCommands.FindNext.Execute(parameter: null, target: editor);
+            MarkdownEditingCommands.FindNext.Execute(parameter: null, target: editor);
+
+            // Past the last Match, Find Next wraps back to the first.
+            editor.MatchSummary.ShouldBe("1 of 3");
+        });
+    }
+
+    [Fact]
+    public void Find_WithNoOccurrence_ReportsNoResults()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            editor.IsFindActive = true;
+
+            editor.FindQuery = "Gamma";
+
+            editor.MatchCount.ShouldBe(0);
+            editor.MatchSummary.ShouldBe("No results");
+        });
+    }
+
+    [Fact]
+    public void Find_DoesNotChangeCapturedMarkdown_INV016()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoSectionDocument };
+            var before = editor.Capture();
+
+            editor.IsFindActive = true;
+            editor.FindQuery = "Alpha";
+            MarkdownEditingCommands.FindNext.Execute(parameter: null, target: editor);
+
+            // INV-016: Find highlights, counts, and navigates Matches — but never edits the source.
+            editor.MatchCount.ShouldBeGreaterThan(0);
+            editor.Capture().ShouldBe(before);
+        });
+    }
+
+    [Fact]
     public void CurrentSection_ReflectsTheHeadingEnclosingTheCaret()
     {
         StaThread.Run(() =>

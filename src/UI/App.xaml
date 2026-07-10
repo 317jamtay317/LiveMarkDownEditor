@@ -9,8 +9,10 @@
                      Control styles reference palette brushes via DynamicResource, so it need not be
                      present at parse time. -->
                 <ResourceDictionary Source="Themes/Controls.xaml" />
+                <ResourceDictionary Source="Themes/Scrollbars.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />
                 <ResourceDictionary Source="Controls/EditorGutter.xaml" />
+                <ResourceDictionary Source="Controls/SourceGutter.xaml" />
                 <ResourceDictionary Source="Controls/OutlinePanel.xaml" />
             </ResourceDictionary.MergedDictionaries>
 

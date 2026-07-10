@@ -122,8 +122,11 @@ public sealed class EditorGutter : Canvas
 
     private void OnEditorInvalidated(object? sender, EventArgs e) => ScheduleRefresh();
 
-    // Scrolling settles the layout synchronously, so the glyphs can be repositioned immediately.
-    private void OnEditorScrolled(object? sender, ScrollChangedEventArgs e) => Refresh();
+    // A scroll fires many ScrollChanged events in quick succession (a wheel notch or drag emits a
+    // burst). Rebuilding the gutter — a full GetCharacterRect walk that forces layout — on every one
+    // is the dominant cost of scrolling. Coalescing to a single refresh per dispatcher cycle keeps
+    // scrolling smooth; the numbers trail the content by at most a frame.
+    private void OnEditorScrolled(object? sender, ScrollChangedEventArgs e) => ScheduleRefresh();
 
     private void ScheduleRefresh()
     {
@@ -226,9 +229,16 @@ public sealed class EditorGutter : Canvas
             }
 
             var rect = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-            if (rect == Rect.Empty || rect.Bottom < 0 || rect.Top > viewportHeight)
+            if (rect == Rect.Empty || rect.Bottom < 0)
             {
                 continue;
+            }
+
+            // Blocks are in document order, so once one falls below the viewport every later one does
+            // too — stop walking rather than probe the rest of the document each scroll.
+            if (rect.Top > viewportHeight)
+            {
+                break;
             }
 
             AddFoldToggle(editor, block, rect);

@@ -48,7 +48,9 @@ and tested.
 - **Enforced by:** Project and Capture being inverse transformations over the supported constructs.
 - **Tested by:** `WysiwygRoundTripTests.RoundTrip_PreservesSemantics_INV004` (verified against the
   `MarkdigMarkdownRenderer` HTML oracle). Currently supported: headings, paragraphs, bold, italic,
-  strikethrough, inline code.
+  strikethrough, inline code, Unordered and Ordered Lists (with nesting), links, autolinks, images,
+  block quotes, fenced and indented code blocks, thematic breaks (horizontal rules), GFM tables
+  (with column alignment), task-list items, and hard line breaks.
 
 ### INV-005 — Capture is idempotent over Round-Trips
 - **Statement:** Once a Markdown Document has been Round-Tripped, Round-Tripping the result again
@@ -166,6 +168,32 @@ and tested.
   drive only presentation state and never touch any Editor Session's Markdown.
 - **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithSourcePanelHidden_INV014`,
   `WorkspaceViewModelTests.ToggleSourcePanel_TogglesVisibility_WithoutChangingDocument_INV014`.
+
+### INV-015 — Scroll Sync is proportional and view-only
+- **Statement:** While both the Visual Document and the Source Panel are shown, scrolling either view
+  scrolls the other to the same **proportional** position — the same fraction of its scrollable
+  height — in both directions. The mapping is proportional, not line-for-line: offset `0` maps to
+  offset `0`, the maximum scroll of one maps to the maximum scroll of the other, and a view with no
+  scrollable content (its content fits) leaves its partner unmoved rather than dividing by zero.
+  Scroll Sync moves viewports only and never changes the Markdown Document.
+- **Enforced by:** The pure `ProportionalScroll` calculation (a function of the source offset and the
+  two scrollable heights, guarded against a zero scrollable height) and the `ScrollSync` behaviour,
+  which wires the two views' scroll events to that calculation and only moves viewports (it never
+  touches any Editor Session's Markdown).
+- **Tested by:** `ProportionalScrollTests.*`.
+
+### INV-016 — Find is view-only
+- **Statement:** Finding a query, highlighting its Matches, moving the Current Match with Find Next
+  / Find Previous, and opening or closing the Find Bar never change the Markdown Document. Find is a
+  read-only overlay on the Visual Document: it computes Matches from a snapshot of the document's
+  text and highlights, scrolls, and selects, but the Captured Markdown source text is identical
+  before and after any Find. There is no replace.
+- **Enforced by:** The pure `MatchFinder` (which computes ordered, non-overlapping Matches from a
+  text snapshot with no reference to the document), the `FindHighlightAdorner` (which only draws),
+  and Find state (`FindQuery`, Current Match, Find Bar visibility) being presentation-only on the
+  `MarkdownRichEditor` Control — none of it feeds back into Capture.
+- **Tested by:** `MatchFinderTests.*`,
+  `MarkdownRichEditorTests.Find_DoesNotChangeCapturedMarkdown_INV016`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

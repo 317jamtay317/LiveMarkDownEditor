@@ -1,8 +1,12 @@
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Find;
+using UI.Spelling;
 using UI.Wysiwyg;
 
 namespace UI.Controls;
@@ -39,6 +43,44 @@ public sealed class MarkdownRichEditor : RichTextBox
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnMarkdownChanged));
 
+    /// <summary>
+    /// Identifies the <see cref="FindQuery"/> dependency property. The Find Bar binds its query box
+    /// here; changing it re-runs the Find over the Visual Document.
+    /// </summary>
+    public static readonly DependencyProperty FindQueryProperty = DependencyProperty.Register(
+        nameof(FindQuery),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(string.Empty, OnFindQueryChanged));
+
+    /// <summary>
+    /// Identifies the <see cref="IsFindActive"/> dependency property — whether the Find Bar is open.
+    /// The Find Bar binds its visibility here; the Ctrl+F / Escape commands toggle it.
+    /// </summary>
+    public static readonly DependencyProperty IsFindActiveProperty = DependencyProperty.Register(
+        nameof(IsFindActive),
+        typeof(bool),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(false, OnIsFindActiveChanged));
+
+    private static readonly DependencyPropertyKey MatchCountPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(MatchCount),
+        typeof(int),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(0));
+
+    /// <summary>Identifies the read-only <see cref="MatchCount"/> dependency property.</summary>
+    public static readonly DependencyProperty MatchCountProperty = MatchCountPropertyKey.DependencyProperty;
+
+    private static readonly DependencyPropertyKey MatchSummaryPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(MatchSummary),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(string.Empty));
+
+    /// <summary>Identifies the read-only <see cref="MatchSummary"/> dependency property.</summary>
+    public static readonly DependencyProperty MatchSummaryProperty = MatchSummaryPropertyKey.DependencyProperty;
+
     private readonly MarkdownToFlowDocumentProjector _projector = new();
     private readonly FlowDocumentToMarkdownCapturer _capturer = new();
 
@@ -46,9 +88,19 @@ public sealed class MarkdownRichEditor : RichTextBox
     // The blocks are retained (not discarded) so Capture can reproduce the full source (INV-011).
     private readonly Dictionary<Block, IReadOnlyList<Block>> _foldedBodies = new();
 
+    // Created lazily the first time the built-in dictionary is needed, and shared across sessions.
+    private static readonly Lazy<ISpellDictionary> SharedDictionary = new(() => new WindowsSpellDictionary());
+
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
     private List<SectionHeading>? _outline;
+    private SpellCheckAdorner? _spellCheckAdorner;
+
+    // Find state: the current Matches as document ranges, and which one is the Current Match. All of
+    // it is presentation-only — none of it feeds back into Capture (INV-016).
+    private FindHighlightAdorner? _findAdorner;
+    private readonly List<TextRange> _matchRanges = [];
+    private int _currentMatch = -1;
 
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
@@ -59,10 +111,26 @@ public sealed class MarkdownRichEditor : RichTextBox
             MarkdownEditingCommands.CollapseAllFolds, (_, _) => CollapseAllFolds()));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ExpandAllFolds, (_, _) => ExpandAllFolds()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ShowFind, (_, _) => IsFindActive = true));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.HideFind, (_, _) => IsFindActive = false));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.FindNext, (_, _) => MoveCurrentMatch(1), CanFindMove));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.FindPrevious, (_, _) => MoveCurrentMatch(-1), CanFindMove));
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
         SelectionChanged += (_, _) => CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+
+        // The custom, camelCase-aware spell checker and the Find highlights both draw through adorners,
+        // which need the editor's AdornerLayer — available only once it is in the visual tree.
+        Loaded += (_, _) =>
+        {
+            AttachSpellCheck();
+            AttachFind();
+        };
     }
 
     /// <summary>
@@ -83,6 +151,29 @@ public sealed class MarkdownRichEditor : RichTextBox
         get => (string)GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
     }
+
+    /// <summary>The Find query. Every occurrence in the Visual Document is highlighted as a Match.</summary>
+    public string FindQuery
+    {
+        get => (string)GetValue(FindQueryProperty);
+        set => SetValue(FindQueryProperty, value);
+    }
+
+    /// <summary>Whether the Find Bar is open. Closing it clears the Find highlights.</summary>
+    public bool IsFindActive
+    {
+        get => (bool)GetValue(IsFindActiveProperty);
+        set => SetValue(IsFindActiveProperty, value);
+    }
+
+    /// <summary>The number of Matches for the current <see cref="FindQuery"/>.</summary>
+    public int MatchCount => (int)GetValue(MatchCountProperty);
+
+    /// <summary>
+    /// A short summary of the Find result shown in the Find Bar: empty when there is no query,
+    /// "No results" when the query matches nothing, or "{ordinal} of {count}" otherwise.
+    /// </summary>
+    public string MatchSummary => (string)GetValue(MatchSummaryProperty);
 
     /// <summary>
     /// The Outline: every Section Heading of the Visual Document in document order, each an Outline
@@ -296,6 +387,251 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <returns>The canonical Markdown source text.</returns>
     public string Capture() => _capturer.Capture(BuildLogicalBlocks());
 
+    // Attaches the spell-check adorner once, when the editor first has an AdornerLayer. The adorner
+    // then watches the editor for edits and repaints its squiggles itself.
+    private void AttachSpellCheck()
+    {
+        if (_spellCheckAdorner is not null)
+        {
+            return;
+        }
+
+        var layer = AdornerLayer.GetAdornerLayer(this);
+        if (layer is null)
+        {
+            return;
+        }
+
+        _spellCheckAdorner = new SpellCheckAdorner(this, SharedDictionary.Value);
+        layer.Add(_spellCheckAdorner);
+    }
+
+    // Attaches the Find highlight adorner once the editor has an AdornerLayer. The editor drives it by
+    // calling Update whenever the Matches change; the adorner repaints itself on scroll and resize.
+    private void AttachFind()
+    {
+        if (_findAdorner is not null)
+        {
+            return;
+        }
+
+        var layer = AdornerLayer.GetAdornerLayer(this);
+        if (layer is null)
+        {
+            return;
+        }
+
+        _findAdorner = new FindHighlightAdorner(this);
+        layer.Add(_findAdorner);
+    }
+
+    private static void OnFindQueryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+        ((MarkdownRichEditor)d).RecomputeMatches();
+
+    private static void OnIsFindActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var editor = (MarkdownRichEditor)d;
+        if ((bool)e.NewValue)
+        {
+            editor.RecomputeMatches();
+        }
+        else
+        {
+            editor.ClearFind();
+        }
+    }
+
+    private void CanFindMove(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = MatchCount > 0;
+
+    // Re-runs the Find over the current Visual Document: builds a text snapshot, finds every Match,
+    // maps each to a document range for the adorner, and refreshes the count and Current Match. Never
+    // touches the Markdown source (INV-016).
+    private void RecomputeMatches()
+    {
+        _matchRanges.Clear();
+        var query = FindQuery;
+
+        if (IsFindActive && !string.IsNullOrEmpty(query) && Document is { } document)
+        {
+            var (text, anchors) = BuildTextSnapshot(document);
+            foreach (var match in MatchFinder.FindMatches(text, query))
+            {
+                var range = RangeFor(anchors, match);
+                if (range is not null)
+                {
+                    _matchRanges.Add(range);
+                }
+            }
+        }
+
+        _currentMatch = _matchRanges.Count == 0
+            ? -1
+            : Math.Clamp(_currentMatch < 0 ? 0 : _currentMatch, 0, _matchRanges.Count - 1);
+
+        PublishFindState();
+        ScrollCurrentMatchIntoView();
+    }
+
+    // Moves the Current Match forward (+1) or backward (-1), wrapping around, and reveals it.
+    private void MoveCurrentMatch(int delta)
+    {
+        if (_matchRanges.Count == 0)
+        {
+            return;
+        }
+
+        _currentMatch = MatchFinder.Advance(_currentMatch, delta, _matchRanges.Count);
+        PublishFindState();
+        ScrollCurrentMatchIntoView();
+    }
+
+    private void ClearFind()
+    {
+        _matchRanges.Clear();
+        _currentMatch = -1;
+        PublishFindState();
+    }
+
+    // Pushes the current Match ranges and counts to the adorner and the read-only properties the Find
+    // Bar binds to.
+    private void PublishFindState()
+    {
+        SetValue(MatchCountPropertyKey, _matchRanges.Count);
+        SetValue(MatchSummaryPropertyKey, BuildMatchSummary());
+
+        if (_findAdorner is not null)
+        {
+            _findAdorner.SetColors(HighlightBrush(0.25), HighlightBrush(0.5), CurrentMatchOutline());
+            _findAdorner.Update(_matchRanges, _currentMatch);
+        }
+    }
+
+    private string BuildMatchSummary()
+    {
+        if (string.IsNullOrEmpty(FindQuery))
+        {
+            return string.Empty;
+        }
+
+        return _matchRanges.Count == 0
+            ? "No results"
+            : $"{_currentMatch + 1} of {_matchRanges.Count}";
+    }
+
+    private void ScrollCurrentMatchIntoView()
+    {
+        if (_currentMatch < 0 || _currentMatch >= _matchRanges.Count)
+        {
+            return;
+        }
+
+        var rect = _matchRanges[_currentMatch].Start.GetCharacterRect(LogicalDirection.Forward);
+        if (rect == Rect.Empty)
+        {
+            return;
+        }
+
+        // Only scroll when the Current Match is outside the viewport, leaving a small margin so it is
+        // not flush against the top or bottom edge.
+        const double margin = 40d;
+        if (rect.Top < 0)
+        {
+            ScrollToVerticalOffset(VerticalOffset + rect.Top - margin);
+        }
+        else if (rect.Bottom > ActualHeight)
+        {
+            ScrollToVerticalOffset(VerticalOffset + (rect.Bottom - ActualHeight) + margin);
+        }
+    }
+
+    private SolidColorBrush HighlightBrush(double opacity)
+    {
+        var color = (TryFindResource("AccentBrush") as SolidColorBrush)?.Color ?? Colors.MediumPurple;
+        var brush = new SolidColorBrush(color) { Opacity = opacity };
+        brush.Freeze();
+        return brush;
+    }
+
+    private Pen CurrentMatchOutline()
+    {
+        var color = (TryFindResource("AccentBrush") as SolidColorBrush)?.Color ?? Colors.MediumPurple;
+        var pen = new Pen(new SolidColorBrush(color), 1.2d);
+        pen.Freeze();
+        return pen;
+    }
+
+    // Maps a Match (offsets into the text snapshot) to a document range, resolving its start and end
+    // through their anchoring text runs — so a Match that spans an inline formatting boundary still
+    // yields one contiguous range.
+    private static TextRange? RangeFor(IReadOnlyList<(int Offset, int Length, TextPointer Pointer)> anchors, Match match)
+    {
+        var start = PointerAt(anchors, match.Start, atEnd: false);
+        var end = PointerAt(anchors, match.Start + match.Length, atEnd: true);
+        return start is null || end is null ? null : new TextRange(start, end);
+    }
+
+    private static TextPointer? PointerAt(
+        IReadOnlyList<(int Offset, int Length, TextPointer Pointer)> anchors,
+        int index,
+        bool atEnd)
+    {
+        foreach (var anchor in anchors)
+        {
+            // For a span's end, the character before the index must lie in this run (offset < index);
+            // for a start, the character at the index must (offset <= index).
+            var withinStart = atEnd ? index > anchor.Offset : index >= anchor.Offset;
+            var withinEnd = index <= anchor.Offset + anchor.Length;
+            if (withinStart && withinEnd)
+            {
+                return anchor.Pointer.GetPositionAtOffset(index - anchor.Offset, LogicalDirection.Forward);
+            }
+        }
+
+        return null;
+    }
+
+    // A plain-text snapshot of the Visual Document for searching, with an anchor per text run recording
+    // where that run's text begins in the snapshot. A separator is inserted at block boundaries so a
+    // Match never bridges two blocks, while adjacent inline runs are concatenated so a Match may span a
+    // formatting boundary within a line.
+    private static (string Text, List<(int Offset, int Length, TextPointer Pointer)> Anchors) BuildTextSnapshot(
+        FlowDocument document)
+    {
+        var builder = new StringBuilder();
+        var anchors = new List<(int, int, TextPointer)>();
+        var pointer = document.ContentStart;
+
+        while (pointer is not null)
+        {
+            switch (pointer.GetPointerContext(LogicalDirection.Forward))
+            {
+                case TextPointerContext.Text:
+                    var runText = pointer.GetTextInRun(LogicalDirection.Forward);
+                    anchors.Add((builder.Length, runText.Length, pointer));
+                    builder.Append(runText);
+                    pointer = pointer.GetPositionAtOffset(runText.Length, LogicalDirection.Forward);
+                    break;
+
+                case TextPointerContext.ElementStart:
+                case TextPointerContext.ElementEnd:
+                    if (pointer.GetAdjacentElement(LogicalDirection.Forward) is Block or LineBreak
+                        && builder.Length > 0 && builder[^1] != '\n')
+                    {
+                        builder.Append('\n');
+                    }
+
+                    pointer = pointer.GetNextContextPosition(LogicalDirection.Forward);
+                    break;
+
+                default:
+                    pointer = pointer.GetNextContextPosition(LogicalDirection.Forward);
+                    break;
+            }
+        }
+
+        return (builder.ToString(), anchors);
+    }
+
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownRichEditor)d;
@@ -335,6 +671,13 @@ public sealed class MarkdownRichEditor : RichTextBox
         _lastCaptured = markdown;
 
         InvalidateOutline();
+
+        // A fresh document invalidates the Match ranges (they point into the old one); re-run the Find
+        // once the new document has laid out so the highlights follow the content.
+        if (IsFindActive)
+        {
+            Dispatcher.BeginInvoke(RecomputeMatches, DispatcherPriority.Loaded);
+        }
     }
 
     /// <inheritdoc />
@@ -359,6 +702,12 @@ public sealed class MarkdownRichEditor : RichTextBox
 
         // An edit may have added, removed, or retitled a Section Heading.
         InvalidateOutline();
+
+        // The edited text may have gained or lost Matches; keep the highlights current.
+        if (IsFindActive)
+        {
+            RecomputeMatches();
+        }
     }
 
     // The full logical block sequence: every visible block, with each Folded Section Body spliced
