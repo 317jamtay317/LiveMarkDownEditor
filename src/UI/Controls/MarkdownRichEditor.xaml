@@ -12,7 +12,10 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="AcceptsTab" Value="True" />
-        <Setter Property="SpellCheck.IsEnabled" Value="True" />
+        <!-- WPF's built-in speller is off: it cannot split code-like identifiers, so it would flag the
+             whole of this.ShouldBe().Invld(). The SpellCheckAdorner replaces it with camelCase-aware
+             checking that flags only the genuinely misspelled sub-word and skips code. -->
+        <Setter Property="SpellCheck.IsEnabled" Value="False" />
         <!-- Themed via the active palette so the editing surface follows light/dark. The projector
              sets no foreground colour, so all projected content inherits Foreground. -->
         <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />

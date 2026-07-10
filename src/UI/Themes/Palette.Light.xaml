@@ -17,6 +17,9 @@
     <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="HoverBrush" Color="#E9EAEE" />
 
+    <!-- Scrollbar thumb: the accent colour, muted at rest and full-strength on hover/drag. -->
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#4F46E5" Opacity="0.55" />
+
     <SolidColorBrush x:Key="CaretBrush" Color="#1F2328" />
     <SolidColorBrush x:Key="SelectionBrush" Color="#C7D2FE" />
     <SolidColorBrush x:Key="DirtyDotBrush" Color="#4F46E5" />

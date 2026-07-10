@@ -18,6 +18,8 @@
         <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
                     CommandParameter="{Binding ActiveSession}" />
+        <KeyBinding Modifiers="Ctrl" Key="F" Command="controls:MarkdownEditingCommands.ShowFind"
+                    CommandTarget="{Binding ElementName=Editor}" />
     </Window.InputBindings>
 
     <Grid>
@@ -189,7 +191,8 @@
 
                 <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
                 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
-                                             Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
+                                             Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                             controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
                 <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center"
@@ -207,18 +210,30 @@
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="SOURCE" Margin="14,12,14,6"
                                    Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
-                        <!-- Delay debounces the source→Visual-Document projection: keystrokes coalesce
-                             so a full re-Project runs once typing pauses, not on every key. The TextBox
-                             (the binding target) stays instantly responsive. -->
-                        <TextBox AutomationProperties.AutomationId="SourcePanel"
-                                 Text="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged, Delay=120}"
-                                 AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
-                                 HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"
-                                 Background="Transparent" BorderThickness="0" Padding="12,4,12,12"
-                                 Foreground="{DynamicResource TextBrush}"
-                                 CaretBrush="{DynamicResource TextBrush}"
-                                 SpellCheck.IsEnabled="False" />
+                        <!-- The Source Gutter (Line Numbers) mirrors the source TextBox's line layout.
+                             The TextBox does not wrap, so each source line is a single row aligned to
+                             its Line Number. -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <controls:SourceGutter Grid.Column="0" Source="{Binding ElementName=SourcePanel}" />
+                            <!-- Delay debounces the source→Visual-Document projection: keystrokes coalesce
+                                 so a full re-Project runs once typing pauses, not on every key. The TextBox
+                                 (the binding target) stays instantly responsive. -->
+                            <TextBox Grid.Column="1" x:Name="SourcePanel"
+                                     AutomationProperties.AutomationId="SourcePanel"
+                                     Text="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged, Delay=120}"
+                                     controls:ScrollSync.SyncPartner="{Binding ElementName=Editor}"
+                                     AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"
+                                     Background="Transparent" BorderThickness="0" Padding="6,4,12,12"
+                                     Foreground="{DynamicResource TextBrush}"
+                                     CaretBrush="{DynamicResource TextBrush}"
+                                     SpellCheck.IsEnabled="False" />
+                        </Grid>
                     </DockPanel>
                 </Border>
             </Grid>
@@ -232,6 +247,54 @@
                     <TextBlock Text="Press + to start a new document, or Open a file"
                                FontSize="12" HorizontalAlignment="Center"
                                Foreground="{DynamicResource MutedTextBrush}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Find Bar: floats over the editor's top-right, bound to the editor's Find state. Opened
+                 with Ctrl+F (which focuses the query box), dismissed with Escape. Presentation-only —
+                 Find never changes the Markdown Document (INV-016). -->
+            <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,26,0"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="8,5"
+                    Visibility="{Binding IsFindActive, ElementName=Editor, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" Opacity="0.18" BlurRadius="12" ShadowDepth="2" />
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox x:Name="FindQueryBox" Width="220" VerticalAlignment="Center"
+                             FontSize="13" Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
+                             controls:FocusOnVisible.Enabled="True"
+                             Text="{Binding FindQuery, ElementName=Editor, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="controls:MarkdownEditingCommands.FindNext"
+                                        CommandTarget="{Binding ElementName=Editor}" />
+                            <KeyBinding Key="Enter" Modifiers="Shift"
+                                        Command="controls:MarkdownEditingCommands.FindPrevious"
+                                        CommandTarget="{Binding ElementName=Editor}" />
+                            <KeyBinding Key="Esc" Command="controls:MarkdownEditingCommands.HideFind"
+                                        CommandTarget="{Binding ElementName=Editor}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <TextBlock Text="{Binding MatchSummary, ElementName=Editor}" MinWidth="56"
+                               VerticalAlignment="Center" TextAlignment="Right" Margin="8,0"
+                               FontSize="12" Foreground="{DynamicResource MutedTextBrush}" />
+
+                    <Rectangle Style="{StaticResource CommandSeparator}" />
+
+                    <Button Style="{StaticResource IconButton}" Content="&#x2191;" FontSize="13"
+                            ToolTip="Previous match (Shift+Enter)"
+                            Command="controls:MarkdownEditingCommands.FindPrevious"
+                            CommandTarget="{Binding ElementName=Editor}" />
+                    <Button Style="{StaticResource IconButton}" Content="&#x2193;" FontSize="13"
+                            ToolTip="Next match (Enter)"
+                            Command="controls:MarkdownEditingCommands.FindNext"
+                            CommandTarget="{Binding ElementName=Editor}" />
+                    <Button Style="{StaticResource IconButton}" Content="&#x2715;" FontSize="12"
+                            ToolTip="Close (Esc)"
+                            Command="controls:MarkdownEditingCommands.HideFind"
+                            CommandTarget="{Binding ElementName=Editor}" />
                 </StackPanel>
             </Border>
         </Grid>

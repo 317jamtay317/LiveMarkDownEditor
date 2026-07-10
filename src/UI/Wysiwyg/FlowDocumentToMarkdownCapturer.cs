@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Text;
 using System.Windows;
 using System.Windows.Documents;
+using WpfList = System.Windows.Documents.List;
+using WpfTable = System.Windows.Documents.Table;
 
 namespace UI.Wysiwyg;
 
@@ -19,10 +22,11 @@ namespace UI.Wysiwyg;
 /// </remarks>
 public sealed class FlowDocumentToMarkdownCapturer
 {
-    private readonly record struct Segment(string Text, bool Bold, bool Italic, bool Strike, bool Code, bool IsBreak)
+    private readonly record struct Segment(
+        string Text, bool Bold, bool Italic, bool Strike, bool Code, bool IsBreak, bool Verbatim)
     {
         public bool SameFormatting(Segment other) =>
-            !IsBreak && !other.IsBreak &&
+            !IsBreak && !other.IsBreak && !Verbatim && !other.Verbatim &&
             Bold == other.Bold && Italic == other.Italic && Strike == other.Strike && Code == other.Code;
     }
 
@@ -66,16 +70,129 @@ public sealed class FlowDocumentToMarkdownCapturer
     {
         Paragraph { Tag: HeadingRole heading } paragraph =>
             new string('#', heading.Level) + " " + CaptureInlines(paragraph.Inlines),
+        Paragraph { Tag: CodeBlockRole codeRole } paragraph => CaptureCodeBlock(paragraph, codeRole),
+        Paragraph { Tag: BlockSemantic.ThematicBreak } => "---",
         Paragraph paragraph => CaptureInlines(paragraph.Inlines),
+        WpfList list => CaptureList(list),
+        Section { Tag: BlockSemantic.Quote } quote => CaptureQuote(quote),
+        WpfTable table => CaptureTable(table),
         _ => null,
     };
 
-    private static string CaptureInlines(InlineCollection inlines)
+    // Emits canonical Markdown list syntax: "- " before each Unordered item, "N. " (incrementing
+    // from the list's StartIndex) before each Ordered item. Content lines after the first are
+    // indented to the marker's width so nested content stays inside the item, keeping repeated
+    // Round-Trips convergent (INV-005).
+    private static string CaptureList(WpfList list)
+    {
+        var ordered = list.MarkerStyle == TextMarkerStyle.Decimal;
+        var number = list.StartIndex;
+
+        var lines = new List<string>();
+        foreach (var item in list.ListItems)
+        {
+            var marker = ordered ? number.ToString(CultureInfo.InvariantCulture) + ". " : "- ";
+            var content = CaptureListItem(item);
+            var indented = content.Replace("\n", "\n" + new string(' ', marker.Length));
+            lines.Add(marker + indented);
+            number++;
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private static string CaptureListItem(ListItem item)
+    {
+        var parts = new List<string>();
+        foreach (var block in item.Blocks)
+        {
+            var text = CaptureBlock(block);
+            if (text is not null)
+            {
+                parts.Add(text);
+            }
+        }
+
+        return string.Join("\n", parts);
+    }
+
+    // Emits a block quote by capturing its inner blocks and prefixing every line with "> " (a blank
+    // separator line becomes ">"), the canonical form Markdig re-parses to the same quote.
+    private static string CaptureQuote(Section section)
+    {
+        var inner = new FlowDocumentToMarkdownCapturer().Capture(section.Blocks);
+        var lines = inner.Split('\n');
+        return string.Join("\n", lines.Select(line => line.Length == 0 ? ">" : "> " + line));
+    }
+
+    // Emits a fenced code block. The code text is read back from the paragraph's own inlines (Runs
+    // separated by LineBreaks) so any edits to the code are captured; the language comes from the role.
+    private static string CaptureCodeBlock(Paragraph paragraph, CodeBlockRole role)
+    {
+        var code = InlineText(paragraph.Inlines);
+        return "```" + (role.Language ?? string.Empty) + "\n" + code + "\n```";
+    }
+
+    // Emits a GFM pipe table: the header row, an alignment-aware delimiter row, then the body rows.
+    private static string CaptureTable(WpfTable table)
+    {
+        var alignments = (table.Tag as TableRole)?.Alignments ?? [];
+        var rows = table.RowGroups.Count > 0 ? table.RowGroups[0].Rows : null;
+        if (rows is null || rows.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var columnCount = rows[0].Cells.Count;
+        // The header row is displayed bold; that emphasis is a header convention, not authored inline
+        // bold, so it is suppressed when capturing (the delimiter row already marks it as the header).
+        var lines = new List<string> { CaptureRow(rows[0], suppressBold: true), DelimiterRow(alignments, columnCount) };
+        for (var i = 1; i < rows.Count; i++)
+        {
+            lines.Add(CaptureRow(rows[i]));
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private static string CaptureRow(TableRow row, bool suppressBold = false)
+    {
+        var cells = row.Cells.Select(cell =>
+            cell.Blocks.FirstBlock is Paragraph paragraph ? CaptureInlines(paragraph.Inlines, suppressBold) : string.Empty);
+        return "| " + string.Join(" | ", cells) + " |";
+    }
+
+    private static string DelimiterRow(IReadOnlyList<ColumnAlignment> alignments, int columnCount)
+    {
+        var cells = new List<string>();
+        for (var i = 0; i < columnCount; i++)
+        {
+            var alignment = i < alignments.Count ? alignments[i] : ColumnAlignment.None;
+            cells.Add(alignment switch
+            {
+                ColumnAlignment.Left => ":---",
+                ColumnAlignment.Center => ":---:",
+                ColumnAlignment.Right => "---:",
+                _ => "---",
+            });
+        }
+
+        return "| " + string.Join(" | ", cells) + " |";
+    }
+
+    private static string CaptureInlines(InlineCollection inlines, bool suppressBold = false)
     {
         var segments = new List<Segment>();
         foreach (var inline in inlines)
         {
             Flatten(inline, segments);
+        }
+
+        if (suppressBold)
+        {
+            segments = segments
+                .Select(segment => segment.Verbatim || segment.IsBreak ? segment : segment with { Bold = false })
+                .ToList();
         }
 
         var merged = Merge(segments);
@@ -93,6 +210,16 @@ public sealed class FlowDocumentToMarkdownCapturer
     {
         switch (inline)
         {
+            case Run { Tag: ImageRole image }:
+                segments.Add(Verbatim(EmitImage(image)));
+                break;
+
+            case Run { Tag: TaskMarkerRole task }:
+                // No trailing space: the following literal ("_todo") already carries the separator,
+                // so the canonical "- [ ] todo" is reproduced with a single space.
+                segments.Add(Verbatim(task.Checked ? "[x]" : "[ ]"));
+                break;
+
             case Run run when run.Text.Length > 0:
                 segments.Add(new Segment(
                     run.Text,
@@ -100,11 +227,17 @@ public sealed class FlowDocumentToMarkdownCapturer
                     Italic: run.FontStyle == FontStyles.Italic,
                     Strike: HasStrikethrough(run),
                     Code: HasRole(run, InlineSemantic.Code),
-                    IsBreak: false));
+                    IsBreak: false,
+                    Verbatim: false));
                 break;
 
-            case LineBreak:
-                segments.Add(new Segment("\n", false, false, false, false, IsBreak: true));
+            case Hyperlink link:
+                segments.Add(Verbatim(EmitLink(link)));
+                break;
+
+            case LineBreak lineBreak:
+                var hard = lineBreak.Tag is InlineSemantic.HardBreak;
+                segments.Add(new Segment(hard ? "\\\n" : "\n", false, false, false, false, IsBreak: true, Verbatim: false));
                 break;
 
             case Span span:
@@ -116,6 +249,22 @@ public sealed class FlowDocumentToMarkdownCapturer
                 break;
         }
     }
+
+    private static Segment Verbatim(string text) => new(text, false, false, false, false, false, Verbatim: true);
+
+    private static string EmitLink(Hyperlink link)
+    {
+        var inner = CaptureInlines(link.Inlines);
+        var role = link.Tag as LinkRole;
+        var url = role?.Url ?? link.NavigateUri?.ToString() ?? string.Empty;
+        return "[" + inner + "](" + url + TitleSuffix(role?.Title) + ")";
+    }
+
+    private static string EmitImage(ImageRole image) =>
+        "![" + image.Alt + "](" + image.Url + TitleSuffix(image.Title) + ")";
+
+    private static string TitleSuffix(string? title) =>
+        string.IsNullOrEmpty(title) ? string.Empty : " \"" + title + "\"";
 
     private static List<Segment> Merge(List<Segment> segments)
     {
@@ -137,7 +286,7 @@ public sealed class FlowDocumentToMarkdownCapturer
 
     private static string Emit(Segment segment)
     {
-        if (segment.IsBreak)
+        if (segment.Verbatim || segment.IsBreak)
         {
             return segment.Text;
         }
@@ -155,6 +304,25 @@ public sealed class FlowDocumentToMarkdownCapturer
             + (segment.Strike ? "~~" : string.Empty);
 
         return prefix + segment.Text + suffix;
+    }
+
+    private static string InlineText(InlineCollection inlines)
+    {
+        var builder = new StringBuilder();
+        foreach (var inline in inlines)
+        {
+            switch (inline)
+            {
+                case Run run:
+                    builder.Append(run.Text);
+                    break;
+                case LineBreak:
+                    builder.Append('\n');
+                    break;
+            }
+        }
+
+        return builder.ToString();
     }
 
     private static bool HasStrikethrough(Inline inline)

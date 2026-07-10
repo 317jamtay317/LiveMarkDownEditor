@@ -29,4 +29,31 @@ public static class MarkdownEditingCommands
         nameof(ExpandAllFolds),
         typeof(MarkdownEditingCommands),
         [new KeyGesture(Key.M, ModifierKeys.Control | ModifierKeys.Shift)]);
+
+    /// <summary>Opens the Find Bar and focuses its query box (Ctrl+F).</summary>
+    public static RoutedUICommand ShowFind { get; } = new(
+        "Find",
+        nameof(ShowFind),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.F, ModifierKeys.Control)]);
+
+    /// <summary>Closes the Find Bar and clears the Find highlights.</summary>
+    public static RoutedUICommand HideFind { get; } = new(
+        "Close find",
+        nameof(HideFind),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>Moves the Current Match to the next Match, wrapping past the last (F3).</summary>
+    public static RoutedUICommand FindNext { get; } = new(
+        "Find next",
+        nameof(FindNext),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.F3)]);
+
+    /// <summary>Moves the Current Match to the previous Match, wrapping past the first (Shift+F3).</summary>
+    public static RoutedUICommand FindPrevious { get; } = new(
+        "Find previous",
+        nameof(FindPrevious),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.F3, ModifierKeys.Shift)]);
 }

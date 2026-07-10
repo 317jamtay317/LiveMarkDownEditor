@@ -33,6 +33,23 @@ public sealed class WysiwygRoundTripTests
     [InlineData("Text with ~~struck~~ word.")]
     [InlineData("Text with `code` word.")]
     [InlineData("Mixed **bold** and *italic* and `code` and ~~gone~~.")]
+    [InlineData("- One\n- Two\n- Three")]
+    [InlineData("- Item with **bold** and `code`")]
+    [InlineData("1. First\n2. Second\n3. Third")]
+    [InlineData("## Milestones\n\n- Milestone 1, installation flow\n- Milestone 2, background agent\n- Milestone 3, diagnostics dashboard")]
+    [InlineData("See [Anthropic](https://anthropic.com) here.")]
+    [InlineData("Visit https://example.com now.")]
+    [InlineData("![alt text](https://x/y.png)")]
+    [InlineData("> quoted text")]
+    [InlineData("> line one\n>\n> line two")]
+    [InlineData("```\ncode line\n```")]
+    [InlineData("```csharp\nvar x = 1;\n```")]
+    [InlineData("    indented code")]
+    [InlineData("above\n\n---\n\nbelow")]
+    [InlineData("| A | B |\n| --- | --- |\n| 1 | 2 |")]
+    [InlineData("| Left | Right |\n| :--- | ---: |\n| a | b |")]
+    [InlineData("- [ ] todo\n- [x] done")]
+    [InlineData("line one  \nline two")]
     public void RoundTrip_PreservesSemantics_INV004(string markdown)
     {
         var renderer = new MarkdigMarkdownRenderer();
@@ -49,6 +66,13 @@ public sealed class WysiwygRoundTripTests
     [Theory]
     [InlineData("# Heading")]
     [InlineData("Mixed **bold** and *italic* and `code` and ~~gone~~.")]
+    [InlineData("- One\n- Two\n- Three")]
+    [InlineData("1. First\n2. Second")]
+    [InlineData("See [Anthropic](https://anthropic.com) here.")]
+    [InlineData("> quoted text")]
+    [InlineData("```csharp\nvar x = 1;\n```")]
+    [InlineData("| A | B |\n| --- | --- |\n| 1 | 2 |")]
+    [InlineData("- [ ] todo\n- [x] done")]
     public void RoundTrip_IsIdempotent_INV005(string markdown)
     {
         StaThread.Run(() =>
@@ -119,6 +143,64 @@ public sealed class WysiwygRoundTripTests
             var heading = (Paragraph)document.Blocks.FirstBlock;
 
             heading.Margin.ShouldBe(new Thickness(0, 12, 0, 4));
+        });
+    }
+
+    [Fact]
+    public void Project_UnorderedList_ShowsEachItemsText()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector()
+                .Project("## Milestones\n\n- Milestone 1\n- Milestone 2\n- Milestone 3");
+
+            var visibleText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+
+            visibleText.ShouldContain("Milestone 1");
+            visibleText.ShouldContain("Milestone 2");
+            visibleText.ShouldContain("Milestone 3");
+        });
+    }
+
+    [Fact]
+    public void Project_UnorderedList_ProducesBulletedList()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector().Project("- One\n- Two");
+
+            var list = document.Blocks.OfType<List>().Single();
+
+            list.MarkerStyle.ShouldBe(TextMarkerStyle.Disc);
+            list.ListItems.Count.ShouldBe(2);
+        });
+    }
+
+    [Fact]
+    public void Project_OrderedList_ProducesNumberedList()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector().Project("1. One\n2. Two");
+
+            var list = document.Blocks.OfType<List>().Single();
+
+            list.MarkerStyle.ShouldBe(TextMarkerStyle.Decimal);
+            list.ListItems.Count.ShouldBe(2);
+        });
+    }
+
+    [Fact]
+    public void Project_List_ShowsTextNotRawDashSyntax()
+    {
+        StaThread.Run(() =>
+        {
+            var document = new MarkdownToFlowDocumentProjector().Project("- Item one");
+
+            var visibleText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+
+            visibleText.ShouldContain("Item one");
+            visibleText.ShouldNotContain("- Item");
         });
     }
 }
