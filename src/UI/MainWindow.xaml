@@ -6,6 +6,7 @@
         xmlns:controls="clr-namespace:UI.Controls"
         mc:Ignorable="d"
         Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor', FallbackValue='LiveMarkDownEditor'}"
+        Icon="pack://application:,,,/Assets/app.ico"
         Height="680" Width="1000"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackgroundBrush}"
