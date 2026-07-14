@@ -1,4 +1,4 @@
-using System.Windows.Documents;
+﻿using System.Windows.Documents;
 using Shouldly;
 using UI.Controls;
 using UI.Tests.Wysiwyg;
@@ -20,7 +20,7 @@ public sealed class MarkdownRichEditorToggleCodeTests
         StaThread.Run(() =>
         {
             var editor = new MarkdownRichEditor { Markdown = "make this fast" };
-            SelectText(editor, "this");
+            VisualDocumentText.SelectText(editor, "this");
 
             MarkdownEditingCommands.ToggleCode.Execute(parameter: null, target: editor);
 
@@ -64,7 +64,7 @@ public sealed class MarkdownRichEditorToggleCodeTests
         StaThread.Run(() =>
         {
             var editor = new MarkdownRichEditor { Markdown = "make `this` fast" };
-            SelectText(editor, "this");
+            VisualDocumentText.SelectText(editor, "this");
 
             MarkdownEditingCommands.ToggleCode.Execute(parameter: null, target: editor);
 
@@ -125,7 +125,7 @@ public sealed class MarkdownRichEditorToggleCodeTests
         StaThread.Run(() =>
         {
             var editor = new MarkdownRichEditor { Markdown = "just prose" };
-            SelectText(editor, "prose");
+            VisualDocumentText.SelectText(editor, "prose");
 
             MarkdownEditingCommands.ToggleCode.CanExecute(parameter: null, target: editor).ShouldBeTrue();
         });
@@ -143,32 +143,5 @@ public sealed class MarkdownRichEditorToggleCodeTests
             MarkdownEditingCommands.ToggleCode.CanExecute(parameter: null, target: editor).ShouldBeTrue();
         });
     }
-
-    // Selects the first occurrence of the given text, which must lie within a single text run.
-    private static void SelectText(MarkdownRichEditor editor, string text)
-    {
-        for (var pointer = editor.Document.ContentStart;
-             pointer is not null;
-             pointer = pointer.GetNextContextPosition(LogicalDirection.Forward))
-        {
-            if (pointer.GetPointerContext(LogicalDirection.Forward) != TextPointerContext.Text)
-            {
-                continue;
-            }
-
-            var runText = pointer.GetTextInRun(LogicalDirection.Forward);
-            var index = runText.IndexOf(text, StringComparison.Ordinal);
-            if (index < 0)
-            {
-                continue;
-            }
-
-            var start = pointer.GetPositionAtOffset(index)!;
-            var end = pointer.GetPositionAtOffset(index + text.Length)!;
-            editor.Selection.Select(start, end);
-            return;
-        }
-
-        throw new InvalidOperationException($"Text '{text}' was not found in the Visual Document.");
-    }
 }
+
