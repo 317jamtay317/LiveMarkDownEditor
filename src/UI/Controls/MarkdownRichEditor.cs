@@ -113,6 +113,10 @@ public sealed class MarkdownRichEditor : RichTextBox
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ExpandAllFolds, (_, _) => ExpandAllFolds()));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleCode,
+            (_, _) => ToggleCodeAtSelection(),
+            (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ShowFind, (_, _) => IsFindActive = true));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.HideFind, (_, _) => IsFindActive = false));
@@ -394,6 +398,14 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// </summary>
     /// <returns>The canonical Markdown source text.</returns>
     public string Capture() => _capturer.Capture(BuildLogicalBlocks());
+
+    /// <summary>
+    /// Applies the Toggle Code Formatting Action at the current selection: a selection within a
+    /// single line becomes a Code Span, a selection spanning multiple lines (or a whole line)
+    /// becomes a Code Block, and inside existing code the code formatting is removed. The edit
+    /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
 
     // Builds the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
     // Suggestions head the menu (choosing one replaces the word), followed by the usual clipboard

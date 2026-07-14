@@ -30,14 +30,6 @@ namespace UI.Wysiwyg;
 /// </remarks>
 public sealed class MarkdownToFlowDocumentProjector
 {
-    private static readonly FontFamily MonospaceFont = new("Consolas, Cascadia Mono, Courier New");
-
-    // BCP-47 "zxx" = "no linguistic content". The WYSIWYG editor enables spell check for prose, but
-    // code is not prose: identifiers like this.Should().NotBe() are not misspellings. WPF's speller
-    // skips any run whose Language has no dictionary, so tagging code runs "zxx" excludes just them
-    // while leaving the surrounding prose checked.
-    private static readonly XmlLanguage NoProofingLanguage = XmlLanguage.GetLanguage("zxx");
-
     // WPF's default Paragraph margin double-spaces the Visual Document, which reads as large gaps
     // between lines. A small, uniform block spacing looks like a real editor; a heading gets a little
     // extra room above so it stands off the preceding Section.
@@ -195,16 +187,11 @@ public sealed class MarkdownToFlowDocumentProjector
     // re-emit a fenced block; the code itself is read back from the paragraph's inlines, so edits to
     // the code survive a Round-Trip. Its shaded panel is Code Shading, drawn by the CodeShadingAdorner
     // overlay rather than a Background here, so a theme recolour never re-formats the code (INV-017).
+    // The formatting itself is shared with the Toggle Code Formatting Action (INV-018).
     private static WpfBlock ProjectCodeBlock(LeafBlock codeBlock, string? language)
     {
-        var paragraph = new Paragraph
-        {
-            Tag = new CodeBlockRole(string.IsNullOrEmpty(language) ? null : language),
-            FontFamily = MonospaceFont,
-            Language = NoProofingLanguage,
-            Padding = new Thickness(8),
-            Margin = BodySpacing,
-        };
+        var paragraph = new Paragraph();
+        CodeFormatting.ApplyCodeBlock(paragraph, string.IsNullOrEmpty(language) ? null : language);
 
         var lines = ExtractCode(codeBlock).Split('\n');
         for (var i = 0; i < lines.Length; i++)
@@ -345,18 +332,10 @@ public sealed class MarkdownToFlowDocumentProjector
 
             case CodeInline code:
             {
-                // Monospace alone reads like body text; an accent colour plus Code Shading make an
-                // inline code span visibly code. The Code tag (not the styling) is what Capture keys
-                // on, and it is also what the CodeShadingScanner finds to shade the span. The shade is
-                // drawn by the CodeShadingAdorner overlay, not a Background here, so a theme recolour
-                // never re-formats the span (INV-017).
-                var run = new Run(code.Content)
-                {
-                    Tag = InlineSemantic.Code,
-                    FontFamily = MonospaceFont,
-                    Language = NoProofingLanguage,
-                };
-                run.SetResourceReference(TextElement.ForegroundProperty, "AccentBrush");
+                // The one shared Code Span formatting, also applied by the Toggle Code Formatting
+                // Action, so Capture and the CodeShadingScanner treat both identically (INV-017/018).
+                var run = new Run(code.Content);
+                CodeFormatting.ApplyCodeSpan(run);
                 return run;
             }
 

@@ -30,6 +30,16 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands),
         [new KeyGesture(Key.M, ModifierKeys.Control | ModifierKeys.Shift)]);
 
+    /// <summary>
+    /// The Toggle Code Formatting Action: the selection becomes a Code Span (within a single line) or
+    /// a Code Block (spanning multiple lines, or a whole line); inside existing code it removes the
+    /// code formatting instead (INV-018).
+    /// </summary>
+    public static RoutedUICommand ToggleCode { get; } = new(
+        "Toggle code",
+        nameof(ToggleCode),
+        typeof(MarkdownEditingCommands));
+
     /// <summary>Opens the Find Bar and focuses its query box (Ctrl+F).</summary>
     public static RoutedUICommand ShowFind { get; } = new(
         "Find",
