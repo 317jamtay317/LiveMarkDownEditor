@@ -93,3 +93,7 @@ logs/
 *.tmp
 *.bak
 *.cache
+
+# Advanced Installer build cache
+installer/*-cache/
+installer/Setup Files/

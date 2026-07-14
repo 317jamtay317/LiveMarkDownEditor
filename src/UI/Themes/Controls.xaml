@@ -53,6 +53,86 @@
         <Setter Property="Padding" Value="8" />
     </Style>
 
+    <!-- A command-bar dropdown (e.g. the Table menu): a Menu holding one top-level MenuItem that
+         looks like a CommandButton and opens its entries in a rounded surface panel. -->
+    <Style x:Key="CommandMenu" TargetType="Menu">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- The dropdown's top-level item: CommandButton look plus a chevron, submenu below. -->
+    <Style x:Key="CommandMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Grid>
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6"
+                                Padding="12,6" Margin="1,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True" />
+                                <TextBlock Text="&#x25BE;" FontSize="9" Margin="5,2,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <Popup x:Name="PART_Popup" Placement="Bottom" VerticalOffset="2"
+                               AllowsTransparency="True" Focusable="False" PopupAnimation="Fade"
+                               IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="8" Padding="4" Margin="0,0,8,8">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" Opacity="0.18" BlurRadius="12" ShadowDepth="2" />
+                                </Border.Effect>
+                                <ItemsPresenter />
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One entry within a command-bar dropdown. Disabled entries fade, matching CommandButton. -->
+    <Style x:Key="CommandMenuEntry" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="5"
+                            Padding="12,6" MinWidth="130">
+                        <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Thin vertical divider between command-bar groups. -->
     <Style x:Key="CommandSeparator" TargetType="Rectangle">
         <Setter Property="Width" Value="1" />

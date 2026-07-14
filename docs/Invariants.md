@@ -210,6 +210,43 @@ and tested.
   `MarkdownToFlowDocumentProjectorTests.CodeElements_CarryNoBackground_SoShadingCannotReflow_INV017`,
   `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
 
+### INV-018 — A Formatting Action Captures to canonical Markdown
+- **Statement:** Applying a Formatting Action (Toggle Code, Insert Table, Add Row, Add Column) edits
+  the Visual Document using the same tagged elements a Project produces, so the Captured source text
+  is canonical Markdown: Round-Tripping it preserves its semantics (INV-004) and converges (INV-005).
+  A Formatting Action never corrupts the document — after it runs, the Visual Document and the
+  Markdown Document still describe the same content.
+- **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
+  Projector emits (`InlineSemantic.Code`, `CodeBlockRole`, `TableRole`) through the shared
+  `CodeFormatting` / `TableEditing` helpers, so Capture treats user-applied formatting and loaded
+  formatting uniformly.
+- **Tested by:** `MarkdownRichEditorToggleCodeTests.*_INV018`,
+  `MarkdownRichEditorTableTests.*_INV018`.
+
+### INV-019 — A Table stays rectangular
+- **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
+  alignments list exactly one alignment per column. Insert Table creates such a Table; Add Row mints
+  its new row at the Table's column count; Add Column extends every row — header and body — by one
+  cell. No Table operation ever leaves a ragged Table.
+- **Enforced by:** The `TableEditing` helper, which derives the new row's width from the Table's
+  columns and inserts a cell into every row when adding a column, updating the `TableRole` alignments
+  in the same operation.
+- **Tested by:** `MarkdownRichEditorTableTests.AddRow_MatchesColumnCount_INV019`,
+  `MarkdownRichEditorTableTests.AddColumn_ExtendsEveryRow_INV019`.
+
+### INV-020 — A Startup Document opens in the one running Workspace
+- **Statement:** Launching the editor with a Startup Document opens that file into the Workspace at
+  startup. If the editor is already running, the Startup Document is forwarded to the running
+  instance — whose Workspace opens it, or activates its existing Tab (INV-009) — and no second
+  editor window appears (Single Instance).
+- **Enforced by:** `StartupArguments` (parsing the Startup Document from the command line),
+  `WorkspaceViewModel.OpenPathAsync` (the same dedupe-and-load path the file picker uses), and the
+  `SingleInstanceGuard` (a named mutex plus named pipe that forwards the path to the first instance),
+  wired together in the composition root (`Program`).
+- **Tested by:** `StartupArgumentsTests.*`,
+  `WorkspaceViewModelTests.OpenPath_WhenFileAlreadyOpen_ActivatesExistingTab_INV009_INV020`,
+  `SingleInstanceGuardTests.*_INV020`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

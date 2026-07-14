@@ -143,6 +143,20 @@ public sealed class WorkspaceViewModel : ObservableObject
             return;
         }
 
+        await OpenPathAsync(path).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Opens the Markdown file at <paramref name="path"/> — the path-first counterpart of
+    /// <see cref="OpenAsync"/>, used for a Startup Document handed over at launch or forwarded by a
+    /// later launch (INV-020). If the file is already open in the Workspace, its existing Tab is
+    /// activated instead of opening a duplicate (INV-009).
+    /// </summary>
+    /// <param name="path">The absolute path of the Markdown file to open.</param>
+    public async Task OpenPathAsync(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
         var alreadyOpen = _sessions.FirstOrDefault(session =>
             session.FilePath is not null &&
             string.Equals(session.FilePath, path, StringComparison.OrdinalIgnoreCase));

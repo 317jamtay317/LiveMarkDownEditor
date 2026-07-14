@@ -29,6 +29,25 @@ two directions echoing each other.
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `Markdown` | `string` | `""` | The canonical Markdown source text. **Binds two-way by default.** Setting it Projects a new Visual Document; editing the surface Captures back into it. |
+| `IsCaretInTable` | `bool` | `false` | Whether the caret sits inside a Table — the availability switch for the Table Formatting Actions (Insert Table only outside, Add Row / Add Column only inside). |
+
+## Formatting Actions (Toggle Code &amp; Tables)
+
+Formatting Actions are real edits: they change the Visual Document, which Captures back into
+`Markdown` like any other edit, always to canonical Markdown (INV-018). They are driven through
+`UI.Controls.MarkdownEditingCommands` routed commands (wire a button or menu item with
+`CommandTarget` aimed at the editor), or called directly:
+
+| Member | Command | Description |
+| --- | --- | --- |
+| `ToggleCodeAtSelection()` | `ToggleCode` | A selection within a single line becomes a Code Span; a selection spanning multiple lines, or a whole line, becomes a Code Block; inside existing code the code formatting is removed. Enabled when text is selected or the caret is in code. |
+| `InsertTableAtCaret()` | `InsertTable` | Inserts a new Table — three columns, a header row, two empty body rows — at the caret and selects the first header cell. Enabled only while the caret is **not** in a Table. |
+| `AddTableRowAtCaret()` | `AddTableRow` | Inserts a new empty row below the caret's row, at the Table's column count (INV-019). Enabled only while the caret is in a Table. |
+| `AddTableColumnAtCaret()` | `AddTableColumn` | Inserts a new empty column right of the caret's column, extending every row (INV-019). Enabled only while the caret is in a Table. |
+
+The formatting logic lives in `UI.Wysiwyg.CodeFormatting` and `UI.Wysiwyg.TableEditing`, which the
+Projector shares, so Capture treats user-applied code and Tables exactly like ones loaded from
+Markdown.
 
 ## Folding (collapsible Sections)
 
@@ -103,6 +122,7 @@ editor by name:
 
 ## Supported Markdown constructs
 
-Headings, paragraphs, bold, italic, strikethrough, and inline code round-trip today. Additional
-GFM constructs (lists, task lists, links, code blocks, blockquotes, tables, thematic breaks) are
-being added one tested construct at a time — see `docs/Invariants.md` (INV-004).
+Headings, paragraphs, bold, italic, strikethrough, Code Spans, fenced and indented Code Blocks,
+Unordered and Ordered Lists (with nesting), task-list items, Links, autolinks, Images, Block
+Quotes, Thematic Breaks, GFM Tables (with column alignment), and hard line breaks all round-trip —
+see `docs/Invariants.md` (INV-004) for the authoritative list.
