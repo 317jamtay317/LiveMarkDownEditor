@@ -277,18 +277,9 @@ public sealed class MarkdownToFlowDocumentProjector
                     }
                 }
 
-                if (row.IsHeader)
-                {
-                    paragraph.FontWeight = FontWeights.Bold;
-                }
-
-                var wpfCell = new TableCell(paragraph)
-                {
-                    BorderThickness = new Thickness(0.5),
-                    Padding = new Thickness(6, 3, 6, 3),
-                };
-                wpfCell.SetResourceReference(WpfBlock.BorderBrushProperty, "BorderBrush");
-                wpfRow.Cells.Add(wpfCell);
+                // The one shared cell composition, also applied by the Table Formatting Actions, so
+                // Capture treats a user-built Table like a loaded one (INV-018).
+                wpfRow.Cells.Add(TableEditing.WrapCell(paragraph, row.IsHeader));
             }
 
             group.Rows.Add(wpfRow);

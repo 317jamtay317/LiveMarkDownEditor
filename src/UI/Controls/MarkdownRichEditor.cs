@@ -117,6 +117,18 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => ToggleCodeAtSelection(),
             (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertTable,
+            (_, _) => InsertTableAtCaret(),
+            (_, e) => e.CanExecute = !IsCaretInTable));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.AddTableRow,
+            (_, _) => AddTableRowAtCaret(),
+            (_, e) => e.CanExecute = IsCaretInTable));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.AddTableColumn,
+            (_, _) => AddTableColumnAtCaret(),
+            (_, e) => e.CanExecute = IsCaretInTable));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ShowFind, (_, _) => IsFindActive = true));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.HideFind, (_, _) => IsFindActive = false));
@@ -193,6 +205,13 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// the Outline always mirrors the whole document. Reading the Outline is view-only (INV-012).
     /// </summary>
     public IReadOnlyList<SectionHeading> Outline => _outline ??= BuildOutline();
+
+    /// <summary>
+    /// Whether the caret currently sits inside a Table — the availability switch for the Table
+    /// Formatting Actions: Insert Table runs only outside a Table; Add Row and Add Column run only
+    /// inside one (INV-018).
+    /// </summary>
+    public bool IsCaretInTable => TableEditing.IsInTable(CaretPosition);
 
     /// <summary>
     /// The Current Section: the <see cref="SectionHeading"/> whose Section most immediately encloses
@@ -406,6 +425,25 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Insert Table Formatting Action: inserts a new three-column Table (header row plus
+    /// two empty body rows) at the caret and selects the first header cell. No-op while the caret is
+    /// inside a Table (INV-018).
+    /// </summary>
+    public void InsertTableAtCaret() => TableEditing.InsertTable(this);
+
+    /// <summary>
+    /// Applies the Add Row Formatting Action: inserts a new empty row below the caret's row, at the
+    /// Table's column count (INV-019). No-op while the caret is not inside a Table.
+    /// </summary>
+    public void AddTableRowAtCaret() => TableEditing.AddRow(this);
+
+    /// <summary>
+    /// Applies the Add Column Formatting Action: inserts a new empty column to the right of the
+    /// caret's column, extending every row (INV-019). No-op while the caret is not inside a Table.
+    /// </summary>
+    public void AddTableColumnAtCaret() => TableEditing.AddColumn(this);
 
     // Builds the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
     // Suggestions head the menu (choosing one replaces the word), followed by the usual clipboard

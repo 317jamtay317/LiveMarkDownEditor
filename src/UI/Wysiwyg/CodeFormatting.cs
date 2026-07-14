@@ -116,8 +116,8 @@ internal static class CodeFormatting
     {
         var document = editor.Document;
         var blocks = document.Blocks.ToList();
-        var startIndex = blocks.IndexOf(TopLevelBlockOf(editor.Selection.Start)!);
-        var endIndex = blocks.IndexOf(TopLevelBlockOf(editor.Selection.End)!);
+        var startIndex = blocks.IndexOf(VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start)!);
+        var endIndex = blocks.IndexOf(VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End)!);
         if (startIndex < 0 || endIndex < 0)
         {
             return;
@@ -201,20 +201,6 @@ internal static class CodeFormatting
 
     private static bool CoversWholeParagraph(TextSelection selection, Paragraph paragraph) =>
         selection.Text == new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text;
-
-    // The block that sits directly in the FlowDocument and contains the given position.
-    private static Block? TopLevelBlockOf(TextPointer position)
-    {
-        for (DependencyObject? node = position.Parent; node is TextElement element; node = element.Parent)
-        {
-            if (element is Block block && block.Parent is FlowDocument)
-            {
-                return block;
-            }
-        }
-
-        return null;
-    }
 
     private static readonly FontFamily MonospaceFont = new("Consolas, Cascadia Mono, Courier New");
 

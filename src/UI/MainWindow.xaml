@@ -50,6 +50,11 @@
                 <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="I"
                         FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
                         Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&lt;/&gt;"
+                        FontFamily="Consolas" FontSize="12"
+                        ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
+                        Command="controls:MarkdownEditingCommands.ToggleCode"
+                        CommandTarget="{Binding ElementName=Editor}" />
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 

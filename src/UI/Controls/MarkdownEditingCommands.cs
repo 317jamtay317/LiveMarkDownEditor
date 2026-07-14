@@ -40,6 +40,33 @@ public static class MarkdownEditingCommands
         nameof(ToggleCode),
         typeof(MarkdownEditingCommands));
 
+    /// <summary>
+    /// The Insert Table Formatting Action: inserts a new three-column Table (header row plus two
+    /// empty body rows) at the caret. Available only while the caret is not inside a Table (INV-018).
+    /// </summary>
+    public static RoutedUICommand InsertTable { get; } = new(
+        "Add table",
+        nameof(InsertTable),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Add Row Formatting Action: inserts a new empty row below the caret's row, at the Table's
+    /// column count (INV-019). Available only while the caret is inside a Table.
+    /// </summary>
+    public static RoutedUICommand AddTableRow { get; } = new(
+        "Add row",
+        nameof(AddTableRow),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Add Column Formatting Action: inserts a new empty column to the right of the caret's
+    /// column, extending every row (INV-019). Available only while the caret is inside a Table.
+    /// </summary>
+    public static RoutedUICommand AddTableColumn { get; } = new(
+        "Add column",
+        nameof(AddTableColumn),
+        typeof(MarkdownEditingCommands));
+
     /// <summary>Opens the Find Bar and focuses its query box (Ctrl+F).</summary>
     public static RoutedUICommand ShowFind { get; } = new(
         "Find",
