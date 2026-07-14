@@ -56,6 +56,22 @@
                         Command="controls:MarkdownEditingCommands.ToggleCode"
                         CommandTarget="{Binding ElementName=Editor}" />
 
+                <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}" Header="Table"
+                              ToolTip="Insert a table, or grow the table at the caret">
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Table"
+                                  Command="controls:MarkdownEditingCommands.InsertTable"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Row"
+                                  Command="controls:MarkdownEditingCommands.AddTableRow"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Column"
+                                  Command="controls:MarkdownEditingCommands.AddTableColumn"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                    </MenuItem>
+                </Menu>
+
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
                 <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Collapse all"
