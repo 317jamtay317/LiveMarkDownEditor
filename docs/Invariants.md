@@ -60,9 +60,10 @@ and tested.
 - **Tested by:** `WysiwygRoundTripTests.RoundTrip_IsIdempotent_INV005`.
 
 ### INV-006 — A Conflict never silently discards either side
-- **Statement:** When an External Change to the Watched File is detected while the Editor Session
-  has unsaved edits, a Conflict is raised and surfaced to the user for a decision. Neither the
-  on-disk contents nor the unsaved edits are overwritten without an explicit choice.
+- **Statement:** When an External Change to the Watched File **that changes content** (INV-026) is
+  detected while the Editor Session has unsaved edits, a Conflict is raised and surfaced to the user
+  for a decision. Neither the on-disk contents nor the unsaved edits are overwritten without an
+  explicit choice.
 - **Enforced by:** `ExternalChangeReconciler.Reconcile` and the Editor Session's
   `HandleExternalChangeAsync`, which raise a Conflict (rather than applying disk contents) when
   unsaved edits exist, and never overwrite without an explicit Keep/Reload choice.
@@ -70,9 +71,9 @@ and tested.
   `EditorSessionViewModelTests.ExternalChange_WithUnsavedEdits_RaisesConflict_AndKeepsEdits_INV006`.
 
 ### INV-007 — With no unsaved edits, an External Change reloads live
-- **Statement:** When the Watched File changes and the Editor Session has **no** unsaved edits, the
-  Markdown Document (and therefore the Visual Document) is updated to the new on-disk contents
-  without prompting. This is the "live update by any user, including AI" behaviour.
+- **Statement:** When the Watched File changes in content (INV-026) and the Editor Session has **no**
+  unsaved edits, the Markdown Document (and therefore the Visual Document) is updated to the new
+  on-disk contents without prompting. This is the "live update by any user, including AI" behaviour.
 - **Enforced by:** External-change reconciliation applying disk contents directly when the session
   is clean.
 - **Tested by:** `ExternalChangeReconcilerTests.Reconcile_WithNoUnsavedEdits_ReloadsFromDisk_INV007`,
@@ -378,9 +379,34 @@ and tested.
   its `IMarkdownRoundTrip` port before calling `ConflictDifference.Compute`; the `FlowDocumentRoundTrip`
   adapter realises the port as a Project immediately followed by a Capture. `Compute` itself stays pure
   and unaware — it compares whatever two sides it is given (INV-021).
-- **Tested by:** `EditorSessionViewModelTests.ViewDifference_ShowsNoDifference_ForCanonicalMarkdownChurn_INV025`,
-  `EditorSessionViewModelTests.ViewDifference_StillShowsARealChange_BesideChurn_INV025`,
+- **Tested by:** `EditorSessionViewModelTests.ViewDifference_StillShowsARealChange_BesideChurn_INV025`,
   `FlowDocumentRoundTripTests.*_INV025`.
+- **Note:** A Conflict Difference showing *every* line Unchanged is unreachable — INV-026 ignores a
+  bytes-only External Change rather than raising a Conflict over it. Churn is therefore only ever
+  seen beside a real change, which is what the test above pins.
+
+### INV-026 — An External Change that changes no content is ignored
+- **Statement:** An External Change whose new on-disk contents share the Editor Session's Canonical
+  Markdown changes bytes but not content, and is acted on by neither INV-006 nor INV-007: no Conflict
+  is raised, and no live reload occurs. This covers the Editor Session's own save (where the disk
+  contents come to equal the session's source text outright) and any other writer restyling the
+  Watched File — setext headings rewritten as ATX, `_` emphasis as `*`, blank-line spacing changed.
+  It follows from INV-025: because a Conflict Difference compares Canonical Markdown, a Conflict
+  raised by a bytes-only change would show every line Unchanged, demanding the user resolve a
+  difference they cannot see. The rule is reached often, not rarely: Capture rewrites the *whole*
+  Markdown Document as Canonical Markdown, so one keystroke in a Watched File authored in another
+  style leaves an Editor Session that agrees with the file in content while differing from it in
+  bytes on every restyled line.
+- **Consequence (accepted):** The externally written bytes are not adopted — the Editor Session keeps
+  its own source text, and a later save rewrites the Watched File as Canonical Markdown (INV-005).
+  No content is discarded, so INV-006 holds: what is dropped is a styling of the same content, which
+  the Editor Session would overwrite on its next save regardless.
+- **Enforced by:** `EditorSessionViewModel.HandleExternalChangeAsync`, which returns before
+  reconciling when the two sides share Canonical Markdown, Round-Tripping each through its
+  `IMarkdownRoundTrip` port.
+- **Tested by:** `EditorSessionViewModelTests.ExternalChange_ThatMatchesSession_IsIgnored_INV026`,
+  `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WhenSessionClean_IsIgnored_INV026`,
+  `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WithUnsavedEdits_RaisesNoConflict_INV026`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

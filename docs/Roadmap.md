@@ -35,13 +35,17 @@ work that is still in review, noted inline.
   differences of content are shown. The Conflict Difference is now a comparison of meaning rather
   than of bytes: a line shown as Unchanged may still differ on disk, and it no longer predicts a
   save's byte-level output. That trade is accepted, and recorded in INV-025.
-- [ ] **Decide whether a restyle-only External Change should raise a Conflict at all.** Falls out of
+- [x] **Decide whether a restyle-only External Change should raise a Conflict at all.** Falls out of
   INV-025. A Conflict is raised by comparing raw text, but the Conflict Difference now compares
   Canonical Markdown — so another writer merely restyling the Watched File (setext headings to ATX,
   say) raises a Conflict whose Difference shows every line Unchanged. Truthful (the bytes really did
-  change) but it asks the user to resolve a Conflict over nothing they can see. Either suppress the
-  Conflict when the two sides share Canonical Markdown, or say "no content changed" in the bar.
-  Needs a product decision before any code — the suppression option touches INV-006/007.
+  change) but it asks the user to resolve a Conflict over nothing they can see. **Decided: suppress
+  it** — the self-write guard now compares Canonical Markdown rather than raw text, so an External
+  Change that changes no content raises no Conflict and triggers no live reload (INV-026, with
+  INV-006/007 amended to govern a change *of content*). It also turned out to be reached far more
+  often than "restyle-only" suggested: Capture rewrites the whole document canonically, so one
+  keystroke in a file authored in another style is enough. A clean session now also stops
+  re-projecting for a no-op change, which had been discarding fold state and caret position.
 
 ## Rounds out the Formatting Actions
 

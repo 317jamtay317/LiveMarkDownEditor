@@ -180,8 +180,9 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Handles an External Change to the Watched File: reloads live when the session is clean
-    /// (INV-007), or raises a Conflict when there are unsaved edits (INV-006). Self-writes (disk
-    /// contents already equal to the session) are ignored.
+    /// (INV-007), or raises a Conflict when there are unsaved edits (INV-006). An External Change
+    /// that changes no content — the session's own save, or another writer restyling the file — is
+    /// ignored (INV-026).
     /// </summary>
     /// <param name="path">The path reported as changed.</param>
     public async Task HandleExternalChangeAsync(string path)
@@ -201,7 +202,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (disk.Source.Text == Markdown)
+        if (ChangesNoContent(disk.Source.Text))
         {
             return;
         }
@@ -225,6 +226,14 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         _watcher.Changed -= OnWatcherChanged;
         _watcher.StopWatching();
     }
+
+    /// <summary>
+    /// Whether the Watched File's new contents say what this session already says, differing from it
+    /// in bytes alone — the session's own save, or another writer restyling the file (INV-026).
+    /// </summary>
+    /// <param name="diskText">The Watched File's new on-disk contents.</param>
+    private bool ChangesNoContent(string diskText) =>
+        diskText == Markdown || _roundTrip.RoundTrip(diskText) == _roundTrip.RoundTrip(Markdown);
 
     private void KeepMyEdits() => ClearConflict();
 

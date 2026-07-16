@@ -120,7 +120,7 @@ public sealed class EditorSessionViewModelTests
     }
 
     [Fact]
-    public async Task ExternalChange_ThatMatchesSession_IsIgnored_NoConflict()
+    public async Task ExternalChange_ThatMatchesSession_IsIgnored_INV026()
     {
         var session = await LoadedSessionAsync("# Same");
 
@@ -305,24 +305,36 @@ public sealed class EditorSessionViewModelTests
             .Replace("_there_", "*there*");
 
     [Fact]
-    public async Task ViewDifference_ShowsNoDifference_ForCanonicalMarkdownChurn_INV025()
+    public async Task ExternalChange_ThatOnlyRestylesTheWatchedFile_WithUnsavedEdits_RaisesNoConflict_INV026()
     {
         CanonicaliseSetextAndUnderscores();
         var session = await LoadedSessionAsync("# Title\n\nHello *everyone*");
         session.Markdown = "# Title\n\nHello *there*";
+
+        // The other writer restyles the file to say exactly what the session already says.
         _store.Seed(Path, "Title\n=====\n\nHello _there_");
         _watcher.RaiseChanged(Path);
         await Task.Yield();
 
-        session.ViewDifferenceCommand.Execute(null);
+        session.HasConflict.ShouldBeFalse();
+        session.Markdown.ShouldBe("# Title\n\nHello *there*");
+        session.HasUnsavedEdits.ShouldBeTrue();
+    }
 
-        session.HasConflict.ShouldBeTrue();
-        session.DifferenceLines.ShouldBe(
-        [
-            new DifferenceLine(DifferenceLineKind.Unchanged, "# Title"),
-            new DifferenceLine(DifferenceLineKind.Unchanged, ""),
-            new DifferenceLine(DifferenceLineKind.Unchanged, "Hello *there*"),
-        ]);
+    [Fact]
+    public async Task ExternalChange_ThatOnlyRestylesTheWatchedFile_WhenSessionClean_IsIgnored_INV026()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("Title\n=====\n\nHello _there_");
+
+        _store.Seed(Path, "# Title\n\nHello *there*");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        // No content changed, so the Visual Document is not re-projected out from under the user.
+        session.Markdown.ShouldBe("Title\n=====\n\nHello _there_");
+        session.HasConflict.ShouldBeFalse();
+        session.HasUnsavedEdits.ShouldBeFalse();
     }
 
     [Fact]
