@@ -25,6 +25,7 @@ public static class UiRegistry
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
             services.AddSingleton<IThemeService, WpfThemeService>();
+            services.AddSingleton<IMarkdownRoundTrip, Wysiwyg.FlowDocumentRoundTrip>();
 
             // A fresh Editor Session (with its own Watched File watcher) is minted per Tab.
             services.AddTransient<EditorSessionViewModel>();

@@ -21,6 +21,7 @@ file on disk stays plain Markdown and updates live when changed by anyone — an
 | **Project** | The act of transforming a Markdown Document's source text into a Visual Document for display and editing. (Source → Visual.) |
 | **Capture** | The act of transforming the user-edited Visual Document back into Markdown Document source text. (Visual → Source.) The inverse direction of Project. |
 | **Round-Trip** | A Project immediately followed by a Capture. A Round-Trip must preserve the semantic content of the Markdown Document (see Invariants). |
+| **Canonical Markdown** | The normalised source text Capture emits — the fixed point of a Round-Trip (INV-005). Markdown authored in a style Project and Capture do not preserve (setext rather than ATX headings, `_` rather than `*` emphasis, differing blank-line spacing) Round-Trips to the same Canonical Markdown as the same content authored canonically. Round-Tripping source text is therefore how its Canonical Markdown is obtained. |
 | **Render** | The act of transforming a Markdown Document's source text into its HTML representation. Used for export and interoperability, **not** for the on-screen editing surface (that is the Visual Document). |
 | **Rendered Output** | The HTML produced by rendering a Markdown Document. |
 | **Editor Session** | An active editing context holding the current Markdown Document, its Visual Document projection, the associated Watched File, and whether unsaved edits exist. |

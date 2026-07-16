@@ -27,11 +27,21 @@ work that is still in review, noted inline.
   raised by the file watcher left its buttons rendered disabled until the user's next mouse
   move. Harmless in practice, wrong on paper. `RelayCommand` now owns its `CanExecuteChanged` and
   the Editor Session requeries the three commands whenever `HasConflict` changes.
-- [ ] **Decide how canonical-Markdown churn is shown in a Conflict Difference.** Capture emits
+- [x] **Decide how canonical-Markdown churn is shown in a Conflict Difference.** Capture emits
   canonical Markdown (INV-005), so once the Visual Document is edited its blank lines can differ
   from the Watched File's, and those lines show as differences. It is truthful — that is what a
-  save would write — but noisier than a plain text comparison. Needs a product decision before
-  any code. *(Builds on the Conflict Difference, in review.)*
+  save would write — but noisier than a plain text comparison. **Decided: compare Canonical
+  Markdown on both sides** — each side is Round-Tripped before it is compared (INV-025), so only
+  differences of content are shown. The Conflict Difference is now a comparison of meaning rather
+  than of bytes: a line shown as Unchanged may still differ on disk, and it no longer predicts a
+  save's byte-level output. That trade is accepted, and recorded in INV-025.
+- [ ] **Decide whether a restyle-only External Change should raise a Conflict at all.** Falls out of
+  INV-025. A Conflict is raised by comparing raw text, but the Conflict Difference now compares
+  Canonical Markdown — so another writer merely restyling the Watched File (setext headings to ATX,
+  say) raises a Conflict whose Difference shows every line Unchanged. Truthful (the bytes really did
+  change) but it asks the user to resolve a Conflict over nothing they can see. Either suppress the
+  Conflict when the two sides share Canonical Markdown, or say "no content changed" in the bar.
+  Needs a product decision before any code — the suppression option touches INV-006/007.
 
 ## Rounds out the Formatting Actions
 

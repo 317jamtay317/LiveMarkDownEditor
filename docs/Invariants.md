@@ -360,6 +360,28 @@ and tested.
   which only forwards the click and lets it fall through to normal caret placement otherwise.
 - **Tested by:** `MarkdownRichEditorTaskMarkerTests.*_INV024`.
 
+### INV-025 — A Conflict Difference compares Canonical Markdown
+- **Statement:** The two sides a Conflict Difference compares are the **Canonical Markdown** of the
+  Editor Session's unsaved source text and the Canonical Markdown of the Watched File's conflicting
+  on-disk contents — each side Round-Tripped before it is compared. A difference of Markdown syntax
+  style alone therefore never appears as a Difference Line: because Capture emits Canonical Markdown
+  (INV-005), an edited Editor Session holds canonical source text, and a Watched File authored in
+  another style would otherwise differ on every restyled line even where the two sides say the same
+  thing. Every Difference Line shown is a difference of content, so View Difference answers the
+  question a Conflict actually poses (INV-006) — what did the other writer change, and what would I
+  lose — rather than burying it in formatting churn.
+- **Consequence (accepted):** The Conflict Difference is a comparison of meaning, not of bytes. A line
+  shown as Unchanged may still differ from the Watched File's own text, and resolving the Conflict
+  with Keep My Edits then saving rewrites those lines to Canonical Markdown. The Conflict Difference
+  does not claim to predict a save's byte-level output.
+- **Enforced by:** `EditorSessionViewModel.RefreshDifference`, which Round-Trips both sides through
+  its `IMarkdownRoundTrip` port before calling `ConflictDifference.Compute`; the `FlowDocumentRoundTrip`
+  adapter realises the port as a Project immediately followed by a Capture. `Compute` itself stays pure
+  and unaware — it compares whatever two sides it is given (INV-021).
+- **Tested by:** `EditorSessionViewModelTests.ViewDifference_ShowsNoDifference_ForCanonicalMarkdownChurn_INV025`,
+  `EditorSessionViewModelTests.ViewDifference_StillShowsARealChange_BesideChurn_INV025`,
+  `FlowDocumentRoundTripTests.*_INV025`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

@@ -12,7 +12,8 @@ namespace UI.ViewModels;
 /// associated Watched File, and whether unsaved edits exist. It loads and saves its own Watched File
 /// and reacts to External Change on it — reloading live when clean, or raising a Conflict when there
 /// are unsaved edits (INV-006/007). While a Conflict awaits resolution it can also show the Conflict
-/// Difference between the two sides (View Difference, INV-021). Choosing files and managing Tabs
+/// Difference between the two sides (View Difference, INV-021), comparing the Canonical Markdown of
+/// each side so only differences of content are shown (INV-025). Choosing files and managing Tabs
 /// belong to the <see cref="WorkspaceViewModel"/>, not here.
 /// </summary>
 public sealed class EditorSessionViewModel : ObservableObject, IDisposable
@@ -20,6 +21,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private readonly IDocumentStore _store;
     private readonly IDocumentWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IMarkdownRoundTrip _roundTrip;
     private readonly RelayCommand _keepMyEditsCommand;
     private readonly RelayCommand _reloadFromDiskCommand;
     private readonly RelayCommand _viewDifferenceCommand;
@@ -32,15 +34,21 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private bool _isDifferenceVisible;
     private IReadOnlyList<DifferenceLine> _differenceLines = [];
 
-    /// <summary>Creates a new, empty Editor Session over the given store, watcher, and dispatcher.</summary>
+    /// <summary>Creates a new, empty Editor Session over the given store, watcher, dispatcher, and Round-Trip.</summary>
     /// <param name="store">The port used to load and save the Watched File.</param>
     /// <param name="watcher">The port that raises External Change for this session's Watched File.</param>
     /// <param name="dispatcher">Marshals External Change handling onto the UI thread.</param>
-    public EditorSessionViewModel(IDocumentStore store, IDocumentWatcher watcher, IUiDispatcher dispatcher)
+    /// <param name="roundTrip">Yields the Canonical Markdown of each side of a Conflict Difference (INV-025).</param>
+    public EditorSessionViewModel(
+        IDocumentStore store,
+        IDocumentWatcher watcher,
+        IUiDispatcher dispatcher,
+        IMarkdownRoundTrip roundTrip)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _roundTrip = roundTrip ?? throw new ArgumentNullException(nameof(roundTrip));
 
         _watcher.Changed += OnWatcherChanged;
 
@@ -249,10 +257,14 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Recomputes the Conflict Difference over the Canonical Markdown of each side (INV-025), so a
+    /// Watched File authored in another Markdown style differs only where its content differs.
+    /// </summary>
     private void RefreshDifference() =>
         DifferenceLines = ConflictDifference.Compute(
-            new MarkdownSource(Markdown),
-            new MarkdownSource(_conflictingDiskText));
+            new MarkdownSource(_roundTrip.RoundTrip(Markdown)),
+            new MarkdownSource(_roundTrip.RoundTrip(_conflictingDiskText)));
 
     private void HideDifference()
     {

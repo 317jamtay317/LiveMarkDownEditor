@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows.Input;
 using Domain;
 using Shouldly;
@@ -20,8 +21,9 @@ public sealed class EditorSessionViewModelTests
     private readonly FakeDocumentStore _store = new();
     private readonly FakeDocumentWatcher _watcher = new();
     private readonly InlineUiDispatcher _dispatcher = new();
+    private readonly FakeMarkdownRoundTrip _roundTrip = new();
 
-    private EditorSessionViewModel CreateSession() => new(_store, _watcher, _dispatcher);
+    private EditorSessionViewModel CreateSession() => new(_store, _watcher, _dispatcher, _roundTrip);
 
     private async Task<EditorSessionViewModel> LoadedSessionAsync(string content)
     {
@@ -290,6 +292,58 @@ public sealed class EditorSessionViewModelTests
 
         session.HasConflict.ShouldBeFalse();
         requeried().ShouldAllBe(count => count > 0);
+    }
+
+    /// <summary>
+    /// Stands in for Capture's normalisation: a Watched File written with a setext heading and `_`
+    /// emphasis Round-Trips to the same Canonical Markdown as the ATX-and-`*` form the Editor
+    /// Session holds. Leaves already-canonical text alone, as a real Round-Trip does (INV-005).
+    /// </summary>
+    private void CanonicaliseSetextAndUnderscores() =>
+        _roundTrip.Canonicalise = markdown => markdown
+            .Replace("Title\n=====", "# Title")
+            .Replace("_there_", "*there*");
+
+    [Fact]
+    public async Task ViewDifference_ShowsNoDifference_ForCanonicalMarkdownChurn_INV025()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("# Title\n\nHello *everyone*");
+        session.Markdown = "# Title\n\nHello *there*";
+        _store.Seed(Path, "Title\n=====\n\nHello _there_");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.HasConflict.ShouldBeTrue();
+        session.DifferenceLines.ShouldBe(
+        [
+            new DifferenceLine(DifferenceLineKind.Unchanged, "# Title"),
+            new DifferenceLine(DifferenceLineKind.Unchanged, ""),
+            new DifferenceLine(DifferenceLineKind.Unchanged, "Hello *there*"),
+        ]);
+    }
+
+    [Fact]
+    public async Task ViewDifference_StillShowsARealChange_BesideChurn_INV025()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("# Title\n\nHello *there*\n\nOriginal line.");
+        session.Markdown = "# Title\n\nHello *there*\n\nMy new line.";
+        _store.Seed(Path, "Title\n=====\n\nHello _there_\n\nTheir old line.");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.DifferenceLines
+            .Where(line => line.Kind != DifferenceLineKind.Unchanged)
+            .ShouldBe(
+            [
+                new DifferenceLine(DifferenceLineKind.SessionOnly, "My new line."),
+                new DifferenceLine(DifferenceLineKind.DiskOnly, "Their old line."),
+            ]);
     }
 
     /// <summary>
