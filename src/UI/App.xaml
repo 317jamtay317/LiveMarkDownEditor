@@ -8,6 +8,8 @@
                 <!-- The active palette (Palette.Light/Dark) is merged at runtime by WpfThemeService.
                      Control styles reference palette brushes via DynamicResource, so it need not be
                      present at parse time. -->
+                <!-- Icons before Controls: the CommandIcon style resolves its Data by StaticResource. -->
+                <ResourceDictionary Source="Themes/Icons.xaml" />
                 <ResourceDictionary Source="Themes/Controls.xaml" />
                 <ResourceDictionary Source="Themes/Scrollbars.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />

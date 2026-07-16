@@ -47,6 +47,73 @@
         <Setter Property="Focusable" Value="False" />
     </Style>
 
+    <!-- A Command Icon: one of the 24x24 outlines in Icons.xaml, drawn as the content of a command
+         bar button. Three decisions worth keeping:
+
+         - Stretch="None" with a fixed 24x24 box and a LayoutTransform, rather than Stretch="Uniform".
+           Uniform scales each icon to fill its box, so icons with a smaller natural extent (the fold
+           chevrons) would be magnified next to wider ones (the code brackets) and the set would lose
+           its common weight. Scaling the whole grid instead keeps every icon to one scale, and draws
+           each where its own coordinates put it. The transform is a LayoutTransform, not a
+           RenderTransform, so the button measures the icon at its drawn 18x18 rather than 24x24.
+         - The stroke is the inherited TextElement.Foreground, which is the button's Foreground and so
+           the palette's TextBrush. That is what carries an icon across a theme swap, and what fades
+           it with the button's IsEnabled trigger.
+         - StrokeThickness is 2 on the 24x24 grid, which the 0.75 scale draws as 1.5px. -->
+    <Style x:Key="CommandIcon" TargetType="Path">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Fill" Value="{x:Null}" />
+        <Setter Property="Stroke"
+                Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource Self}}" />
+        <Setter Property="StrokeThickness" Value="2" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="LayoutTransform">
+            <Setter.Value>
+                <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- An icon-only command bar button, square so that a row of icons reads as a row of equals
+         rather than as words of differing length. Every use MUST set AutomationProperties.Name:
+         dropping the word takes with it the only thing that named the button to a screen reader.
+         Focusable, so the button is still reachable by Tab — the icon-only counterpart of
+         CommandButton. -->
+    <Style x:Key="IconCommandButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+        <Setter Property="MinWidth" Value="34" />
+        <Setter Property="Padding" Value="7,6" />
+    </Style>
+
+    <!-- An icon-only button that acts on the editor. Not focusable, so clicking it keeps focus (and
+         the visible selection) in the editor it targets — the icon-only counterpart of
+         FormatButton. -->
+    <Style x:Key="IconFormatButton" TargetType="Button" BasedOn="{StaticResource IconCommandButton}">
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+
+    <!-- The chevron marking a command bar dropdown. Drawn rather than typed: as a 9px "&#x25BE;" it
+         rendered as a three-pixel smudge of subpixel colour, which reads as dirt beside a vector
+         icon. Its data is inline because it belongs to this style rather than to the Command Icon
+         set — it is an affordance on the button, not the icon that names it — and because a
+         StaticResource here could not see a sibling dictionary merged alongside this one. -->
+    <Style x:Key="DropdownChevron" TargetType="Path">
+        <Setter Property="Data" Value="M1 3 L5 7 L9 3" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Fill" Value="{x:Null}" />
+        <Setter Property="Stroke"
+                Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource Self}}" />
+        <Setter Property="StrokeThickness" Value="1.4" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+    </Style>
+
     <!-- Square icon button (theme toggle, new-tab "+"). -->
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
         <Setter Property="MinWidth" Value="34" />
@@ -77,8 +144,8 @@
                             <StackPanel Orientation="Horizontal">
                                 <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
                                                   RecognizesAccessKey="True" />
-                                <TextBlock Text="&#x25BE;" FontSize="9" Margin="5,2,0,0"
-                                           VerticalAlignment="Center" />
+                                <Path Style="{StaticResource DropdownChevron}" Margin="4,1,0,0"
+                                      VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
                         <Popup x:Name="PART_Popup" Placement="Bottom" VerticalOffset="2"
