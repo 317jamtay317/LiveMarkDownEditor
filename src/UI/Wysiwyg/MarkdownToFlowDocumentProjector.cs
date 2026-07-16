@@ -146,6 +146,9 @@ public sealed class MarkdownToFlowDocumentProjector
             list.ListItems.Add(listItem);
         }
 
+        // A Task List's checkboxes stand in for its bullets, the same rule the List Formatting
+        // Actions apply, so a loaded Task List and a user-built one look identical (INV-023).
+        ListFormatting.RefreshTaskMarkerStyle(list);
         return list;
     }
 

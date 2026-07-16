@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Documents;
 using Shouldly;
 using UI.Controls;
@@ -176,19 +177,134 @@ public sealed class MarkdownRichEditorListTests
     }
 
     [Fact]
-    public void ToggleTaskList_CannotExecute_OutsideAList_INV023()
+    public void ToggleTaskList_CanExecute_OutsideAList_INV023()
     {
         StaThread.Run(() =>
         {
             var editor = new MarkdownRichEditor { Markdown = "alpha" };
             VisualDocumentText.PlaceCaretIn(editor, "alpha");
 
-            // A Task Marker exists only on a List Item.
+            // A Task Marker exists only on a List Item — so Toggle Task List makes the List rather
+            // than standing there disabled until the user makes one themselves.
             MarkdownEditingCommands.ToggleTaskList
                 .CanExecute(parameter: null, target: editor)
-                .ShouldBeFalse();
+                .ShouldBeTrue();
         });
     }
+
+    [Fact]
+    public void ToggleTaskList_OnParagraph_MakesAOneItemTaskList_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha" };
+            VisualDocumentText.PlaceCaretIn(editor, "alpha");
+
+            MarkdownEditingCommands.ToggleTaskList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- [ ] alpha");
+        });
+    }
+
+    [Fact]
+    public void ToggleTaskList_OnSelectedParagraphs_MakesATaskListOfThemAll_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha\n\nbravo" };
+            SelectWholeDocument(editor);
+
+            MarkdownEditingCommands.ToggleTaskList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- [ ] alpha\n- [ ] bravo");
+        });
+    }
+
+    [Fact]
+    public void ToggleTaskList_OnParagraphs_ResultRoundTrips_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha\n\nbravo" };
+            SelectWholeDocument(editor);
+            MarkdownEditingCommands.ToggleTaskList.Execute(parameter: null, target: editor);
+            var captured = editor.Markdown;
+
+            var reopened = new MarkdownRichEditor { Markdown = captured };
+
+            reopened.Capture().ShouldBe(captured);
+        });
+    }
+
+    [Fact]
+    public void TaskList_ShowsNoBullet_BecauseTheCheckboxIsTheMarker_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- [x] bravo" };
+
+            // A checkbox beside a bullet is one marker too many: the checkbox is the item's marker.
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.None);
+        });
+    }
+
+    [Fact]
+    public void OrderedTaskList_KeepsItsNumbers_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "1. [ ] alpha\n2. [x] bravo" };
+
+            // Only the bullet is redundant beside a checkbox — the numbers still carry order.
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.Decimal);
+            editor.Markdown.ShouldBe("1. [ ] alpha\n2. [x] bravo");
+        });
+    }
+
+    [Fact]
+    public void PartlyMarkedList_KeepsItsBullets_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- alpha\n- [ ] bravo" };
+
+            // WPF gives a List one marker for all its items, so the bullet only goes away once
+            // every item is a task item; otherwise the unmarked items would lose their marker.
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.Disc);
+        });
+    }
+
+    [Fact]
+    public void ToggleTaskList_RemovingTheMarkers_RestoresTheBullets_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- [x] bravo" };
+            SelectWholeList(editor);
+
+            MarkdownEditingCommands.ToggleTaskList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- alpha\n- bravo");
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.Disc);
+        });
+    }
+
+    [Fact]
+    public void ToggleTaskList_MarkingEveryItem_TakesTheBulletsAway_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- alpha\n- bravo" };
+            SelectWholeList(editor);
+
+            MarkdownEditingCommands.ToggleTaskList.Execute(parameter: null, target: editor);
+
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.None);
+        });
+    }
+
+    private static WpfList ListOf(MarkdownRichEditor editor) =>
+        editor.Document.Blocks.OfType<WpfList>().First();
 
     [Fact]
     public void ToggleTaskList_CanExecute_InsideAList_INV023()

@@ -52,7 +52,7 @@ Formatting Actions are real edits: they change the Visual Document, which Captur
 | `AddTableColumnAtCaret()` | `AddTableColumn` | Inserts a new empty column right of the caret's column, extending every row (INV-019). Enabled only while the caret is in a Table. |
 | `ToggleUnorderedListAtSelection()` | `ToggleUnorderedList` | The selected paragraphs become an Unordered List; an Unordered List becomes plain paragraphs again; an Ordered List is converted rather than removed (INV-023). |
 | `ToggleOrderedListAtSelection()` | `ToggleOrderedList` | The counterpart of Toggle Unordered List, for Ordered Lists (INV-023). |
-| `ToggleTaskListAtSelection()` | `ToggleTaskList` | Gives every selected List Item lacking one an unchecked Task Marker, or clears them all when every selected List Item already carries one. Enabled only while the selection is in a List — a Task Marker exists only on a List Item (INV-023). |
+| `ToggleTaskListAtSelection()` | `ToggleTaskList` | Gives every selected List Item lacking one an unchecked Task Marker, or clears them all when every selected List Item already carries one. Outside a List it makes the selected paragraphs an Unordered List first, since a Task Marker exists only on a List Item. An Unordered Task List shows no bullet — the checkbox is the item's marker (INV-023). |
 
 The formatting logic lives in `UI.Wysiwyg.CodeFormatting`, `UI.Wysiwyg.TableEditing`, and
 `UI.Wysiwyg.ListFormatting`, which the Projector shares, so Capture treats user-applied code, Tables,

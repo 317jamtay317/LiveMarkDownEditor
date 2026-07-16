@@ -309,16 +309,25 @@ and tested.
     List applied to an Unordered List makes it Ordered (and vice versa); only the *same* kind's
     toggle turns a List back into paragraphs. So a List is never silently destroyed by reaching for
     the other kind.
-  - **A Task Marker exists only on a List Item.** Toggle Task List is unavailable outside a List, and
-    turning a Task List back into paragraphs removes its Task Markers with it — no Task Marker can
+  - **A Task Marker exists only on a List Item.** Applied outside a List, Toggle Task List makes the
+    selected paragraphs an Unordered List first and then marks them — it never refuses the action.
+    Turning a Task List back into paragraphs removes its Task Markers with it: no Task Marker can
     outlive the List Item that carries it.
   - **Toggle Task List is all-or-nothing over the selection.** It removes the Task Markers only when
     every selected List Item already carries one; otherwise it gives an unchecked Task Marker to
     those that lack one, so a partly-marked selection converges on marked rather than flip-flopping.
+  - **A Task Marker's checkbox is its List Item's marker.** An Unordered List whose every item is a
+    task item shows no bullet — a bullet beside a checkbox is one marker too many. It regains its
+    bullets the moment any item is not a task item, because WPF gives a List one marker for all of
+    its items and the unmarked items would otherwise be left with no marker at all. An Ordered Task
+    List keeps its numbers. This is presentation only: it never changes the Captured source text.
 - **Enforced by:** The `ListFormatting` helper, which composes its List through the same
   `ApplyList` seam the Projector uses (INV-018) and **moves each item's existing paragraph** into the
   List (and back out again) rather than re-creating it from text — so inline formatting cannot be
-  flattened by a toggle — and which gates Toggle Task List on an enclosing `ListItem`.
+  flattened by a toggle. `ListFormatting.RefreshTaskMarkerStyle` is the one place the bullet rule
+  lives, applied by the Projector and by every List Formatting Action alike; Capture tells an Ordered
+  List from an Unordered one by `MarkerStyle == Decimal`, and `None` is not `Decimal`, so dropping the
+  bullet cannot change the captured marker.
 - **Tested by:** `MarkdownRichEditorListTests.*_INV023`.
 
 ### INV-024 — Toggle Task Marker flips only that Task Marker's state

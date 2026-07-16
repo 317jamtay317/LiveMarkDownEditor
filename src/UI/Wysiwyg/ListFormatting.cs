@@ -32,29 +32,40 @@ internal static class ListFormatting
     internal static void ToggleOrdered(RichTextBox editor) => Toggle(editor, ordered: true);
 
     /// <summary>
-    /// Whether Toggle Task List can run: the selection touches at least one List Item, because a
-    /// Task Marker exists only on a List Item (INV-023).
+    /// Whether Toggle Task List can run: the selection is inside a List, or on paragraphs a List can
+    /// be made from (INV-023).
     /// </summary>
     /// <param name="editor">The editor whose selection is queried.</param>
-    internal static bool CanToggleTaskList(RichTextBox editor) => SelectedItems(editor).Count > 0;
+    internal static bool CanToggleTaskList(RichTextBox editor) =>
+        SelectedItems(editor).Count > 0
+        || VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is Paragraph;
 
     /// <summary>
     /// The Toggle Task List Formatting Action: gives every selected List Item lacking one an
     /// unchecked Task Marker, or — when every selected List Item already carries one — removes them
-    /// all. A partly-marked selection therefore converges on marked (INV-023).
+    /// all. A partly-marked selection therefore converges on marked. Outside a List it first makes
+    /// the selected paragraphs an Unordered List, since a Task Marker exists only on a List Item
+    /// (INV-023).
     /// </summary>
     /// <param name="editor">The editor whose List Items are being marked.</param>
     internal static void ToggleTaskList(RichTextBox editor)
     {
-        var items = SelectedItems(editor);
-        if (items.Count == 0)
-        {
-            return;
-        }
-
         editor.BeginChange();
         try
         {
+            var items = SelectedItems(editor);
+            if (items.Count == 0)
+            {
+                // A Task Marker has nowhere to live outside a List Item, so make the List rather
+                // than refusing the action and leaving the user to reach for the bullet button first.
+                if (Wrap(editor, ordered: false) is not { } created)
+                {
+                    return;
+                }
+
+                items = [.. created.ListItems];
+            }
+
             var clearing = items.TrueForAll(item => TaskMarkerEditing.MarkerOf(FirstParagraphOf(item)) is not null);
             foreach (var paragraph in items.Select(FirstParagraphOf).OfType<Paragraph>())
             {
@@ -66,6 +77,11 @@ internal static class ListFormatting
                 {
                     AddTaskMarker(paragraph);
                 }
+            }
+
+            foreach (var list in items.Select(item => item.Parent).OfType<WpfList>().Distinct())
+            {
+                RefreshTaskMarkerStyle(list);
             }
         }
         finally
@@ -87,6 +103,33 @@ internal static class ListFormatting
         list.Margin = BodySpacing;
     }
 
+    /// <summary>
+    /// Settles an Unordered List's marker against its Task Markers: a checkbox <em>is</em> the item's
+    /// marker, so a List whose every item is a task item shows no bullet — a bullet beside a checkbox
+    /// is one marker too many. Call after any change to a List's items or their Task Markers.
+    /// </summary>
+    /// <param name="list">The List whose marker is settled.</param>
+    /// <remarks>
+    /// An Ordered List keeps its numbers: only the bullet is redundant beside a checkbox, the numbers
+    /// still carry the items' order. WPF gives a List one marker for all of its items, so the bullet
+    /// only goes away once every item is a task item — otherwise the unmarked items would be left
+    /// with no marker at all. Marker style is presentation: Capture reads it only to tell an Ordered
+    /// List from an Unordered one, and <see cref="TextMarkerStyle.None"/> is not
+    /// <see cref="TextMarkerStyle.Decimal"/>, so a bullet-less Task List still Captures as "- ".
+    /// </remarks>
+    internal static void RefreshTaskMarkerStyle(WpfList list)
+    {
+        if (IsOrdered(list))
+        {
+            return;
+        }
+
+        var everyItemIsATask = list.ListItems.Count > 0
+            && list.ListItems.All(item => TaskMarkerEditing.MarkerOf(FirstParagraphOf(item)) is not null);
+
+        list.MarkerStyle = everyItemIsATask ? TextMarkerStyle.None : TextMarkerStyle.Disc;
+    }
+
     // Toggling to the kind a List already is removes the List; toggling to the other kind converts
     // it, so reaching for the other kind never silently destroys a List (INV-023).
     private static void Toggle(RichTextBox editor, bool ordered)
@@ -104,6 +147,7 @@ internal static class ListFormatting
                 else
                 {
                     ApplyList(list, ordered);
+                    RefreshTaskMarkerStyle(list);
                 }
 
                 return;
@@ -118,8 +162,9 @@ internal static class ListFormatting
     }
 
     // Moves each selected top-level paragraph into a new List — moved, not rebuilt, so the items'
-    // inline formatting survives untouched (INV-023).
-    private static void Wrap(RichTextBox editor, bool ordered)
+    // inline formatting survives untouched (INV-023). Returns the List, or null when the selection
+    // held no paragraph to wrap.
+    private static WpfList? Wrap(RichTextBox editor, bool ordered)
     {
         var document = editor.Document;
         var blocks = document.Blocks.ToList();
@@ -129,7 +174,7 @@ internal static class ListFormatting
         var endIndex = last is null ? -1 : blocks.IndexOf(last);
         if (startIndex < 0 || endIndex < 0)
         {
-            return;
+            return null;
         }
 
         var list = new WpfList();
@@ -151,11 +196,12 @@ internal static class ListFormatting
         if (list.ListItems.Count == 0)
         {
             document.Blocks.Remove(list);
-            return;
+            return null;
         }
 
         var lastParagraph = (Paragraph)list.ListItems.Last().Blocks.LastBlock!;
         editor.Selection.Select(lastParagraph.ContentEnd, lastParagraph.ContentEnd);
+        return list;
     }
 
     // Lifts every List Item's blocks back out to where the List sat, dropping the Task Markers with
