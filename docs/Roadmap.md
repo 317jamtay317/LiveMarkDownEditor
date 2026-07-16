@@ -14,59 +14,60 @@ work that is still in review, noted inline.
 ## Closes a gap the docs or code already point at
 
 - [x] **Delete Row / Delete Column, and column alignment.** The Table Formatting Actions grow a
-      Table but cannot shrink one, and per-column alignment already survives a Round-Trip without
-      being reachable from the command bar. Must keep the Table rectangular. *(Builds on the Table
-      Formatting Actions, in review.)*
-- [ ] **Split `MarkdownRichEditor` up.** At ~995 lines it is roughly double the 500-line hard limit in
-      `CLAUDE.md`. It is really five features sharing a class — Project/Capture sync, Folding, the
-      Outline, Find/Replace, and the adorner wiring. Find's scan has already moved out to
-      `UI.Find.MatchScanner`, and `CodeFormatting` / `TableEditing` show the shape: a helper the
-      control delegates to. Folding and the Outline are the two big ones left.
-- [ ] **Requery conflict-bar commands when a Conflict is raised.** `RelayCommand.CanExecuteChanged`
-      delegates to `CommandManager.RequerySuggested`, which only fires on user input — so a Conflict
-      raised by the file watcher leaves its buttons rendered disabled until the user's next mouse
-      move. Harmless in practice, wrong on paper.
+  Table but cannot shrink one, and per-column alignment already survives a Round-Trip without
+  being reachable from the command bar. Must keep the Table rectangular. *(Builds on the Table*
+  *Formatting Actions, in review.)*
+- [x] **Split **`MarkdownRichEditor`** up.** At ~995 lines it is roughly double the 500-line hard limit in
+  `CLAUDE.md`. It is really five features sharing a class — Project/Capture sync, Folding, the
+  Outline, Find/Replace, and the adorner wiring. Find's scan has already moved out to
+  `UI.Find.MatchScanner`, and `CodeFormatting` / `TableEditing` show the shape: a helper the
+  control delegates to. Folding and the Outline are the two big ones left.
+- [x] **Requery conflict-bar commands when a Conflict is raised.** `RelayCommand.CanExecuteChanged`
+  delegated to `CommandManager.RequerySuggested`, which only fires on user input — so a Conflict
+  raised by the file watcher left its buttons rendered disabled until the user's next mouse
+  move. Harmless in practice, wrong on paper. `RelayCommand` now owns its `CanExecuteChanged` and
+  the Editor Session requeries the three commands whenever `HasConflict` changes.
 - [ ] **Decide how canonical-Markdown churn is shown in a Conflict Difference.** Capture emits
-      canonical Markdown (INV-005), so once the Visual Document is edited its blank lines can differ
-      from the Watched File's, and those lines show as differences. It is truthful — that is what a
-      save would write — but noisier than a plain text comparison. Needs a product decision before
-      any code. *(Builds on the Conflict Difference, in review.)*
+  canonical Markdown (INV-005), so once the Visual Document is edited its blank lines can differ
+  from the Watched File's, and those lines show as differences. It is truthful — that is what a
+  save would write — but noisier than a plain text comparison. Needs a product decision before
+  any code. *(Builds on the Conflict Difference, in review.)*
 
 ## Rounds out the Formatting Actions
 
 - [ ] **Heading level picker.** Headings are the backbone of Sections, the Outline, and Folding, and
-      are the one structural construct with no command-bar action.
+  are the one structural construct with no command-bar action.
 - [ ] **Insert Link (Ctrl+K) and Insert Image.**
 - [ ] **Block Quote and strikethrough actions.**
 
 ## Quality of life
 
 - [ ] **Export the Rendered Output as HTML.** Render already produces it for interoperability;
-      nothing in the UI reaches it.
+  nothing in the UI reaches it.
 - [ ] **Print / export as PDF.** A Visual Document is a `FlowDocument`, which WPF prints natively.
 - [ ] **Copy as rich text**, so a selection pastes formatted into Word or Outlook.
 - [ ] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
-      Tabs, offer an MRU list, and register a Windows Jump List. *(Pairs with the Startup Document
-      and file-association work, in review.)*
+  Tabs, offer an MRU list, and register a Windows Jump List. *(Pairs with the Startup Document*
+  *and file-association work, in review.)*
 - [ ] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is
-      written beside the Watched File and inserted as an Image; HTML converts to Markdown.
+  written beside the Watched File and inserted as an Image; HTML converts to Markdown.
 - [ ] **Status bar** — word and character count, reading time, caret line and column, and the
-      Current Section.
+  Current Section.
 - [ ] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
-      accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
+  accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
 - [ ] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
 
 ## Bigger swings
 
 - [ ] **Highlight what changed on a live reload.** The clearest expression of what makes this editor
-      different: INV-007 already reloads the Visual Document when the Watched File changes under a
-      clean Editor Session, but the change lands invisibly. Briefly highlighting the changed Sections
-      would make "another user or an AI just edited your file" something the user can *see*.
-      *(The Conflict Difference, in review, supplies the comparison this needs.)*
+  different: INV-007 already reloads the Visual Document when the Watched File changes under a
+  clean Editor Session, but the change lands invisibly. Briefly highlighting the changed Sections
+  would make "another user or an AI just edited your file" something the user can *see*.
+  *(The Conflict Difference, in review, supplies the comparison this needs.)*
 - [ ] **Syntax highlighting inside a Code Block.** The language tag already survives a Round-Trip.
-      Colouring is view-only, so it fits the read-only overlay pattern Code Shading established.
+  Colouring is view-only, so it fits the read-only overlay pattern Code Shading established.
 - [ ] **Folder Workspace.** A file tree for opening a directory of Markdown Documents, turning the
-      editor into a lightweight knowledge base. The largest item here — it needs real domain work
-      before any UI.
+  editor into a lightweight knowledge base. The largest item here — it needs real domain work
+  before any UI.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
-      from INV-004's supported set. Each lands one tested construct at a time.
+  from INV-004's supported set. Each lands one tested construct at a time.

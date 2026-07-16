@@ -20,6 +20,9 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private readonly IDocumentStore _store;
     private readonly IDocumentWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
+    private readonly RelayCommand _keepMyEditsCommand;
+    private readonly RelayCommand _reloadFromDiskCommand;
+    private readonly RelayCommand _viewDifferenceCommand;
 
     private string _markdown = string.Empty;
     private string? _filePath;
@@ -41,9 +44,9 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
         _watcher.Changed += OnWatcherChanged;
 
-        KeepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
-        ReloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
-        ViewDifferenceCommand = new RelayCommand(ToggleViewDifference, () => HasConflict);
+        _keepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
+        _reloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
+        _viewDifferenceCommand = new RelayCommand(ToggleViewDifference, () => HasConflict);
     }
 
     /// <summary>
@@ -97,7 +100,13 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     public bool HasConflict
     {
         get => _hasConflict;
-        private set => Set(ref _hasConflict, value);
+        private set
+        {
+            if (Set(ref _hasConflict, value))
+            {
+                RequeryConflictCommands();
+            }
+        }
     }
 
     /// <summary>
@@ -127,16 +136,16 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     public string Title => HasUnsavedEdits ? $"{Name} *" : Name;
 
     /// <summary>Resolves a Conflict by keeping the unsaved edits and discarding the disk change.</summary>
-    public ICommand KeepMyEditsCommand { get; }
+    public ICommand KeepMyEditsCommand => _keepMyEditsCommand;
 
     /// <summary>Resolves a Conflict by discarding unsaved edits and loading the on-disk contents.</summary>
-    public ICommand ReloadFromDiskCommand { get; }
+    public ICommand ReloadFromDiskCommand => _reloadFromDiskCommand;
 
     /// <summary>
     /// Shows the Conflict Difference over the editing area, or hides it again — the action toggles.
     /// Available only while a Conflict awaits resolution; it resolves nothing itself (INV-021).
     /// </summary>
-    public ICommand ViewDifferenceCommand { get; }
+    public ICommand ViewDifferenceCommand => _viewDifferenceCommand;
 
     /// <summary>Loads the Markdown file at <paramref name="path"/> into this session and watches it.</summary>
     /// <param name="path">The absolute path of the Watched File to load.</param>
@@ -249,6 +258,18 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     {
         IsDifferenceVisible = false;
         DifferenceLines = [];
+    }
+
+    /// <summary>
+    /// Requeries the commands whose availability follows <see cref="HasConflict"/>. A Conflict is
+    /// raised by the file watcher rather than by user input, so the conflict bar's buttons would
+    /// otherwise stay disabled until the next input requeried them.
+    /// </summary>
+    private void RequeryConflictCommands()
+    {
+        _keepMyEditsCommand.RaiseCanExecuteChanged();
+        _reloadFromDiskCommand.RaiseCanExecuteChanged();
+        _viewDifferenceCommand.RaiseCanExecuteChanged();
     }
 
     private void ClearConflict()

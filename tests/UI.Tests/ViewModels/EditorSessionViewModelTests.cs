@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Domain;
 using Shouldly;
 using UI.Tests.TestDoubles;
@@ -262,5 +263,51 @@ public sealed class EditorSessionViewModelTests
             new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine again"));
         session.DifferenceLines.ShouldNotContain(
             new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine"));
+    }
+
+    [Fact]
+    public async Task ExternalChange_RaisingConflict_RequeriesTheConflictCommands()
+    {
+        var session = await LoadedSessionAsync("# Original");
+        session.Markdown = "# My unsaved edit";
+        var requeried = CountRequeries(session);
+
+        _store.Seed(Path, "# Disk change");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.HasConflict.ShouldBeTrue();
+        requeried().ShouldAllBe(count => count > 0);
+    }
+
+    [Fact]
+    public async Task ResolveConflict_KeepMyEdits_RequeriesTheConflictCommands()
+    {
+        var session = await ConflictedSessionAsync();
+        var requeried = CountRequeries(session);
+
+        session.KeepMyEditsCommand.Execute(null);
+
+        session.HasConflict.ShouldBeFalse();
+        requeried().ShouldAllBe(count => count > 0);
+    }
+
+    /// <summary>
+    /// Subscribes to the three conflict-bar commands and returns a probe for how many times each
+    /// has since asked to be requeried.
+    /// </summary>
+    private static Func<IReadOnlyList<int>> CountRequeries(EditorSessionViewModel session)
+    {
+        var counts = new int[3];
+        ICommand[] commands =
+            [session.ViewDifferenceCommand, session.KeepMyEditsCommand, session.ReloadFromDiskCommand];
+
+        for (var i = 0; i < commands.Length; i++)
+        {
+            var index = i;
+            commands[i].CanExecuteChanged += (_, _) => counts[index]++;
+        }
+
+        return () => counts;
     }
 }
