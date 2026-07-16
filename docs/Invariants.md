@@ -210,7 +210,25 @@ and tested.
   `MarkdownToFlowDocumentProjectorTests.CodeElements_CarryNoBackground_SoShadingCannotReflow_INV017`,
   `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
 
+### INV-021 — Viewing the Conflict Difference is view-only and deterministic
+- **Statement:** Computing a Conflict Difference is a pure, deterministic function of the two sides —
+  the same session text and disk text always yield the same Difference Lines — and every line of both
+  sides is accounted for: the Unchanged and Session Only lines are exactly the session's lines in
+  order, and the Unchanged and Disk Only lines are exactly the disk's lines in order. Showing or
+  hiding the Conflict Difference (View Difference) never changes the Markdown Document, the Watched
+  File, or the Conflict itself: both sides are retained, unchanged, until the user resolves the
+  Conflict with an explicit choice (INV-006), and resolving it hides the difference.
+- **Enforced by:** The pure static `ConflictDifference.Compute` (Domain — no I/O, no state), and the
+  Editor Session's View Difference state (`ViewDifferenceCommand`, `IsDifferenceVisible`,
+  `DifferenceLines`) driving only presentation, with the conflicting disk text retained until
+  `ClearConflict`.
+- **Tested by:** `ConflictDifferenceTests.Compute_GivenSameInputsTwice_YieldsIdenticalLines_INV021`,
+  `ConflictDifferenceTests.Compute_AccountsForEveryLineOfBothSides_INV021`,
+  `EditorSessionViewModelTests.ViewDifference_ShowsDifference_WithoutChangingMarkdownOrConflict_INV021`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
+INV-018, INV-019, and INV-020 are reserved by the in-flight Formatting Actions / Startup Document
+work and land here when that branch merges; INV-021 skips ahead of them deliberately.
 Every invariant MUST have at least one corresponding test before it is considered done.
 -->
