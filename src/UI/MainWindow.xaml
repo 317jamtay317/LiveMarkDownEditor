@@ -170,6 +170,23 @@
                 Visibility="{Binding ActiveSession.HasConflict, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!-- View Difference: informational, so it precedes the two resolving choices. It
+                         toggles the Difference Overlay and resolves nothing itself (INV-021). The
+                         Content is set through the Style so the DataTrigger can swap it. -->
+                    <Button Command="{Binding ActiveSession.ViewDifferenceCommand}" Margin="4,0"
+                            ToolTip="Compare your unsaved edits with the file on disk">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                                <Setter Property="Content" Value="View difference" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveSession.IsDifferenceVisible}" Value="True">
+                                        <Setter Property="Content" Value="Hide difference" />
+                                        <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button Content="Keep my edits" Style="{StaticResource CommandButton}"
                             Command="{Binding ActiveSession.KeepMyEditsCommand}" Margin="4,0" />
                     <Button Content="Reload from disk" Style="{StaticResource CommandButton}"
@@ -317,6 +334,72 @@
                             Command="controls:MarkdownEditingCommands.HideFind"
                             CommandTarget="{Binding ElementName=Editor}" />
                 </StackPanel>
+            </Border>
+
+            <!-- Difference Overlay: the Active Session's Conflict Difference, covering the whole
+                 editing area (the Source Panel included — it edits the same Markdown, so leaving it
+                 live beneath an open comparison would invite edits against the view) while the
+                 Conflict bar above stays visible. Last child = topmost. View-only: computing,
+                 showing, or hiding it never changes the Markdown Document, the Watched File, or the
+                 Conflict (INV-021). -->
+            <Border Background="{DynamicResource EditorBackgroundBrush}"
+                    Visibility="{Binding ActiveSession.IsDifferenceVisible, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="14,12,14,6" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               Text="DIFFERENCE &#x2014; YOUR UNSAVED EDITS (&#x2212;) VS THE FILE ON DISK (+)" />
+                    <!-- The ScrollViewer lives inside the template so the VirtualizingStackPanel gets a
+                         real viewport; an outer ScrollViewer would give it infinite height and defeat
+                         virtualisation on a long document. -->
+                    <ItemsControl ItemsSource="{Binding ActiveSession.DifferenceLines}" Focusable="False"
+                                  ScrollViewer.CanContentScroll="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ItemsControl.Template>
+                            <ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ItemsControl.Template>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="LineRoot" Padding="14,1">
+                                    <DockPanel>
+                                        <TextBlock x:Name="Marker" DockPanel.Dock="Left" Width="16" Text=" "
+                                                   FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBlock Text="{Binding Text}" FontSize="13"
+                                                   FontFamily="Cascadia Code, Consolas, monospace"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </DockPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Kind}" Value="SessionOnly">
+                                        <Setter TargetName="LineRoot" Property="Background"
+                                                Value="{DynamicResource DifferenceRemovedBrush}" />
+                                        <Setter TargetName="Marker" Property="Text" Value="&#x2212;" />
+                                        <Setter TargetName="Marker" Property="Foreground"
+                                                Value="{DynamicResource DifferenceRemovedTextBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="DiskOnly">
+                                        <Setter TargetName="LineRoot" Property="Background"
+                                                Value="{DynamicResource DifferenceAddedBrush}" />
+                                        <Setter TargetName="Marker" Property="Text" Value="+" />
+                                        <Setter TargetName="Marker" Property="Foreground"
+                                                Value="{DynamicResource DifferenceAddedTextBrush}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
             </Border>
         </Grid>
 

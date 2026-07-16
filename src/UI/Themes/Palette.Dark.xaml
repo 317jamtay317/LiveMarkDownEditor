@@ -30,6 +30,13 @@
     <SolidColorBrush x:Key="ConflictBorderBrush" Color="#A87A17" />
     <SolidColorBrush x:Key="ConflictTextBrush" Color="#F0D68A" />
 
+    <!-- Conflict Difference: the line backgrounds and the -/+ markers of the View Difference
+         overlay. Removed (-) is the Editor Session's unsaved side; added (+) is the on-disk side. -->
+    <SolidColorBrush x:Key="DifferenceRemovedBrush" Color="#3B2528" />
+    <SolidColorBrush x:Key="DifferenceRemovedTextBrush" Color="#FF8A8E" />
+    <SolidColorBrush x:Key="DifferenceAddedBrush" Color="#22362A" />
+    <SolidColorBrush x:Key="DifferenceAddedTextBrush" Color="#6FCF8A" />
+
     <SolidColorBrush x:Key="CloseHoverBrush" Color="#4A2A2C" />
     <SolidColorBrush x:Key="CloseHoverTextBrush" Color="#FF8A8E" />
 
