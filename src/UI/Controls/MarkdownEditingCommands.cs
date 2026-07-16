@@ -74,10 +74,36 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands),
         [new KeyGesture(Key.F, ModifierKeys.Control)]);
 
-    /// <summary>Closes the Find Bar and clears the Find highlights.</summary>
+    /// <summary>Opens the Find Bar with its Replace Row, and focuses the query box (Ctrl+H).</summary>
+    public static RoutedUICommand ShowReplace { get; } = new(
+        "Replace",
+        nameof(ShowReplace),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.H, ModifierKeys.Control)]);
+
+    /// <summary>Closes the Find Bar (its Replace Row included) and clears the Find highlights.</summary>
     public static RoutedUICommand HideFind { get; } = new(
         "Close find",
         nameof(HideFind),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Replace edit: swaps the Current Match for the Replacement, then moves to the next Match.
+    /// Available only while there are Matches (INV-022).
+    /// </summary>
+    public static RoutedUICommand Replace { get; } = new(
+        "Replace",
+        nameof(Replace),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Replace All edit: swaps every Match in the Markdown Document for the Replacement in a
+    /// single undoable step, Unfolding every Folded Section first. Available only while there are
+    /// Matches (INV-022).
+    /// </summary>
+    public static RoutedUICommand ReplaceAll { get; } = new(
+        "Replace all",
+        nameof(ReplaceAll),
         typeof(MarkdownEditingCommands));
 
     /// <summary>Moves the Current Match to the next Match, wrapping past the last (F3).</summary>

@@ -27,7 +27,9 @@ Find is split so that only the editor Control touches the document:
   re-run the search. Off-screen and wrapped Matches are skipped rather than painted.
 - **View-only (INV-016).** The adorner is presentation-only (`IsHitTestVisible = false`) and only
   ever draws. Neither it nor the Find state on the editor feeds back into Capture, so finding,
-  highlighting, and moving the Current Match never change the Markdown Document.
+  highlighting, and moving the Current Match never change the Markdown Document. Replacing a Match
+  does edit (INV-022), but that is the editor's own `Replace` / `Replace All` — the adorner is not
+  involved, and simply repaints from the fresh ranges afterwards.
 - **Stale pointers.** When the document is replaced the editor recomputes the ranges; a repaint that
   races that replacement swallows the resulting `InvalidOperationException` and waits for the fresh
   ranges.

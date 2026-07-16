@@ -13,14 +13,15 @@ work that is still in review, noted inline.
 
 ## Closes a gap the docs or code already point at
 
-- [ ] **Find and Replace.** INV-016 currently states outright that Find "offers no replace". Finding
-      and stepping through Matches already works; replacing is a real edit that Captures back into
-      the Markdown Document, so it reuses machinery rather than adding any. Retire that clause of
-      INV-016 as part of the change.
-- [ ] **Delete Row / Delete Column, and column alignment.** The Table Formatting Actions grow a
+- [x] **Delete Row / Delete Column, and column alignment.** The Table Formatting Actions grow a
       Table but cannot shrink one, and per-column alignment already survives a Round-Trip without
       being reachable from the command bar. Must keep the Table rectangular. *(Builds on the Table
       Formatting Actions, in review.)*
+- [ ] **Split `MarkdownRichEditor` up.** At ~995 lines it is roughly double the 500-line hard limit in
+      `CLAUDE.md`. It is really five features sharing a class — Project/Capture sync, Folding, the
+      Outline, Find/Replace, and the adorner wiring. Find's scan has already moved out to
+      `UI.Find.MatchScanner`, and `CodeFormatting` / `TableEditing` show the shape: a helper the
+      control delegates to. Folding and the Outline are the two big ones left.
 - [ ] **Requery conflict-bar commands when a Conflict is raised.** `RelayCommand.CanExecuteChanged`
       delegates to `CommandManager.RequerySuggested`, which only fires on user input — so a Conflict
       raised by the file watcher leaves its buttons rendered disabled until the user's next mouse

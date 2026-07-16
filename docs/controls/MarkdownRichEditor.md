@@ -30,6 +30,12 @@ two directions echoing each other.
 | --- | --- | --- | --- |
 | `Markdown` | `string` | `""` | The canonical Markdown source text. **Binds two-way by default.** Setting it Projects a new Visual Document; editing the surface Captures back into it. |
 | `IsCaretInTable` | `bool` | `false` | Whether the caret sits inside a Table — the availability switch for the Table Formatting Actions (Insert Table only outside, Add Row / Add Column only inside). |
+| `FindQuery` | `string` | `""` | The Find query. Every occurrence in the Visual Document is highlighted as a Match. |
+| `IsFindActive` | `bool` | `false` | Whether the Find Bar is open. Setting it false clears the Find highlights. |
+| `Replacement` | `string` | `""` | The text a Match is swapped for, inserted verbatim (INV-022). |
+| `IsReplaceActive` | `bool` | `false` | Whether the Find Bar's Replace Row is shown. Ctrl+H opens the Find Bar with it; Ctrl+F without. |
+| `MatchCount` | `int` | `0` | **Read-only.** The number of Matches for the current `FindQuery`. |
+| `MatchSummary` | `string` | `""` | **Read-only.** The Find Bar's summary: empty with no query, `"No results"`, or `"{ordinal} of {count}"`. |
 
 ## Formatting Actions (Toggle Code &amp; Tables)
 
@@ -73,6 +79,43 @@ Folds are driven from the UI through the `UI.Controls.MarkdownEditingCommands` r
 handles via command bindings, and through the per-heading Fold Toggle chevrons in the
 [Editor Gutter](EditorGutter.md). Folds are presentation state and are cleared whenever `Markdown`
 is re-Projected.
+
+## Find &amp; Replace
+
+**Find** locates every occurrence of `FindQuery` in the Visual Document and highlights them through
+the [Find Highlight Adorner](FindHighlightAdorner.md). Find is **view-only**: it highlights, scrolls,
+and selects, but never changes `Markdown` (INV-016). The scan is the pure `UI.Find.MatchScanner`,
+which snapshots the document's text, delegates the search to `UI.Find.MatchFinder`, and maps the
+Matches back to ranges — so a Match may span an inline formatting boundary but never bridges two
+blocks.
+
+**Replace** is the part that edits: it swaps a Match for the `Replacement` and Captures the result
+back into `Markdown` like any other edit (INV-022).
+
+| Member | Command | Description |
+| --- | --- | --- |
+| — | `ShowFind` | Opens the Find Bar and focuses the query box (Ctrl+F). Leaves the Replace Row hidden. |
+| — | `ShowReplace` | Opens the Find Bar **with** the Replace Row (Ctrl+H). |
+| — | `HideFind` | Closes the Find Bar and its Replace Row, clearing the highlights (Escape). |
+| — | `FindNext` / `FindPrevious` | Move the Current Match, wrapping around the ends (F3 / Shift+F3). Enabled while there are Matches. |
+| `ReplaceCurrentMatch()` | `Replace` | Swaps the Current Match for the `Replacement`, then moves to the next Match. Enabled while there are Matches — it acts on the Current Match, so it needs one. |
+| `ReplaceAllMatches()` | `ReplaceAll` | Swaps every Match for the `Replacement` in one undoable edit. Enabled whenever there is a query — deliberately **not** gated on `MatchCount`, because the occurrences it exists to catch may all be hidden inside Folded Sections, leaving the count at zero. |
+
+Four behaviours are worth knowing, all pinned by `MarkdownRichEditorReplaceTests`:
+
+- **A Replacement is verbatim.** A Match is found case-insensitively, but the Replacement is never
+  re-cased to suit it. An empty Replacement deletes the Match — the way to delete every occurrence.
+- **Formatting is inherited only when the Match has one.** Replacing a word inside bold text leaves
+  it bold; a Match *spanning* a formatting boundary (`**bo**ld`) has no single formatting to inherit,
+  so its Replacement is plain. This holds for bold, italic, code, and strikethrough alike.
+- **Replace All Unfolds first.** Find searches only the *visible* document, so an occurrence inside a
+  Folded Section Body is invisible to it while still being present in `Markdown`. Replace All calls
+  `ExpandAllFolds()` and re-finds before replacing, so "All" means the whole Markdown Document.
+- **Replace All is one edit.** It replaces a snapshot of the ranges taken before the first edit — so
+  a Replacement containing the query cannot cascade — wrapped in `BeginChange()`/`EndChange()`, which
+  makes the batch a single undo unit. WPF attaches no undo stack until the control is loaded in a
+  visual tree, so the undo grouping is verified by driving Ctrl+Z in the running app rather than by a
+  headless test.
 
 ## Outline &amp; Navigation
 

@@ -63,6 +63,26 @@ public sealed class MarkdownRichEditor : RichTextBox
         typeof(MarkdownRichEditor),
         new PropertyMetadata(false, OnIsFindActiveChanged));
 
+    /// <summary>
+    /// Identifies the <see cref="Replacement"/> dependency property. The Find Bar's Replace Row binds
+    /// its Replacement box here. Unlike the other Find state, using it is a real edit (INV-022).
+    /// </summary>
+    public static readonly DependencyProperty ReplacementProperty = DependencyProperty.Register(
+        nameof(Replacement),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(string.Empty));
+
+    /// <summary>
+    /// Identifies the <see cref="IsReplaceActive"/> dependency property — whether the Find Bar's
+    /// Replace Row is shown. The Ctrl+H command opens the Find Bar with it; Ctrl+F opens without it.
+    /// </summary>
+    public static readonly DependencyProperty IsReplaceActiveProperty = DependencyProperty.Register(
+        nameof(IsReplaceActive),
+        typeof(bool),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(false));
+
     private static readonly DependencyPropertyKey MatchCountPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(MatchCount),
         typeof(int),
@@ -103,6 +123,10 @@ public sealed class MarkdownRichEditor : RichTextBox
     private readonly List<TextRange> _matchRanges = [];
     private int _currentMatch = -1;
 
+    // Set while a Replace All batch is running, so the per-edit Recompute is suppressed: it would
+    // clear the Match ranges the batch is iterating. The batch Recomputes once when it finishes.
+    private bool _isReplacing;
+
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
     {
@@ -129,13 +153,31 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => AddTableColumnAtCaret(),
             (_, e) => e.CanExecute = IsCaretInTable));
         CommandBindings.Add(new CommandBinding(
-            MarkdownEditingCommands.ShowFind, (_, _) => IsFindActive = true));
+            MarkdownEditingCommands.ShowFind, (_, _) =>
+            {
+                IsReplaceActive = false;
+                IsFindActive = true;
+            }));
         CommandBindings.Add(new CommandBinding(
-            MarkdownEditingCommands.HideFind, (_, _) => IsFindActive = false));
+            MarkdownEditingCommands.ShowReplace, (_, _) =>
+            {
+                IsReplaceActive = true;
+                IsFindActive = true;
+            }));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.HideFind, (_, _) =>
+            {
+                IsFindActive = false;
+                IsReplaceActive = false;
+            }));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.FindNext, (_, _) => MoveCurrentMatch(1), CanFindMove));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.FindPrevious, (_, _) => MoveCurrentMatch(-1), CanFindMove));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.Replace, (_, _) => ReplaceCurrentMatch(), CanFindMove));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ReplaceAll, (_, _) => ReplaceAllMatches(), CanReplaceAll));
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
@@ -188,6 +230,20 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (bool)GetValue(IsFindActiveProperty);
         set => SetValue(IsFindActiveProperty, value);
+    }
+
+    /// <summary>The Replacement: the text a Match is swapped for, inserted verbatim (INV-022).</summary>
+    public string Replacement
+    {
+        get => (string)GetValue(ReplacementProperty);
+        set => SetValue(ReplacementProperty, value);
+    }
+
+    /// <summary>Whether the Find Bar's Replace Row is shown.</summary>
+    public bool IsReplaceActive
+    {
+        get => (bool)GetValue(IsReplaceActiveProperty);
+        set => SetValue(IsReplaceActiveProperty, value);
     }
 
     /// <summary>The number of Matches for the current <see cref="FindQuery"/>.</summary>
@@ -445,6 +501,61 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// </summary>
     public void AddTableColumnAtCaret() => TableEditing.AddColumn(this);
 
+    /// <summary>
+    /// Replaces the Current Match with the <see cref="Replacement"/> and moves to the next Match.
+    /// Unlike Find, this is a real edit: it Captures back into <see cref="Markdown"/> (INV-022).
+    /// No-op while there is no Current Match.
+    /// </summary>
+    public void ReplaceCurrentMatch()
+    {
+        if (_currentMatch < 0 || _currentMatch >= _matchRanges.Count)
+        {
+            return;
+        }
+
+        MatchReplacer.Replace(_matchRanges[_currentMatch], Replacement);
+
+        // The edit already drove a Recompute through OnTextChanged, which clamped the Current Match:
+        // the replaced Match is gone from the list, so the same index now names the following Match.
+    }
+
+    /// <summary>
+    /// Replaces every Match in the Markdown Document with the <see cref="Replacement"/>, in a single
+    /// undoable edit that Captures back into <see cref="Markdown"/> (INV-022). Every Folded Section
+    /// is Unfolded first so an occurrence hidden in a Section Body is not missed — Find searches only
+    /// the visible Visual Document.
+    /// </summary>
+    public void ReplaceAllMatches()
+    {
+        // Unfolding is view-only (INV-011), but it does reveal Matches Find could not see.
+        ExpandAllFolds();
+        RecomputeMatches();
+
+        if (_matchRanges.Count == 0)
+        {
+            return;
+        }
+
+        // Replace a snapshot of the ranges taken before the first edit: each Match is replaced exactly
+        // once, so a Replacement containing the query cannot cascade. The guard suppresses the
+        // per-edit Recompute (which would clear the very list being iterated); BeginChange/EndChange
+        // coalesces the batch into one undo unit.
+        var matches = _matchRanges.ToList();
+        _isReplacing = true;
+        BeginChange();
+        try
+        {
+            MatchReplacer.ReplaceAll(matches, Replacement);
+        }
+        finally
+        {
+            EndChange();
+            _isReplacing = false;
+        }
+
+        RecomputeMatches();
+    }
+
     // Builds the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
     // Suggestions head the menu (choosing one replaces the word), followed by the usual clipboard
     // commands. Over correctly-spelled text it is just the clipboard commands.
@@ -574,27 +685,27 @@ public sealed class MarkdownRichEditor : RichTextBox
         }
     }
 
+    // Find Next / Find Previous / Replace all act on the Current Match, so they need one.
     private void CanFindMove(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = MatchCount > 0;
 
-    // Re-runs the Find over the current Visual Document: builds a text snapshot, finds every Match,
-    // maps each to a document range for the adorner, and refreshes the count and Current Match. Never
+    // Replace All, by contrast, is available whenever there is a query — never gated on the Match
+    // count. Find sees only the visible Visual Document, so the occurrences Replace All exists to
+    // catch may all be hidden inside Folded Sections, leaving the count at zero; it Unfolds and
+    // re-finds for itself (INV-022). Gating it on the count would disable the command in exactly the
+    // case it is there to handle.
+    private void CanReplaceAll(object sender, CanExecuteRoutedEventArgs e) =>
+        e.CanExecute = !string.IsNullOrEmpty(FindQuery);
+
+    // Re-runs the Find over the current Visual Document and refreshes the ranges the adorner paints,
+    // the count, and the Current Match. The scan itself lives in the pure MatchScanner and never
     // touches the Markdown source (INV-016).
     private void RecomputeMatches()
     {
         _matchRanges.Clear();
-        var query = FindQuery;
 
-        if (IsFindActive && !string.IsNullOrEmpty(query) && Document is { } document)
+        if (IsFindActive)
         {
-            var (text, anchors) = BuildTextSnapshot(document);
-            foreach (var match in MatchFinder.FindMatches(text, query))
-            {
-                var range = RangeFor(anchors, match);
-                if (range is not null)
-                {
-                    _matchRanges.Add(range);
-                }
-            }
+            _matchRanges.AddRange(MatchScanner.Scan(Document, FindQuery));
         }
 
         _currentMatch = _matchRanges.Count == 0
@@ -693,78 +804,6 @@ public sealed class MarkdownRichEditor : RichTextBox
         return pen;
     }
 
-    // Maps a Match (offsets into the text snapshot) to a document range, resolving its start and end
-    // through their anchoring text runs — so a Match that spans an inline formatting boundary still
-    // yields one contiguous range.
-    private static TextRange? RangeFor(IReadOnlyList<(int Offset, int Length, TextPointer Pointer)> anchors, Match match)
-    {
-        var start = PointerAt(anchors, match.Start, atEnd: false);
-        var end = PointerAt(anchors, match.Start + match.Length, atEnd: true);
-        return start is null || end is null ? null : new TextRange(start, end);
-    }
-
-    private static TextPointer? PointerAt(
-        IReadOnlyList<(int Offset, int Length, TextPointer Pointer)> anchors,
-        int index,
-        bool atEnd)
-    {
-        foreach (var anchor in anchors)
-        {
-            // For a span's end, the character before the index must lie in this run (offset < index);
-            // for a start, the character at the index must (offset <= index).
-            var withinStart = atEnd ? index > anchor.Offset : index >= anchor.Offset;
-            var withinEnd = index <= anchor.Offset + anchor.Length;
-            if (withinStart && withinEnd)
-            {
-                return anchor.Pointer.GetPositionAtOffset(index - anchor.Offset, LogicalDirection.Forward);
-            }
-        }
-
-        return null;
-    }
-
-    // A plain-text snapshot of the Visual Document for searching, with an anchor per text run recording
-    // where that run's text begins in the snapshot. A separator is inserted at block boundaries so a
-    // Match never bridges two blocks, while adjacent inline runs are concatenated so a Match may span a
-    // formatting boundary within a line.
-    private static (string Text, List<(int Offset, int Length, TextPointer Pointer)> Anchors) BuildTextSnapshot(
-        FlowDocument document)
-    {
-        var builder = new StringBuilder();
-        var anchors = new List<(int, int, TextPointer)>();
-        var pointer = document.ContentStart;
-
-        while (pointer is not null)
-        {
-            switch (pointer.GetPointerContext(LogicalDirection.Forward))
-            {
-                case TextPointerContext.Text:
-                    var runText = pointer.GetTextInRun(LogicalDirection.Forward);
-                    anchors.Add((builder.Length, runText.Length, pointer));
-                    builder.Append(runText);
-                    pointer = pointer.GetPositionAtOffset(runText.Length, LogicalDirection.Forward);
-                    break;
-
-                case TextPointerContext.ElementStart:
-                case TextPointerContext.ElementEnd:
-                    if (pointer.GetAdjacentElement(LogicalDirection.Forward) is Block or LineBreak
-                        && builder.Length > 0 && builder[^1] != '\n')
-                    {
-                        builder.Append('\n');
-                    }
-
-                    pointer = pointer.GetNextContextPosition(LogicalDirection.Forward);
-                    break;
-
-                default:
-                    pointer = pointer.GetNextContextPosition(LogicalDirection.Forward);
-                    break;
-            }
-        }
-
-        return (builder.ToString(), anchors);
-    }
-
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownRichEditor)d;
@@ -836,8 +875,9 @@ public sealed class MarkdownRichEditor : RichTextBox
         // An edit may have added, removed, or retitled a Section Heading.
         InvalidateOutline();
 
-        // The edited text may have gained or lost Matches; keep the highlights current.
-        if (IsFindActive)
+        // The edited text may have gained or lost Matches; keep the highlights current. A Replace All
+        // batch is the exception — it is iterating the Match ranges, and Recomputes once at the end.
+        if (IsFindActive && !_isReplacing)
         {
             RecomputeMatches();
         }
