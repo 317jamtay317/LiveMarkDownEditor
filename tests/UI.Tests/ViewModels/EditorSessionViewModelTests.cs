@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Windows.Input;
 using Domain;
 using Shouldly;
 using UI.Tests.TestDoubles;
@@ -19,8 +21,9 @@ public sealed class EditorSessionViewModelTests
     private readonly FakeDocumentStore _store = new();
     private readonly FakeDocumentWatcher _watcher = new();
     private readonly InlineUiDispatcher _dispatcher = new();
+    private readonly FakeMarkdownRoundTrip _roundTrip = new();
 
-    private EditorSessionViewModel CreateSession() => new(_store, _watcher, _dispatcher);
+    private EditorSessionViewModel CreateSession() => new(_store, _watcher, _dispatcher, _roundTrip);
 
     private async Task<EditorSessionViewModel> LoadedSessionAsync(string content)
     {
@@ -117,7 +120,7 @@ public sealed class EditorSessionViewModelTests
     }
 
     [Fact]
-    public async Task ExternalChange_ThatMatchesSession_IsIgnored_NoConflict()
+    public async Task ExternalChange_ThatMatchesSession_IsIgnored_INV026()
     {
         var session = await LoadedSessionAsync("# Same");
 
@@ -262,5 +265,115 @@ public sealed class EditorSessionViewModelTests
             new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine again"));
         session.DifferenceLines.ShouldNotContain(
             new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine"));
+    }
+
+    [Fact]
+    public async Task ExternalChange_RaisingConflict_RequeriesTheConflictCommands()
+    {
+        var session = await LoadedSessionAsync("# Original");
+        session.Markdown = "# My unsaved edit";
+        var requeried = CountRequeries(session);
+
+        _store.Seed(Path, "# Disk change");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.HasConflict.ShouldBeTrue();
+        requeried().ShouldAllBe(count => count > 0);
+    }
+
+    [Fact]
+    public async Task ResolveConflict_KeepMyEdits_RequeriesTheConflictCommands()
+    {
+        var session = await ConflictedSessionAsync();
+        var requeried = CountRequeries(session);
+
+        session.KeepMyEditsCommand.Execute(null);
+
+        session.HasConflict.ShouldBeFalse();
+        requeried().ShouldAllBe(count => count > 0);
+    }
+
+    /// <summary>
+    /// Stands in for Capture's normalisation: a Watched File written with a setext heading and `_`
+    /// emphasis Round-Trips to the same Canonical Markdown as the ATX-and-`*` form the Editor
+    /// Session holds. Leaves already-canonical text alone, as a real Round-Trip does (INV-005).
+    /// </summary>
+    private void CanonicaliseSetextAndUnderscores() =>
+        _roundTrip.Canonicalise = markdown => markdown
+            .Replace("Title\n=====", "# Title")
+            .Replace("_there_", "*there*");
+
+    [Fact]
+    public async Task ExternalChange_ThatOnlyRestylesTheWatchedFile_WithUnsavedEdits_RaisesNoConflict_INV026()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("# Title\n\nHello *everyone*");
+        session.Markdown = "# Title\n\nHello *there*";
+
+        // The other writer restyles the file to say exactly what the session already says.
+        _store.Seed(Path, "Title\n=====\n\nHello _there_");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.HasConflict.ShouldBeFalse();
+        session.Markdown.ShouldBe("# Title\n\nHello *there*");
+        session.HasUnsavedEdits.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ExternalChange_ThatOnlyRestylesTheWatchedFile_WhenSessionClean_IsIgnored_INV026()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("Title\n=====\n\nHello _there_");
+
+        _store.Seed(Path, "# Title\n\nHello *there*");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        // No content changed, so the Visual Document is not re-projected out from under the user.
+        session.Markdown.ShouldBe("Title\n=====\n\nHello _there_");
+        session.HasConflict.ShouldBeFalse();
+        session.HasUnsavedEdits.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ViewDifference_StillShowsARealChange_BesideChurn_INV025()
+    {
+        CanonicaliseSetextAndUnderscores();
+        var session = await LoadedSessionAsync("# Title\n\nHello *there*\n\nOriginal line.");
+        session.Markdown = "# Title\n\nHello *there*\n\nMy new line.";
+        _store.Seed(Path, "Title\n=====\n\nHello _there_\n\nTheir old line.");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.DifferenceLines
+            .Where(line => line.Kind != DifferenceLineKind.Unchanged)
+            .ShouldBe(
+            [
+                new DifferenceLine(DifferenceLineKind.SessionOnly, "My new line."),
+                new DifferenceLine(DifferenceLineKind.DiskOnly, "Their old line."),
+            ]);
+    }
+
+    /// <summary>
+    /// Subscribes to the three conflict-bar commands and returns a probe for how many times each
+    /// has since asked to be requeried.
+    /// </summary>
+    private static Func<IReadOnlyList<int>> CountRequeries(EditorSessionViewModel session)
+    {
+        var counts = new int[3];
+        ICommand[] commands =
+            [session.ViewDifferenceCommand, session.KeepMyEditsCommand, session.ReloadFromDiskCommand];
+
+        for (var i = 0; i < commands.Length; i++)
+        {
+            var index = i;
+            commands[i].CanExecuteChanged += (_, _) => counts[index]++;
+        }
+
+        return () => counts;
     }
 }

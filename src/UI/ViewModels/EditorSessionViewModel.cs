@@ -12,7 +12,8 @@ namespace UI.ViewModels;
 /// associated Watched File, and whether unsaved edits exist. It loads and saves its own Watched File
 /// and reacts to External Change on it — reloading live when clean, or raising a Conflict when there
 /// are unsaved edits (INV-006/007). While a Conflict awaits resolution it can also show the Conflict
-/// Difference between the two sides (View Difference, INV-021). Choosing files and managing Tabs
+/// Difference between the two sides (View Difference, INV-021), comparing the Canonical Markdown of
+/// each side so only differences of content are shown (INV-025). Choosing files and managing Tabs
 /// belong to the <see cref="WorkspaceViewModel"/>, not here.
 /// </summary>
 public sealed class EditorSessionViewModel : ObservableObject, IDisposable
@@ -20,6 +21,10 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private readonly IDocumentStore _store;
     private readonly IDocumentWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IMarkdownRoundTrip _roundTrip;
+    private readonly RelayCommand _keepMyEditsCommand;
+    private readonly RelayCommand _reloadFromDiskCommand;
+    private readonly RelayCommand _viewDifferenceCommand;
 
     private string _markdown = string.Empty;
     private string? _filePath;
@@ -29,21 +34,27 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private bool _isDifferenceVisible;
     private IReadOnlyList<DifferenceLine> _differenceLines = [];
 
-    /// <summary>Creates a new, empty Editor Session over the given store, watcher, and dispatcher.</summary>
+    /// <summary>Creates a new, empty Editor Session over the given store, watcher, dispatcher, and Round-Trip.</summary>
     /// <param name="store">The port used to load and save the Watched File.</param>
     /// <param name="watcher">The port that raises External Change for this session's Watched File.</param>
     /// <param name="dispatcher">Marshals External Change handling onto the UI thread.</param>
-    public EditorSessionViewModel(IDocumentStore store, IDocumentWatcher watcher, IUiDispatcher dispatcher)
+    /// <param name="roundTrip">Yields the Canonical Markdown of each side of a Conflict Difference (INV-025).</param>
+    public EditorSessionViewModel(
+        IDocumentStore store,
+        IDocumentWatcher watcher,
+        IUiDispatcher dispatcher,
+        IMarkdownRoundTrip roundTrip)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _roundTrip = roundTrip ?? throw new ArgumentNullException(nameof(roundTrip));
 
         _watcher.Changed += OnWatcherChanged;
 
-        KeepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
-        ReloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
-        ViewDifferenceCommand = new RelayCommand(ToggleViewDifference, () => HasConflict);
+        _keepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
+        _reloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
+        _viewDifferenceCommand = new RelayCommand(ToggleViewDifference, () => HasConflict);
     }
 
     /// <summary>
@@ -97,7 +108,13 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     public bool HasConflict
     {
         get => _hasConflict;
-        private set => Set(ref _hasConflict, value);
+        private set
+        {
+            if (Set(ref _hasConflict, value))
+            {
+                RequeryConflictCommands();
+            }
+        }
     }
 
     /// <summary>
@@ -127,16 +144,16 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     public string Title => HasUnsavedEdits ? $"{Name} *" : Name;
 
     /// <summary>Resolves a Conflict by keeping the unsaved edits and discarding the disk change.</summary>
-    public ICommand KeepMyEditsCommand { get; }
+    public ICommand KeepMyEditsCommand => _keepMyEditsCommand;
 
     /// <summary>Resolves a Conflict by discarding unsaved edits and loading the on-disk contents.</summary>
-    public ICommand ReloadFromDiskCommand { get; }
+    public ICommand ReloadFromDiskCommand => _reloadFromDiskCommand;
 
     /// <summary>
     /// Shows the Conflict Difference over the editing area, or hides it again — the action toggles.
     /// Available only while a Conflict awaits resolution; it resolves nothing itself (INV-021).
     /// </summary>
-    public ICommand ViewDifferenceCommand { get; }
+    public ICommand ViewDifferenceCommand => _viewDifferenceCommand;
 
     /// <summary>Loads the Markdown file at <paramref name="path"/> into this session and watches it.</summary>
     /// <param name="path">The absolute path of the Watched File to load.</param>
@@ -163,8 +180,9 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Handles an External Change to the Watched File: reloads live when the session is clean
-    /// (INV-007), or raises a Conflict when there are unsaved edits (INV-006). Self-writes (disk
-    /// contents already equal to the session) are ignored.
+    /// (INV-007), or raises a Conflict when there are unsaved edits (INV-006). An External Change
+    /// that changes no content — the session's own save, or another writer restyling the file — is
+    /// ignored (INV-026).
     /// </summary>
     /// <param name="path">The path reported as changed.</param>
     public async Task HandleExternalChangeAsync(string path)
@@ -184,7 +202,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (disk.Source.Text == Markdown)
+        if (ChangesNoContent(disk.Source.Text))
         {
             return;
         }
@@ -208,6 +226,14 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         _watcher.Changed -= OnWatcherChanged;
         _watcher.StopWatching();
     }
+
+    /// <summary>
+    /// Whether the Watched File's new contents say what this session already says, differing from it
+    /// in bytes alone — the session's own save, or another writer restyling the file (INV-026).
+    /// </summary>
+    /// <param name="diskText">The Watched File's new on-disk contents.</param>
+    private bool ChangesNoContent(string diskText) =>
+        diskText == Markdown || _roundTrip.RoundTrip(diskText) == _roundTrip.RoundTrip(Markdown);
 
     private void KeepMyEdits() => ClearConflict();
 
@@ -240,15 +266,31 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Recomputes the Conflict Difference over the Canonical Markdown of each side (INV-025), so a
+    /// Watched File authored in another Markdown style differs only where its content differs.
+    /// </summary>
     private void RefreshDifference() =>
         DifferenceLines = ConflictDifference.Compute(
-            new MarkdownSource(Markdown),
-            new MarkdownSource(_conflictingDiskText));
+            new MarkdownSource(_roundTrip.RoundTrip(Markdown)),
+            new MarkdownSource(_roundTrip.RoundTrip(_conflictingDiskText)));
 
     private void HideDifference()
     {
         IsDifferenceVisible = false;
         DifferenceLines = [];
+    }
+
+    /// <summary>
+    /// Requeries the commands whose availability follows <see cref="HasConflict"/>. A Conflict is
+    /// raised by the file watcher rather than by user input, so the conflict bar's buttons would
+    /// otherwise stay disabled until the next input requeried them.
+    /// </summary>
+    private void RequeryConflictCommands()
+    {
+        _keepMyEditsCommand.RaiseCanExecuteChanged();
+        _reloadFromDiskCommand.RaiseCanExecuteChanged();
+        _viewDifferenceCommand.RaiseCanExecuteChanged();
     }
 
     private void ClearConflict()

@@ -22,6 +22,7 @@ public sealed class WorkspaceViewModelTests
     private readonly StubUnsavedEditsPrompt _prompt = new();
     private readonly InlineUiDispatcher _dispatcher = new();
     private readonly FakeThemeService _theme = new();
+    private readonly FakeMarkdownRoundTrip _roundTrip = new();
     private readonly List<FakeDocumentWatcher> _watchers = [];
 
     private WorkspaceViewModel CreateWorkspace()
@@ -30,7 +31,7 @@ public sealed class WorkspaceViewModelTests
         {
             var watcher = new FakeDocumentWatcher();
             _watchers.Add(watcher);
-            return new EditorSessionViewModel(_store, watcher, _dispatcher);
+            return new EditorSessionViewModel(_store, watcher, _dispatcher, _roundTrip);
         };
         return new WorkspaceViewModel(factory, _picker, _prompt, new AppearanceViewModel(_theme));
     }
