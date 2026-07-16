@@ -321,14 +321,28 @@ and tested.
     bullets the moment any item is not a task item, because WPF gives a List one marker for all of
     its items and the unmarked items would otherwise be left with no marker at all. An Ordered Task
     List keeps its numbers. This is presentation only: it never changes the Captured source text.
+  - **A Task List continues across a paragraph break.** Breaking the line in a task item gives the
+    new List Item its own unchecked Task Marker, the way a bullet or a number carries to the next
+    item — the new item is a task item, so the List does not regain its bullets. A Task Marker's
+    checked state never carries: the new item always starts unchecked.
+  - **A Task Marker's Run never swallows the item's text.** The marker is ordinary editable text and
+    the caret legitimately sits inside its Run — a new task item's marker is its only inline, so WPF
+    normalises the caret into it and the first thing typed lands there. Capture emits the marker from
+    its role, and must emit whatever that Run holds beyond the checkbox glyph as the item's text.
+    Otherwise a label the user can see on screen would never reach the Markdown Document.
 - **Enforced by:** The `ListFormatting` helper, which composes its List through the same
   `ApplyList` seam the Projector uses (INV-018) and **moves each item's existing paragraph** into the
   List (and back out again) rather than re-creating it from text — so inline formatting cannot be
   flattened by a toggle. `ListFormatting.RefreshTaskMarkerStyle` is the one place the bullet rule
   lives, applied by the Projector and by every List Formatting Action alike; Capture tells an Ordered
   List from an Unordered one by `MarkerStyle == Decimal`, and `None` is not `Decimal`, so dropping the
-  bullet cannot change the captured marker.
-- **Tested by:** `MarkdownRichEditorListTests.*_INV023`.
+  bullet cannot change the captured marker. `ListFormatting.TryContinueTaskList` leaves the paragraph
+  break itself to WPF's `EditingCommands.EnterParagraphBreak` — which carries inline formatting across
+  the break correctly — and `MarkContinuedTaskItem` then supplies the one thing WPF cannot know about,
+  the new item's Task Marker, in the same `BeginChange` unit so one undo takes the whole new item back.
+- **Tested by:** `MarkdownRichEditorListTests.*_INV023`. The paragraph break runs through a WPF editing
+  command that needs a focused editor and so does nothing in a headless test; the tests cover the rule
+  that marks the item the break creates, and Enter itself is verified by driving the real app.
 
 ### INV-024 — Toggle Task Marker flips only that Task Marker's state
 - **Statement:** Clicking a Task Marker's checkbox toggles it between unchecked (`[ ]`) and checked

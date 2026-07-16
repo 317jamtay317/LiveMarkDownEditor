@@ -303,6 +303,148 @@ public sealed class MarkdownRichEditorListTests
         });
     }
 
+    // Enter itself runs through WPF's EnterParagraphBreak, which needs a focused editor and so does
+    // nothing headless — these cover the rule that turns the item it creates into a task item. That
+    // the break reaches this rule at all is verified by driving the real app.
+
+    [Fact]
+    public void ContinueTaskList_WhenThePreviousItemIsATask_MarksTheNewItem_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            // The state Enter leaves behind: a fresh, unmarked item after a task item.
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- bravo" };
+            VisualDocumentText.PlaceCaretIn(editor, "bravo");
+
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeTrue();
+
+            editor.Markdown.ShouldBe("- [ ] alpha\n- [ ] bravo");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_KeepsTheBulletsAway_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- bravo" };
+            VisualDocumentText.PlaceCaretIn(editor, "bravo");
+
+            editor.MarkContinuedTaskItemAtCaret();
+
+            // Every item is a task item again, so the List goes back to showing no bullets rather
+            // than leaving them on the moment the user pressed Enter.
+            ListOf(editor).MarkerStyle.ShouldBe(TextMarkerStyle.None);
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_ThenTypingTheLabel_ReachesTheMarkdown_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- " };
+            var emptyItem = ListOf(editor).ListItems.Last();
+            editor.CaretPosition = emptyItem.ContentStart;
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeTrue();
+
+            // A new task item's marker is its only inline, so WPF normalises the caret into the
+            // marker's own Run and the label the user types lands there. It must still reach the
+            // Markdown rather than being dropped as part of the marker.
+            TypeAtCaret(editor, "bravo");
+
+            editor.Markdown.ShouldBe("- [ ] alpha\n- [ ] bravo");
+        });
+    }
+
+    // Types the way WPF's editor does: into whichever Run the caret has been normalised into.
+    private static void TypeAtCaret(MarkdownRichEditor editor, string text)
+    {
+        if (editor.CaretPosition.Parent is Run run)
+        {
+            var caretOffset = new TextRange(run.ContentStart, editor.CaretPosition).Text.Length;
+            run.Text = run.Text.Insert(Math.Min(caretOffset, run.Text.Length), text);
+            return;
+        }
+
+        _ = new Run(text, editor.CaretPosition);
+    }
+
+    [Fact]
+    public void ContinueTaskList_InAPlainList_LeavesTheNewItemAlone_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- alpha\n- bravo" };
+            VisualDocumentText.PlaceCaretIn(editor, "bravo");
+
+            // Not a Task List: WPF already carries the bullet, so Enter is none of our business.
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeFalse();
+
+            editor.Markdown.ShouldBe("- alpha\n- bravo");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_OnTheFirstItem_LeavesItAlone_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- alpha" };
+            VisualDocumentText.PlaceCaretIn(editor, "alpha");
+
+            // No item before it to continue from.
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeFalse();
+
+            editor.Markdown.ShouldBe("- alpha");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_OutsideAList_LeavesItAlone_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha" };
+            VisualDocumentText.PlaceCaretIn(editor, "alpha");
+
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeFalse();
+
+            editor.Markdown.ShouldBe("alpha");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_DoesNotRemarkAnItemThatAlreadyHasACheckbox_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- [x] bravo" };
+            VisualDocumentText.PlaceCaretIn(editor, "bravo");
+
+            // Already a task item — and a checked one, which must not be reset to unchecked.
+            editor.MarkContinuedTaskItemAtCaret().ShouldBeFalse();
+
+            editor.Markdown.ShouldBe("- [ ] alpha\n- [x] bravo");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_ResultRoundTrips_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] alpha\n- bravo" };
+            VisualDocumentText.PlaceCaretIn(editor, "bravo");
+            editor.MarkContinuedTaskItemAtCaret();
+            var captured = editor.Markdown;
+
+            var reopened = new MarkdownRichEditor { Markdown = captured };
+
+            reopened.Capture().ShouldBe(captured);
+        });
+    }
+
     private static WpfList ListOf(MarkdownRichEditor editor) =>
         editor.Document.Blocks.OfType<WpfList>().First();
 

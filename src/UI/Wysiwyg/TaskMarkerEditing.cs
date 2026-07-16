@@ -19,6 +19,12 @@ namespace UI.Wysiwyg;
 /// </remarks>
 internal static class TaskMarkerEditing
 {
+    /// <summary>The checkbox character shown for an unchecked Task Marker.</summary>
+    internal const char UncheckedGlyphChar = '☐';
+
+    /// <summary>The checkbox character shown for a checked Task Marker.</summary>
+    internal const char CheckedGlyphChar = '☑';
+
     /// <summary>The glyph shown for an unchecked Task Marker, with its separating space.</summary>
     internal const string UncheckedGlyph = "☐ ";
 

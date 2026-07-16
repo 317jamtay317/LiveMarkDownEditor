@@ -124,6 +124,24 @@ public sealed class MarkdownRichEditorTaskMarkerTests
     }
 
     [Fact]
+    public void TaskMarker_DoesNotSwallowTextTypedIntoItsOwnRun_INV024()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- [ ] todo" };
+
+            // The marker's Run is ordinary editable text and the caret legitimately sits inside it,
+            // so the user can type into it. Capture emits the marker from its role, and must not
+            // drop the text along with the glyph — it would vanish from the file while still on
+            // screen.
+            var marker = MarkerRunOf(editor);
+            marker.Text = Unchecked + "urgent: ";
+
+            editor.Markdown.ShouldBe("- [ ] urgent: todo");
+        });
+    }
+
+    [Fact]
     public void TaskMarker_PinsItsFont_SoTickingItDoesNotResizeTheCheckbox()
     {
         StaThread.Run(() =>

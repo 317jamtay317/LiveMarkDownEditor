@@ -531,6 +531,24 @@ public sealed class MarkdownRichEditor : RichTextBox
     public void ToggleTaskListAtSelection() => ListFormatting.ToggleTaskList(this);
 
     /// <summary>
+    /// Continues a Task List across a paragraph break: when the caret sits in a task item, breaks the
+    /// line and gives the new List Item its own unchecked Task Marker, the way a bullet or a number
+    /// carries to the next item (INV-023). Called by the control's Enter handling.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the break was handled; <see langword="false"/> when the caret is
+    /// not in a task item, so Enter should behave as it normally does.
+    /// </returns>
+    public bool ContinueTaskListAtCaret() => ListFormatting.TryContinueTaskList(this);
+
+    /// <summary>
+    /// Gives the List Item at the caret an unchecked Task Marker when the item before it has one and
+    /// it does not — the rule that makes Enter continue a Task List (INV-023). A no-op anywhere else.
+    /// </summary>
+    /// <returns><see langword="true"/> when a Task Marker was added.</returns>
+    public bool MarkContinuedTaskItemAtCaret() => ListFormatting.MarkContinuedTaskItem(this);
+
+    /// <summary>
     /// Applies the Toggle Task Marker edit: flips the Task Marker at <paramref name="position"/>
     /// between unchecked and checked, changing nothing else (INV-024).
     /// </summary>
@@ -890,6 +908,20 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             Dispatcher.BeginInvoke(RecomputeMatches, DispatcherPriority.Loaded);
         }
+    }
+
+    /// <inheritdoc />
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        // Enter in a Task List carries the checkbox to the new item, the way WPF carries a bullet or
+        // a number (INV-023). Shift+Enter is a soft break within the same item, so it is left alone.
+        if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && ContinueTaskListAtCaret())
+        {
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
     }
 
     /// <inheritdoc />

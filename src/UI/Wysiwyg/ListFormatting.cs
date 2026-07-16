@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using WpfList = System.Windows.Documents.List;
 
 namespace UI.Wysiwyg;
@@ -89,6 +90,89 @@ internal static class ListFormatting
             editor.EndChange();
         }
     }
+
+    /// <summary>
+    /// Continues a Task List across a paragraph break: when the caret sits in a task item, breaks the
+    /// line as usual and gives the new List Item its own unchecked Task Marker, the way a bullet or a
+    /// number carries to the next item (INV-023). The caret lands after the new checkbox, ready to
+    /// type.
+    /// </summary>
+    /// <param name="editor">The editor whose Task List is being continued.</param>
+    /// <returns>
+    /// <see langword="true"/> when the break was handled here; <see langword="false"/> when the caret
+    /// is not in a task item, so the key falls through to its normal behaviour.
+    /// </returns>
+    /// <remarks>
+    /// The break and the new Task Marker are made in one <c>BeginChange</c> unit, so a single undo
+    /// takes back the whole "new item" the user sees, rather than leaving a bare item behind.
+    /// </remarks>
+    internal static bool TryContinueTaskList(RichTextBox editor)
+    {
+        if (TaskMarkerEditing.MarkerOf(FirstParagraphOf(ItemAt(editor))) is null)
+        {
+            return false;
+        }
+
+        editor.BeginChange();
+        try
+        {
+            // WPF splits the item — carrying the inline formatting across the break correctly, which
+            // is fiddly to reproduce by hand — and MarkContinuedTaskItem then supplies the one thing
+            // it cannot know about: the new item's Task Marker.
+            EditingCommands.EnterParagraphBreak.Execute(parameter: null, target: editor);
+            MarkContinuedTaskItem(editor);
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The rule that makes Enter continue a Task List: gives the List Item at the caret an unchecked
+    /// Task Marker when the item before it has one and it does not, and leaves the caret after the new
+    /// checkbox (INV-023). A no-op anywhere else, so an ordinary List is left to WPF.
+    /// </summary>
+    /// <param name="editor">The editor whose new List Item is being marked.</param>
+    /// <returns><see langword="true"/> when a Task Marker was added.</returns>
+    /// <remarks>
+    /// Split out from <see cref="TryContinueTaskList"/> because the paragraph break itself runs
+    /// through WPF's <see cref="EditingCommands.EnterParagraphBreak"/>, which needs a focused editor
+    /// and so does nothing in a headless test. This half carries the rule and is testable on its own;
+    /// the break is verified by driving the real app.
+    /// </remarks>
+    internal static bool MarkContinuedTaskItem(RichTextBox editor)
+    {
+        var item = ItemAt(editor);
+        if (item?.Parent is not WpfList list || TaskMarkerEditing.MarkerOf(FirstParagraphOf(item)) is not null)
+        {
+            return false;
+        }
+
+        var items = list.ListItems.ToList();
+        var index = items.IndexOf(item);
+        if (index <= 0 || TaskMarkerEditing.MarkerOf(FirstParagraphOf(items[index - 1])) is null)
+        {
+            return false;
+        }
+
+        if (FirstParagraphOf(item) is not { } paragraph || AddTaskMarker(paragraph) is not { } marker)
+        {
+            return false;
+        }
+
+        // ElementEnd, not ContentEnd: ContentEnd is *inside* the marker's own Run, and Capture emits
+        // a Task Marker from its role and ignores that Run's text — so anything typed there would be
+        // swallowed. The caret must sit past the marker entirely.
+        editor.CaretPosition = marker.ElementEnd;
+        RefreshTaskMarkerStyle(list);
+        return true;
+    }
+
+    private static ListItem? ItemAt(RichTextBox editor) =>
+        VisualDocumentTraversal.AncestorOf<ListItem>(editor.CaretPosition);
 
     /// <summary>
     /// Dresses a List with the marker its kind calls for, exactly as the Projector does — a bullet
@@ -242,11 +326,12 @@ internal static class ListFormatting
         _ => null,
     };
 
-    private static void AddTaskMarker(Paragraph paragraph)
+    // Gives the paragraph an unchecked Task Marker, returning it (or the one already there).
+    private static Run? AddTaskMarker(Paragraph paragraph)
     {
-        if (TaskMarkerEditing.MarkerOf(paragraph) is not null)
+        if (TaskMarkerEditing.MarkerOf(paragraph) is { } existing)
         {
-            return;
+            return existing;
         }
 
         var marker = TaskMarkerEditing.CreateMarker(isChecked: false);
@@ -258,6 +343,8 @@ internal static class ListFormatting
         {
             paragraph.Inlines.Add(marker);
         }
+
+        return marker;
     }
 
     private static void RemoveTaskMarker(Paragraph paragraph)

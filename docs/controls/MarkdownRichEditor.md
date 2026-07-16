@@ -67,6 +67,8 @@ command bar or a key gesture, so it has no routed command (INV-024).
 | Member | Description |
 | --- | --- |
 | `ToggleTaskMarkerAt(TextPointer? position)` | Flips the Task Marker at `position`, changing nothing else. Returns `false` — and makes no edit — when the position is not on a Task Marker, so the click places the caret as usual. Called by the control's `OnPreviewMouseLeftButtonDown`. |
+| `ContinueTaskListAtCaret()` | Breaks the line in a task item and gives the new List Item its own unchecked Task Marker, the way a bullet or a number carries to the next item (INV-023). Returns `false` outside a task item, so Enter behaves as usual. Called by the control's `OnPreviewKeyDown`. |
+| `MarkContinuedTaskItemAtCaret()` | The rule behind the above, on its own: marks the List Item at the caret when the item before it is a task item and it is not. Split out because the paragraph break runs through a WPF editing command that needs a focused editor, so only this half is testable headless. |
 
 `UI.Wysiwyg.TaskMarkerEditing` is the one definition of a Task Marker: it composes the marker (glyph
 plus role) for the Projector, `ListFormatting`, and this toggle alike, and updates the glyph and the
