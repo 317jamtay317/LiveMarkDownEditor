@@ -63,14 +63,12 @@ public sealed class MarkdownToFlowDocumentProjector
         {
             case HeadingBlock heading:
             {
-                // Headings are distinguished visually by size only, not FontWeight: an inherited
-                // bold weight would make Capture treat every heading run as inline-bold (# **x**).
-                var paragraph = new Paragraph
-                {
-                    Tag = new HeadingRole(heading.Level),
-                    FontSize = HeadingFontSize(heading.Level),
-                    Margin = HeadingSpacing,
-                };
+                // Styled through the same seam the Set Heading Level Formatting Action uses, so a
+                // loaded Heading and a user-made one are identical to Capture (INV-018). Headings are
+                // distinguished visually by size only, not FontWeight: an inherited bold weight would
+                // make Capture treat every heading run as inline-bold (# **x**).
+                var paragraph = new Paragraph();
+                HeadingFormatting.ApplyHeading(paragraph, heading.Level);
                 AppendInlines(paragraph.Inlines, heading.Inline);
                 return paragraph;
             }
@@ -423,13 +421,4 @@ public sealed class MarkdownToFlowDocumentProjector
         return span;
     }
 
-    private static double HeadingFontSize(int level) => level switch
-    {
-        1 => 28,
-        2 => 24,
-        3 => 20,
-        4 => 17,
-        5 => 15,
-        _ => 13,
-    };
 }

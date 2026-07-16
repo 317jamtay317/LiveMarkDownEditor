@@ -214,15 +214,18 @@ and tested.
   `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
 
 ### INV-018 — A Formatting Action Captures to canonical Markdown
-- **Statement:** Applying a Formatting Action (Toggle Code, Insert Table, Add Row, Add Column,
+- **Statement:** Applying a Formatting Action (Toggle Strikethrough, Toggle Code, Set Heading Level,
+  Insert Link, Insert Image, Toggle Block Quote, Insert Table, Add Row, Add Column,
   Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual Document using the
   same tagged elements a Project produces, so the Captured source text is canonical Markdown:
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
   never corrupts the document — after it runs, the Visual Document and the Markdown Document still
   describe the same content.
 - **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
-  Projector emits (`InlineSemantic.Code`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`) through the
-  shared `CodeFormatting` / `TableEditing` / `ListFormatting` / `TaskMarkerEditing` helpers, so Capture
+  Projector emits (`InlineSemantic.Code`, `InlineSemantic.Strikethrough`, `HeadingRole`,
+  `BlockSemantic.Quote`, `LinkRole`, `ImageRole`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`)
+  through the shared `CodeFormatting` / `HeadingFormatting` / `InlineFormatting` / `QuoteFormatting` /
+  `LinkFormatting` / `TableEditing` / `ListFormatting` / `TaskMarkerEditing` helpers, so Capture
   treats user-applied formatting and loaded formatting uniformly. A List carries no role of its own —
   its kind rides on the WPF `List`'s own `MarkerStyle` — so the Projector composes a List through
   `ListFormatting.ApplyList` and a Task Marker through `TaskMarkerEditing.CreateMarker`, the same
@@ -407,6 +410,32 @@ and tested.
 - **Tested by:** `EditorSessionViewModelTests.ExternalChange_ThatMatchesSession_IsIgnored_INV026`,
   `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WhenSessionClean_IsIgnored_INV026`,
   `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WithUnsavedEdits_RaisesNoConflict_INV026`.
+
+### INV-027 — Set Heading Level changes a block's level, never its content
+- **Statement:** Set Heading Level changes only the Heading Level of the block at the caret. Four rules
+  bound it:
+  - **Content survives.** Making a paragraph a Heading, changing a Heading's level, and turning a
+    Heading back into a paragraph all preserve the block's text, its inline formatting, and its
+    position in the document. One block goes in and the same block, relevelled, comes out.
+  - **It sets, it does not toggle.** Choosing the level a Heading already has leaves it a Heading of
+    that level, so the action is idempotent. Only **Paragraph** clears a Heading — a level is a value
+    the user picks, so reaching for a level can never silently destroy the Heading.
+  - **A Heading Level is always 1–6.** No other level is reachable: the Heading Level Picker offers
+    exactly six, and Set Heading Level refuses any level outside 1–6 (Paragraph aside) rather than
+    writing one. `#` repeats once per level, and a seventh `#` is not a heading in Markdown at all.
+  - **A Heading is sized, never weighted.** The Heading a Set Heading Level produces is styled by the
+    same seam the Projector uses, so it is distinguished by size alone — a bold weight would make
+    Capture read the Heading's text as inline-bold and emit `# **text**` (INV-018).
+- **Enforced by:** The `HeadingFormatting` helper, which **relevels the caret's existing paragraph in
+  place** — setting or clearing its `HeadingRole` and restyling it — rather than re-creating it from
+  text, so inline formatting cannot be flattened by a change of level. `HeadingFormatting.ApplyHeading`
+  is the one place a Heading's styling lives, applied by the Projector and by Set Heading Level alike
+  (mirroring `ListFormatting.ApplyList`), and `HeadingFormatting.SetLevel` ignoring a level outside
+  the Paragraph-or-1–6 range.
+- **Tested by:** `MarkdownRichEditorHeadingTests.*_INV027`, in particular
+  `SetHeadingLevel_PreservesInlineFormatting_INV027`,
+  `SetHeadingLevel_ToTheSameLevel_LeavesItAHeading_INV027`, and
+  `SetHeadingLevel_GivenLevelOutsideOneToSix_LeavesTheDocumentUnchanged_INV027`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

@@ -49,8 +49,6 @@ work that is still in review, noted inline.
 
 ## Rounds out the Formatting Actions
 
-- [ ] **Heading level picker.** Headings are the backbone of Sections, the Outline, and Folding, and
-  are the one structural construct with no command-bar action.
 - [ ] **Insert Link (Ctrl+K) and Insert Image.**
 - [ ] **Block Quote and strikethrough actions.**
 

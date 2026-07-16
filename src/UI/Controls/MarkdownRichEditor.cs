@@ -141,6 +141,10 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => ToggleCodeAtSelection(),
             (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.SetHeadingLevel,
+            (_, e) => SetHeadingLevelAtCaret(e.Parameter),
+            (_, e) => e.CanExecute = HeadingFormatting.CanSetLevel(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.InsertTable,
             (_, _) => InsertTableAtCaret(),
             (_, e) => e.CanExecute = !IsCaretInTable));
@@ -489,6 +493,31 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Set Heading Level Formatting Action at the caret: the block at the caret becomes a
+    /// Heading at <paramref name="level"/> (1–6), or a plain paragraph again given
+    /// <see cref="MarkdownEditingCommands.ParagraphHeadingLevel"/>. It sets a level rather than
+    /// toggling one, and its content survives the change (INV-027). The edit Captures back into
+    /// <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    /// <param name="level">The Heading Level to set, or the Paragraph level to clear the Heading.</param>
+    public void SetHeadingLevelAtCaret(int level) => HeadingFormatting.SetLevel(this, level);
+
+    // The Heading Level Picker's XAML passes its CommandParameter as a string ("2"), while a test or
+    // caller passes an int — so the parameter is resolved to a level before the action runs. An
+    // unreadable parameter names no level, and so relevels nothing.
+    private void SetHeadingLevelAtCaret(object? parameter)
+    {
+        if (parameter is int level)
+        {
+            SetHeadingLevelAtCaret(level);
+        }
+        else if (int.TryParse(parameter?.ToString(), out var parsed))
+        {
+            SetHeadingLevelAtCaret(parsed);
+        }
+    }
 
     /// <summary>
     /// Applies the Insert Table Formatting Action: inserts a new three-column Table (header row plus

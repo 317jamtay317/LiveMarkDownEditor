@@ -21,6 +21,7 @@ public sealed class CommandIconTests
         "Icon.New",
         "Icon.Open",
         "Icon.Save",
+        "Icon.SetHeadingLevel",
         "Icon.ToggleBold",
         "Icon.ToggleItalic",
         "Icon.ToggleCode",
