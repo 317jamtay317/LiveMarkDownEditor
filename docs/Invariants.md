@@ -491,6 +491,30 @@ and tested.
   `ToggleStrikethrough_OnALoadedStrikethrough_RemovesIt_INV029` and
   `ToggleStrikethrough_PreservesOtherInlineFormatting_INV029`.
 
+### INV-030 — Insert Link and Insert Image edit only on a complete answer
+- **Statement:** Insert Link and Insert Image ask for their text and URL through the Link Prompt, and
+  edit the Visual Document only when the user gives a usable answer. Four rules bound them:
+  - **Dismissing the Link Prompt makes no edit.** Cancelling leaves the Markdown Document, the
+    selection, and the Visual Document exactly as they were — asking a question is not an edit.
+  - **A Link is nothing without a destination.** An empty URL inserts no Link and no Image: the
+    Visual Document shows a Link by its text alone, so a Link with no destination would be
+    indistinguishable from prose the user could never repair from the Visual Document.
+  - **The selection seeds the text, and is replaced by the result.** The selected text is offered as
+    the proposed Link text (or Image alt text), so the common case — select a word, press Ctrl+K,
+    paste a URL — needs no retyping. At a caret with no selection, the Link's text is whatever the
+    user gives; a Link with neither selection nor text falls back to its URL, so it is never invisible.
+  - **An empty answer for the text alone is not fatal.** Only the URL is required.
+- **Enforced by:** The `LinkFormatting` helper, which returns before touching the document when the
+  `ILinkPrompt` port yields no answer or a blank URL, and otherwise composes a `Hyperlink` carrying a
+  `LinkRole` (or a `Run` carrying an `ImageRole`) through the same `ApplyLink` / `ApplyImage` seams
+  the Projector uses, so Capture treats a user-inserted Link and a loaded one uniformly (INV-018).
+  The port keeps the Link Prompt's WPF dialog out of the editor, so the rules above are testable
+  headlessly against a stub.
+- **Tested by:** `MarkdownRichEditorLinkTests.*_INV030`, in particular
+  `InsertLink_WhenThePromptIsDismissed_MakesNoEdit_INV030`,
+  `InsertLink_WithAnEmptyUrl_MakesNoEdit_INV030`, and
+  `InsertLink_SeedsThePromptWithTheSelection_INV030`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

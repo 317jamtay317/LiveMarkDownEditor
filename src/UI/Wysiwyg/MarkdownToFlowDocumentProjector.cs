@@ -363,25 +363,22 @@ public sealed class MarkdownToFlowDocumentProjector
         }
     }
 
+    // Composed through the same seams the Insert Link / Insert Image Formatting Actions use, so a
+    // loaded Link or Image and a user-inserted one are identical to Capture (INV-018).
     private static WpfInline ProjectLink(LinkInline link)
     {
-        var hyperlink = new Hyperlink
-        {
-            Tag = new LinkRole(link.Url ?? string.Empty, link.Title),
-        };
+        var hyperlink = new Hyperlink();
         AppendInlines(hyperlink.Inlines, link);
-        if (Uri.TryCreate(link.Url, UriKind.RelativeOrAbsolute, out var uri))
-        {
-            hyperlink.NavigateUri = uri;
-        }
-
+        LinkFormatting.ApplyLink(hyperlink, link.Url ?? string.Empty, link.Title);
         return hyperlink;
     }
 
     private static WpfInline ProjectImage(LinkInline image)
     {
         var alt = ExtractText(image);
-        return new Run(alt) { Tag = new ImageRole(image.Url ?? string.Empty, alt, image.Title) };
+        var run = new Run(alt);
+        LinkFormatting.ApplyImage(run, image.Url ?? string.Empty, alt, image.Title);
+        return run;
     }
 
     private static string ExtractText(ContainerInline container)

@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Core;
 using UI.Find;
 using UI.Spelling;
 using UI.Wysiwyg;
@@ -42,6 +43,17 @@ public sealed class MarkdownRichEditor : RichTextBox
             string.Empty,
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnMarkdownChanged));
+
+    /// <summary>
+    /// Identifies the <see cref="LinkPrompt"/> dependency property. Insert Link and Insert Image ask
+    /// through it for their text and URL; the composition root supplies the real Link Prompt, and a
+    /// test supplies a stub. Left unset, neither action edits (INV-030).
+    /// </summary>
+    public static readonly DependencyProperty LinkPromptProperty = DependencyProperty.Register(
+        nameof(LinkPrompt),
+        typeof(ILinkPrompt),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
 
     /// <summary>
     /// Identifies the <see cref="FindQuery"/> dependency property. The Find Bar binds its query box
@@ -140,6 +152,10 @@ public sealed class MarkdownRichEditor : RichTextBox
             MarkdownEditingCommands.ToggleCode,
             (_, _) => ToggleCodeAtSelection(),
             (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertLink, (_, _) => InsertLinkAtSelection()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertImage, (_, _) => InsertImageAtSelection()));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleStrikethrough,
             (_, _) => ToggleStrikethroughAtSelection(),
@@ -501,6 +517,32 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
+
+    /// <summary>
+    /// The Link Prompt that Insert Link and Insert Image ask for a text and URL. Left
+    /// <see langword="null"/>, neither action makes an edit (INV-030).
+    /// </summary>
+    public ILinkPrompt? LinkPrompt
+    {
+        get => (ILinkPrompt?)GetValue(LinkPromptProperty);
+        set => SetValue(LinkPromptProperty, value);
+    }
+
+    /// <summary>
+    /// Applies the Insert Link Formatting Action: asks the <see cref="LinkPrompt"/> for the Link's
+    /// text (seeded with the selection) and destination URL, and turns the selection into that Link.
+    /// No edit is made when the Link Prompt is dismissed or gives no URL (INV-030). The edit Captures
+    /// back into <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void InsertLinkAtSelection() => LinkFormatting.InsertLink(this, LinkPrompt);
+
+    /// <summary>
+    /// Applies the Insert Image Formatting Action: asks the <see cref="LinkPrompt"/> for the Image's
+    /// alt text (seeded with the selection) and source URL, and inserts that Image. No edit is made
+    /// when the Link Prompt is dismissed or gives no URL (INV-030). The edit Captures back into
+    /// <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt);
 
     /// <summary>
     /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is

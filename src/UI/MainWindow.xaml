@@ -137,6 +137,20 @@
                 </Button>
 
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Insert link (Ctrl+K) — turn the selection into a link"
+                        AutomationProperties.Name="Insert link"
+                        Command="controls:MarkdownEditingCommands.InsertLink"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Insert image"
+                        AutomationProperties.Name="Insert image"
+                        Command="controls:MarkdownEditingCommands.InsertImage"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Block quote — quote the blocks the selection touches, or unquote them"
                         AutomationProperties.Name="Block quote"
                         Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
@@ -332,6 +346,7 @@
                 <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
                 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                             LinkPrompt="{Binding LinkPrompt}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->

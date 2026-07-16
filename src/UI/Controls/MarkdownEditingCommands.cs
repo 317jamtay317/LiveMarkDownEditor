@@ -42,6 +42,27 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands));
 
     /// <summary>
+    /// The Insert Link Formatting Action: turns the selection into a Link, or inserts a new one at
+    /// the caret, asking for its text and destination URL through the Link Prompt (Ctrl+K). No edit
+    /// is made when the Link Prompt is dismissed or gives no URL (INV-030).
+    /// </summary>
+    public static RoutedUICommand InsertLink { get; } = new(
+        "Insert link",
+        nameof(InsertLink),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.K, ModifierKeys.Control)]);
+
+    /// <summary>
+    /// The Insert Image Formatting Action: inserts an Image at the caret, asking for its alt text
+    /// and source URL through the Link Prompt. No edit is made when the Link Prompt is dismissed or
+    /// gives no URL (INV-030).
+    /// </summary>
+    public static RoutedUICommand InsertImage { get; } = new(
+        "Insert image",
+        nameof(InsertImage),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
     /// The Toggle Strikethrough Formatting Action: the selection is struck through, or
     /// struck-through prose is restored to plain text. It removes a Strikethrough the Projector
     /// loaded exactly as readily as one a previous toggle applied (INV-029).

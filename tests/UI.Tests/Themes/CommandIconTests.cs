@@ -29,6 +29,8 @@ public sealed class CommandIconTests
         "Icon.ToggleUnorderedList",
         "Icon.ToggleOrderedList",
         "Icon.ToggleTaskList",
+        "Icon.InsertLink",
+        "Icon.InsertImage",
         "Icon.ToggleBlockQuote",
         "Icon.Table",
         "Icon.CollapseAllFolds",

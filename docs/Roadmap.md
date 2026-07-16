@@ -47,10 +47,6 @@ work that is still in review, noted inline.
   keystroke in a file authored in another style is enough. A clean session now also stops
   re-projecting for a no-op change, which had been discarding fold state and caret position.
 
-## Rounds out the Formatting Actions
-
-- [ ] **Insert Link (Ctrl+K) and Insert Image.**
-
 ## Quality of life
 
 - [ ] **Export the Rendered Output as HTML.** Render already produces it for interoperability;

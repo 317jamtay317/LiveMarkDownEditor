@@ -28,16 +28,19 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
     /// <param name="filePicker">The abstraction used to prompt for Watched File paths.</param>
     /// <param name="unsavedEditsPrompt">Asks the user how to close a Tab with unsaved edits (INV-010).</param>
+    /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
         IUnsavedEditsPrompt unsavedEditsPrompt,
+        ILinkPrompt linkPrompt,
         AppearanceViewModel appearance)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
+        LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
 
         Sessions = new ReadOnlyObservableCollection<EditorSessionViewModel>(_sessions);
@@ -83,6 +86,13 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>The visual-theme ViewModel for the shell's chrome (light/dark toggle).</summary>
     public AppearanceViewModel Appearance { get; }
+
+    /// <summary>
+    /// The Link Prompt the editing surface asks for a Link's or Image's text and URL (INV-030).
+    /// Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which owns the Formatting
+    /// Actions but is composed in XAML rather than by the container.
+    /// </summary>
+    public ILinkPrompt LinkPrompt { get; }
 
     /// <summary>
     /// Whether the Navigation Panel — the left-edge Outline of the Active Session — is shown. Hidden
