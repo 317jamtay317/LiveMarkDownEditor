@@ -213,17 +213,21 @@ and tested.
   `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
 
 ### INV-018 — A Formatting Action Captures to canonical Markdown
-- **Statement:** Applying a Formatting Action (Toggle Code, Insert Table, Add Row, Add Column) edits
-  the Visual Document using the same tagged elements a Project produces, so the Captured source text
-  is canonical Markdown: Round-Tripping it preserves its semantics (INV-004) and converges (INV-005).
-  A Formatting Action never corrupts the document — after it runs, the Visual Document and the
-  Markdown Document still describe the same content.
+- **Statement:** Applying a Formatting Action (Toggle Code, Insert Table, Add Row, Add Column,
+  Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual Document using the
+  same tagged elements a Project produces, so the Captured source text is canonical Markdown:
+  Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
+  never corrupts the document — after it runs, the Visual Document and the Markdown Document still
+  describe the same content.
 - **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
-  Projector emits (`InlineSemantic.Code`, `CodeBlockRole`, `TableRole`) through the shared
-  `CodeFormatting` / `TableEditing` helpers, so Capture treats user-applied formatting and loaded
-  formatting uniformly.
+  Projector emits (`InlineSemantic.Code`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`) through the
+  shared `CodeFormatting` / `TableEditing` / `ListFormatting` / `TaskMarkerEditing` helpers, so Capture
+  treats user-applied formatting and loaded formatting uniformly. A List carries no role of its own —
+  its kind rides on the WPF `List`'s own `MarkerStyle` — so the Projector composes a List through
+  `ListFormatting.ApplyList` and a Task Marker through `TaskMarkerEditing.CreateMarker`, the same
+  seams the Formatting Actions use (mirroring `CodeFormatting.ApplyCodeSpan` / `TableEditing.WrapCell`).
 - **Tested by:** `MarkdownRichEditorToggleCodeTests.*_INV018`,
-  `MarkdownRichEditorTableTests.*_INV018`.
+  `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`.
 
 ### INV-019 — A Table stays rectangular
 - **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
@@ -293,6 +297,68 @@ and tested.
   `ReplaceAll_CapturesCanonicalMarkdown_ThatRoundTrips_INV022` (anti-corruption),
   `ReplaceAll_UnfoldsFoldedSections_SoNoMatchIsMissed_INV022`, and
   `ReplaceAll_WhenReplacementContainsQuery_ReplacesOnlyTheOriginalMatches_INV022` (termination).
+
+### INV-023 — A List Toggle preserves its List Items' content
+- **Statement:** Toggle Unordered List, Toggle Ordered List, and Toggle Task List change a List's
+  *kind* or its Task Markers — never the content of its List Items. Four rules bound them:
+  - **Content survives every toggle.** Turning paragraphs into a List, a List back into paragraphs,
+    or an Unordered List into an Ordered one preserves each item's text, its inline formatting, and
+    the order of the items. One paragraph becomes one List Item, and one List Item becomes one
+    paragraph.
+  - **The two List kinds toggle between each other, never off through each other.** Toggle Ordered
+    List applied to an Unordered List makes it Ordered (and vice versa); only the *same* kind's
+    toggle turns a List back into paragraphs. So a List is never silently destroyed by reaching for
+    the other kind.
+  - **A Task Marker exists only on a List Item.** Applied outside a List, Toggle Task List makes the
+    selected paragraphs an Unordered List first and then marks them — it never refuses the action.
+    Turning a Task List back into paragraphs removes its Task Markers with it: no Task Marker can
+    outlive the List Item that carries it.
+  - **Toggle Task List is all-or-nothing over the selection.** It removes the Task Markers only when
+    every selected List Item already carries one; otherwise it gives an unchecked Task Marker to
+    those that lack one, so a partly-marked selection converges on marked rather than flip-flopping.
+  - **A Task Marker's checkbox is its List Item's marker.** An Unordered List whose every item is a
+    task item shows no bullet — a bullet beside a checkbox is one marker too many. It regains its
+    bullets the moment any item is not a task item, because WPF gives a List one marker for all of
+    its items and the unmarked items would otherwise be left with no marker at all. An Ordered Task
+    List keeps its numbers. This is presentation only: it never changes the Captured source text.
+  - **A Task List continues across a paragraph break.** Breaking the line in a task item gives the
+    new List Item its own unchecked Task Marker, the way a bullet or a number carries to the next
+    item — the new item is a task item, so the List does not regain its bullets. A Task Marker's
+    checked state never carries: the new item always starts unchecked.
+  - **A Task Marker's Run never swallows the item's text.** The marker is ordinary editable text and
+    the caret legitimately sits inside its Run — a new task item's marker is its only inline, so WPF
+    normalises the caret into it and the first thing typed lands there. Capture emits the marker from
+    its role, and must emit whatever that Run holds beyond the checkbox glyph as the item's text.
+    Otherwise a label the user can see on screen would never reach the Markdown Document.
+- **Enforced by:** The `ListFormatting` helper, which composes its List through the same
+  `ApplyList` seam the Projector uses (INV-018) and **moves each item's existing paragraph** into the
+  List (and back out again) rather than re-creating it from text — so inline formatting cannot be
+  flattened by a toggle. `ListFormatting.RefreshTaskMarkerStyle` is the one place the bullet rule
+  lives, applied by the Projector and by every List Formatting Action alike; Capture tells an Ordered
+  List from an Unordered one by `MarkerStyle == Decimal`, and `None` is not `Decimal`, so dropping the
+  bullet cannot change the captured marker. `ListFormatting.TryContinueTaskList` leaves the paragraph
+  break itself to WPF's `EditingCommands.EnterParagraphBreak` — which carries inline formatting across
+  the break correctly — and `MarkContinuedTaskItem` then supplies the one thing WPF cannot know about,
+  the new item's Task Marker, in the same `BeginChange` unit so one undo takes the whole new item back.
+- **Tested by:** `MarkdownRichEditorListTests.*_INV023`. The paragraph break runs through a WPF editing
+  command that needs a focused editor and so does nothing in a headless test; the tests cover the rule
+  that marks the item the break creates, and Enter itself is verified by driving the real app.
+
+### INV-024 — Toggle Task Marker flips only that Task Marker's state
+- **Statement:** Clicking a Task Marker's checkbox toggles it between unchecked (`[ ]`) and checked
+  (`[x]`) and changes nothing else: its List Item's content, its List's kind and numbering, and every
+  other List Item are left exactly as they were. It is a real edit — the Captured source text differs
+  in precisely that one marker — and it Captures as canonical Markdown, so Round-Tripping the result
+  preserves its semantics (INV-004) and converges (INV-005). Toggling is reachable **only** by
+  clicking a Task Marker itself: a click anywhere else in the Visual Document places the caret as it
+  always has and never toggles a marker. Because a Task Marker's checked state is carried by its role
+  rather than by the glyph the user sees, a toggle updates both together — the glyph and the role can
+  never disagree about whether the task is checked.
+- **Enforced by:** `TaskMarkerEditing`, which resolves the clicked position to a `TaskMarkerRole`-tagged
+  `Run` (returning without an edit when the click is not on one) and replaces both that `Run`'s `Tag`
+  and its glyph in a single `BeginChange`/`EndChange` unit, and `MarkdownRichEditor.OnPreviewMouseLeftButtonDown`,
+  which only forwards the click and lets it fall through to normal caret placement otherwise.
+- **Tested by:** `MarkdownRichEditorTaskMarkerTests.*_INV024`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

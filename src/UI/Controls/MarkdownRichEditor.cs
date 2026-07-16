@@ -153,6 +153,14 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => AddTableColumnAtCaret(),
             (_, e) => e.CanExecute = IsCaretInTable));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleUnorderedList, (_, _) => ToggleUnorderedListAtSelection()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleOrderedList, (_, _) => ToggleOrderedListAtSelection()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleTaskList,
+            (_, _) => ToggleTaskListAtSelection(),
+            (_, e) => e.CanExecute = ListFormatting.CanToggleTaskList(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ShowFind, (_, _) =>
             {
                 IsReplaceActive = false;
@@ -500,6 +508,56 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// caret's column, extending every row (INV-019). No-op while the caret is not inside a Table.
     /// </summary>
     public void AddTableColumnAtCaret() => TableEditing.AddColumn(this);
+
+    /// <summary>
+    /// Applies the Toggle Unordered List Formatting Action at the current selection: the selected
+    /// paragraphs become an Unordered List, an Unordered List becomes plain paragraphs again, and an
+    /// Ordered List is converted rather than removed. The items' content is preserved (INV-023) and
+    /// the edit Captures back into <see cref="Markdown"/> like any other (INV-018).
+    /// </summary>
+    public void ToggleUnorderedListAtSelection() => ListFormatting.ToggleUnordered(this);
+
+    /// <summary>
+    /// Applies the Toggle Ordered List Formatting Action at the current selection — the counterpart
+    /// of <see cref="ToggleUnorderedListAtSelection"/> (INV-018, INV-023).
+    /// </summary>
+    public void ToggleOrderedListAtSelection() => ListFormatting.ToggleOrdered(this);
+
+    /// <summary>
+    /// Applies the Toggle Task List Formatting Action at the current selection: gives every selected
+    /// List Item lacking one an unchecked Task Marker, or clears them all when every selected List
+    /// Item already carries one. No-op while the selection is not inside a List (INV-023).
+    /// </summary>
+    public void ToggleTaskListAtSelection() => ListFormatting.ToggleTaskList(this);
+
+    /// <summary>
+    /// Continues a Task List across a paragraph break: when the caret sits in a task item, breaks the
+    /// line and gives the new List Item its own unchecked Task Marker, the way a bullet or a number
+    /// carries to the next item (INV-023). Called by the control's Enter handling.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the break was handled; <see langword="false"/> when the caret is
+    /// not in a task item, so Enter should behave as it normally does.
+    /// </returns>
+    public bool ContinueTaskListAtCaret() => ListFormatting.TryContinueTaskList(this);
+
+    /// <summary>
+    /// Gives the List Item at the caret an unchecked Task Marker when the item before it has one and
+    /// it does not — the rule that makes Enter continue a Task List (INV-023). A no-op anywhere else.
+    /// </summary>
+    /// <returns><see langword="true"/> when a Task Marker was added.</returns>
+    public bool MarkContinuedTaskItemAtCaret() => ListFormatting.MarkContinuedTaskItem(this);
+
+    /// <summary>
+    /// Applies the Toggle Task Marker edit: flips the Task Marker at <paramref name="position"/>
+    /// between unchecked and checked, changing nothing else (INV-024).
+    /// </summary>
+    /// <param name="position">The position to toggle at — where the user clicked.</param>
+    /// <returns>
+    /// <see langword="true"/> when a Task Marker was toggled; <see langword="false"/> when the
+    /// position is not on one, so the click should place the caret as usual.
+    /// </returns>
+    public bool ToggleTaskMarkerAt(TextPointer? position) => TaskMarkerEditing.Toggle(this, position);
 
     /// <summary>
     /// Replaces the Current Match with the <see cref="Replacement"/> and moves to the next Match.
@@ -850,6 +908,35 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             Dispatcher.BeginInvoke(RecomputeMatches, DispatcherPriority.Loaded);
         }
+    }
+
+    /// <inheritdoc />
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        // Enter in a Task List carries the checkbox to the new item, the way WPF carries a bullet or
+        // a number (INV-023). Shift+Enter is a soft break within the same item, so it is left alone.
+        if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && ContinueTaskListAtCaret())
+        {
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
+    }
+
+    /// <inheritdoc />
+    protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        // A click on a Task Marker's checkbox toggles it (INV-024). snapToText is off so only a click
+        // on the checkbox itself resolves to it; every other click falls through to the base class and
+        // places the caret exactly as it always has.
+        if (ToggleTaskMarkerAt(GetPositionFromPoint(e.GetPosition(this), snapToText: false)))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPreviewMouseLeftButtonDown(e);
     }
 
     /// <inheritdoc />

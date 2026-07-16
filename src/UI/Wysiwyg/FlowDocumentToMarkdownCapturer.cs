@@ -214,11 +214,25 @@ public sealed class FlowDocumentToMarkdownCapturer
                 segments.Add(Verbatim(EmitImage(image)));
                 break;
 
-            case Run { Tag: TaskMarkerRole task }:
-                // No trailing space: the following literal ("_todo") already carries the separator,
-                // so the canonical "- [ ] todo" is reproduced with a single space.
-                segments.Add(Verbatim(task.Checked ? "[x]" : "[ ]"));
+            case Run { Tag: TaskMarkerRole task } marker:
+            {
+                // The marker owns the separator (the Projector strips the one the source carried on
+                // the following text), so it emits its own trailing space: "- [ ] todo".
+                segments.Add(Verbatim(task.Checked ? "[x] " : "[ ] "));
+
+                // A Task Marker's Run is ordinary editable text, and the caret legitimately sits
+                // inside it — a new task item's marker is its only inline, so WPF normalises the
+                // caret into it and the first thing typed lands there. That text is the item's
+                // content, not the marker, and emitting the marker from its role alone would drop
+                // it silently: it would show on screen and never reach the Markdown.
+                var typed = TextBeyondGlyph(marker.Text);
+                if (typed.Length > 0)
+                {
+                    segments.Add(new Segment(typed, false, false, false, false, false, Verbatim: false));
+                }
+
                 break;
+            }
 
             case Run run when run.Text.Length > 0:
                 segments.Add(new Segment(
@@ -251,6 +265,18 @@ public sealed class FlowDocumentToMarkdownCapturer
     }
 
     private static Segment Verbatim(string text) => new(text, false, false, false, false, false, Verbatim: true);
+
+    // Whatever a Task Marker's Run holds beyond its checkbox glyph and the single space that
+    // separates it from the item's text — that is, text the user typed into the marker's Run.
+    private static string TextBeyondGlyph(string markerText)
+    {
+        var rest = markerText.Length > 0 && markerText[0] is TaskMarkerEditing.UncheckedGlyphChar
+            or TaskMarkerEditing.CheckedGlyphChar
+            ? markerText[1..]
+            : markerText;
+
+        return rest.StartsWith(' ') ? rest[1..] : rest;
+    }
 
     private static string EmitLink(Hyperlink link)
     {

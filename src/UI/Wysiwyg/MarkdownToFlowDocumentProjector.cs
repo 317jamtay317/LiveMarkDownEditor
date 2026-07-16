@@ -108,14 +108,12 @@ public sealed class MarkdownToFlowDocumentProjector
     // A Markdown List becomes a WPF List whose marker mirrors the source: a bullet (Disc) for an
     // Unordered List, incrementing numbers (Decimal) for an Ordered List, starting at the source's
     // own start number. Each List Item's own blocks are projected in turn, so an item's paragraph —
-    // and any nested List — is shown rather than dropped.
+    // and any nested List — is shown rather than dropped. The one shared List composition, also used
+    // by the List Formatting Actions, so Capture treats both identically (INV-018).
     private static WpfBlock ProjectList(ListBlock listBlock)
     {
-        var list = new List
-        {
-            MarkerStyle = listBlock.IsOrdered ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc,
-            Margin = BodySpacing,
-        };
+        var list = new List();
+        ListFormatting.ApplyList(list, listBlock.IsOrdered);
 
         if (listBlock.IsOrdered && int.TryParse(listBlock.OrderedStart, out var start))
         {
@@ -148,6 +146,9 @@ public sealed class MarkdownToFlowDocumentProjector
             list.ListItems.Add(listItem);
         }
 
+        // A Task List's checkboxes stand in for its bullets, the same rule the List Formatting
+        // Actions apply, so a loaded Task List and a user-built one look identical (INV-023).
+        ListFormatting.RefreshTaskMarkerStyle(list);
         return list;
     }
 
@@ -304,13 +305,26 @@ public sealed class MarkdownToFlowDocumentProjector
             return;
         }
 
+        var afterTaskMarker = false;
         foreach (var inline in container)
         {
             var projected = ProjectInline(inline);
-            if (projected is not null)
+            if (projected is null)
             {
-                target.Add(projected);
+                continue;
             }
+
+            // A Task Marker owns the space separating its checkbox from the item's text, and Capture
+            // re-emits it from the marker ("[ ] "). The source carries that separator on the text as
+            // well ("- [ ] todo" leaves the literal " todo"), so it is dropped here rather than shown
+            // twice.
+            if (afterTaskMarker && projected is Run { Tag: null } run && run.Text.StartsWith(' '))
+            {
+                run.Text = run.Text[1..];
+            }
+
+            target.Add(projected);
+            afterTaskMarker = projected is Run { Tag: TaskMarkerRole };
         }
     }
 
@@ -334,7 +348,9 @@ public sealed class MarkdownToFlowDocumentProjector
                 return ProjectEmphasis(emphasis);
 
             case MarkdigTaskList task:
-                return new Run(task.Checked ? "☑ " : "☐ ") { Tag = new TaskMarkerRole(task.Checked) };
+                // The one shared Task Marker composition, also used by the List Formatting Actions
+                // and Toggle Task Marker, so Capture treats all three identically (INV-018/024).
+                return TaskMarkerEditing.CreateMarker(task.Checked);
 
             case LinkInline { IsImage: true } image:
                 return ProjectImage(image);

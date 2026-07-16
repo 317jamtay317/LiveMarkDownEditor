@@ -37,7 +37,7 @@ two directions echoing each other.
 | `MatchCount` | `int` | `0` | **Read-only.** The number of Matches for the current `FindQuery`. |
 | `MatchSummary` | `string` | `""` | **Read-only.** The Find Bar's summary: empty with no query, `"No results"`, or `"{ordinal} of {count}"`. |
 
-## Formatting Actions (Toggle Code &amp; Tables)
+## Formatting Actions (Toggle Code, Lists &amp; Tables)
 
 Formatting Actions are real edits: they change the Visual Document, which Captures back into
 `Markdown` like any other edit, always to canonical Markdown (INV-018). They are driven through
@@ -50,10 +50,31 @@ Formatting Actions are real edits: they change the Visual Document, which Captur
 | `InsertTableAtCaret()` | `InsertTable` | Inserts a new Table — three columns, a header row, two empty body rows — at the caret and selects the first header cell. Enabled only while the caret is **not** in a Table. |
 | `AddTableRowAtCaret()` | `AddTableRow` | Inserts a new empty row below the caret's row, at the Table's column count (INV-019). Enabled only while the caret is in a Table. |
 | `AddTableColumnAtCaret()` | `AddTableColumn` | Inserts a new empty column right of the caret's column, extending every row (INV-019). Enabled only while the caret is in a Table. |
+| `ToggleUnorderedListAtSelection()` | `ToggleUnorderedList` | The selected paragraphs become an Unordered List; an Unordered List becomes plain paragraphs again; an Ordered List is converted rather than removed (INV-023). |
+| `ToggleOrderedListAtSelection()` | `ToggleOrderedList` | The counterpart of Toggle Unordered List, for Ordered Lists (INV-023). |
+| `ToggleTaskListAtSelection()` | `ToggleTaskList` | Gives every selected List Item lacking one an unchecked Task Marker, or clears them all when every selected List Item already carries one. Outside a List it makes the selected paragraphs an Unordered List first, since a Task Marker exists only on a List Item. An Unordered Task List shows no bullet — the checkbox is the item's marker (INV-023). |
 
-The formatting logic lives in `UI.Wysiwyg.CodeFormatting` and `UI.Wysiwyg.TableEditing`, which the
-Projector shares, so Capture treats user-applied code and Tables exactly like ones loaded from
-Markdown.
+The formatting logic lives in `UI.Wysiwyg.CodeFormatting`, `UI.Wysiwyg.TableEditing`, and
+`UI.Wysiwyg.ListFormatting`, which the Projector shares, so Capture treats user-applied code, Tables,
+and Lists exactly like ones loaded from Markdown.
+
+## Toggle Task Marker (clicking a checkbox)
+
+Clicking a Task Marker's checkbox toggles it between `[ ]` and `[x]`. This is a real edit, but it is
+**not** a Formatting Action: it reaches the document by direct manipulation rather than through the
+command bar or a key gesture, so it has no routed command (INV-024).
+
+| Member | Description |
+| --- | --- |
+| `ToggleTaskMarkerAt(TextPointer? position)` | Flips the Task Marker at `position`, changing nothing else. Returns `false` — and makes no edit — when the position is not on a Task Marker, so the click places the caret as usual. Called by the control's `OnPreviewMouseLeftButtonDown`. |
+| `ContinueTaskListAtCaret()` | Breaks the line in a task item and gives the new List Item its own unchecked Task Marker, the way a bullet or a number carries to the next item (INV-023). Returns `false` outside a task item, so Enter behaves as usual. Called by the control's `OnPreviewKeyDown`. |
+| `MarkContinuedTaskItemAtCaret()` | The rule behind the above, on its own: marks the List Item at the caret when the item before it is a task item and it is not. Split out because the paragraph break runs through a WPF editing command that needs a focused editor, so only this half is testable headless. |
+
+`UI.Wysiwyg.TaskMarkerEditing` is the one definition of a Task Marker: it composes the marker (glyph
+plus role) for the Projector, `ListFormatting`, and this toggle alike, and updates the glyph and the
+role together so what the user sees and what Capture emits can never disagree. The marker owns the
+single space separating its checkbox from the item's text — the Projector strips the one the Markdown
+source carries on the following text, and Capture re-emits it as `"[ ] "`.
 
 ## Folding (collapsible Sections)
 
