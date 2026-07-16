@@ -35,47 +35,76 @@
         <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="False" Margin="8,6">
-                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="New"
-                        Command="{Binding NewCommand}" ToolTip="New document (Ctrl+N)" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Open"
-                        Command="{Binding OpenCommand}" ToolTip="Open a Markdown file (Ctrl+O)" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Save"
-                        Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding NewCommand}" ToolTip="New document (Ctrl+N)"
+                        AutomationProperties.Name="New document">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.New}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding OpenCommand}" ToolTip="Open a Markdown file (Ctrl+O)"
+                        AutomationProperties.Name="Open a Markdown file">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Open}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)"
+                        AutomationProperties.Name="Save">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
+                </Button>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="B"
-                        FontWeight="Bold" ToolTip="Bold (Ctrl+B)"
-                        Command="EditingCommands.ToggleBold" CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="I"
-                        FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
-                        Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&lt;/&gt;"
-                        FontFamily="Consolas" FontSize="12"
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Bold (Ctrl+B)" AutomationProperties.Name="Bold"
+                        Command="EditingCommands.ToggleBold" CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBold}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Italic (Ctrl+I)" AutomationProperties.Name="Italic"
+                        Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleItalic}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
+                        AutomationProperties.Name="Code"
                         Command="controls:MarkdownEditingCommands.ToggleCode"
-                        CommandTarget="{Binding ElementName=Editor}" />
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleCode}" />
+                </Button>
 
-                <!-- List toggles. The checklist glyph matches the checkbox a Task Marker shows in
-                     the document; Checklist is disabled (faded) outside a List. -->
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2022;"
+                <!-- List toggles. The checklist icon matches the checkbox a Task Marker shows in
+                     the document. -->
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Bulleted list — turn the selected paragraphs into a list, or a bulleted list back into paragraphs"
+                        AutomationProperties.Name="Bulleted list"
                         Command="controls:MarkdownEditingCommands.ToggleUnorderedList"
-                        CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="1."
-                        FontSize="12"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Numbered list — turn the selected paragraphs into a list, or a numbered list back into paragraphs"
+                        AutomationProperties.Name="Numbered list"
                         Command="controls:MarkdownEditingCommands.ToggleOrderedList"
-                        CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2611;"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleOrderedList}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Checklist — give the selected list items checkboxes, or remove them; click a checkbox to tick it"
+                        AutomationProperties.Name="Checklist"
                         Command="controls:MarkdownEditingCommands.ToggleTaskList"
-                        CommandTarget="{Binding ElementName=Editor}" />
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
+                </Button>
 
-                <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. -->
+                <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. The
+                     entries keep their words — a dropdown is a list of choices to read, and three
+                     near-identical grid icons would separate them far less than the words do. -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
-                    <MenuItem Style="{StaticResource CommandMenuItem}" Header="Table"
-                              ToolTip="Insert a table, or grow the table at the caret">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Insert a table, or grow the table at the caret"
+                              AutomationProperties.Name="Table">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Table}" />
+                        </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Table"
                                   Command="controls:MarkdownEditingCommands.InsertTable"
                                   CommandTarget="{Binding ElementName=Editor}" />
@@ -90,23 +119,28 @@
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
-                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Collapse all"
-                        Focusable="False" ToolTip="Collapse all sections"
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Collapse all sections" AutomationProperties.Name="Collapse all sections"
                         Command="controls:MarkdownEditingCommands.CollapseAllFolds"
-                        CommandTarget="{Binding ElementName=Editor}" />
-                <Button DockPanel.Dock="Left" Style="{StaticResource CommandButton}" Content="Expand all"
-                        Focusable="False" ToolTip="Expand all sections (Ctrl+Shift+M)"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Expand all sections (Ctrl+Shift+M)"
+                        AutomationProperties.Name="Expand all sections"
                         Command="controls:MarkdownEditingCommands.ExpandAllFolds"
-                        CommandTarget="{Binding ElementName=Editor}" />
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
+                </Button>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
                 <!-- Navigation Panel toggle: highlighted while the panel is shown. -->
-                <Button DockPanel.Dock="Left" Content="Outline" Focusable="False"
-                        Command="{Binding ToggleNavigationPanelCommand}"
-                        ToolTip="Toggle the navigation panel">
+                <Button DockPanel.Dock="Left" Command="{Binding ToggleNavigationPanelCommand}"
+                        ToolTip="Toggle the navigation panel"
+                        AutomationProperties.Name="Toggle the navigation panel">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsNavigationPanelVisible}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
@@ -114,14 +148,15 @@
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleNavigationPanel}" />
                 </Button>
 
                 <!-- Source Panel toggle: highlighted while the raw-source pane is shown. -->
-                <Button DockPanel.Dock="Left" Content="Source" Focusable="False"
-                        Command="{Binding ToggleSourcePanelCommand}"
-                        ToolTip="Toggle the raw Markdown source panel">
+                <Button DockPanel.Dock="Left" Command="{Binding ToggleSourcePanelCommand}"
+                        ToolTip="Toggle the raw Markdown source panel"
+                        AutomationProperties.Name="Toggle the raw Markdown source panel">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSourcePanelVisible}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
@@ -129,24 +164,26 @@
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleSourcePanel}" />
                 </Button>
 
                 <!-- Theme toggle: shows the theme you'd switch to. -->
-                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconCommandButton}"
                         Command="{Binding Appearance.ToggleThemeCommand}"
-                        ToolTip="Toggle light / dark theme">
-                    <TextBlock>
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Text" Value="&#x263E;" />
+                        ToolTip="Toggle light / dark theme"
+                        AutomationProperties.Name="Toggle light or dark theme">
+                    <Path>
+                        <Path.Style>
+                            <Style TargetType="Path" BasedOn="{StaticResource CommandIcon}">
+                                <Setter Property="Data" Value="{StaticResource Icon.ThemeDark}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Appearance.IsDarkTheme}" Value="True">
-                                        <Setter Property="Text" Value="&#x2600;" />
+                                        <Setter Property="Data" Value="{StaticResource Icon.ThemeLight}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </Path.Style>
+                    </Path>
                 </Button>
             </DockPanel>
         </Border>

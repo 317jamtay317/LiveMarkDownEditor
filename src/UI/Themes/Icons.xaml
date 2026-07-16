@@ -1,0 +1,71 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Command Icons: the vector glyph the Command Bar shows for each of its actions, in place of
+         a word. Presentation-only — an icon names an action, it never performs one.
+
+         Every icon is authored as an outline on the same 24x24 grid and is drawn stroked, not
+         filled, by the CommandIcon style in Controls.xaml. Two consequences worth keeping:
+
+         - Stay inside the grid. The CommandIcon style renders at Stretch="None" so that every icon
+           is scaled by the same factor and they share a weight; an icon is positioned by its own
+           coordinates, so one drawn outside 0..24 lands off-centre rather than being scaled to fit.
+         - Corners are square here. The stroke is drawn with rounded joins and caps, which rounds
+           them on screen, so the path data does not need arcs to look soft.
+
+         Geometry is not a brush, so WpfThemeService leaves this dictionary alone on a theme swap
+         (it recolours SolidColorBrush entries only). Icons follow the theme through the stroke,
+         which inherits the button's Foreground. -->
+
+    <!-- File actions. -->
+
+    <!-- A page with a folded corner and a plus. -->
+    <Geometry x:Key="Icon.New">M6 3 H14 L19 8 V21 H6 Z M14 3 V8 H19 M12.5 12 V18 M9.5 15 H15.5</Geometry>
+
+    <!-- A folder. -->
+    <Geometry x:Key="Icon.Open">M3 20 V5 H9.5 L11.5 8 H21 V20 Z</Geometry>
+
+    <!-- A floppy disk: still the one shape every editor agrees means "save". -->
+    <Geometry x:Key="Icon.Save">M4 4 H16 L20 8 V20 H4 Z M8 4 V9 H15 V4 M7 20 V14 H17 V20</Geometry>
+
+    <!-- Formatting Actions. -->
+
+    <!-- A bold letter B, drawn as its two bowls over a shared stem. -->
+    <Geometry x:Key="Icon.ToggleBold">M7 4 H14 A4 4 0 0 1 14 12 H7 Z M7 12 H15 A4 4 0 0 1 15 20 H7 Z</Geometry>
+
+    <!-- A slanted letter I, serifed top and bottom so the slant reads at 18px. -->
+    <Geometry x:Key="Icon.ToggleItalic">M10 4 H19 M5 20 H14 M15 4 L9 20</Geometry>
+
+    <!-- Angle brackets around a slash: the same shape the button showed as text. The slash matters —
+         without it the two brackets read as a spaced-apart "< >" rather than as code. -->
+    <Geometry x:Key="Icon.ToggleCode">M17 7 L22 12 L17 17 M7 7 L2 12 L7 17 M14.5 4 L9.5 20</Geometry>
+
+    <!-- Three lines behind bullets. -->
+    <Geometry x:Key="Icon.ToggleUnorderedList">M3.1 6 A0.9 0.9 0 1 0 4.9 6 A0.9 0.9 0 1 0 3.1 6 Z M3.1 12 A0.9 0.9 0 1 0 4.9 12 A0.9 0.9 0 1 0 3.1 12 Z M3.1 18 A0.9 0.9 0 1 0 4.9 18 A0.9 0.9 0 1 0 3.1 18 Z M9 6 H21 M9 12 H21 M9 18 H21</Geometry>
+
+    <!-- Three lines behind a 1 and a 2. -->
+    <Geometry x:Key="Icon.ToggleOrderedList">M3.5 5 L5 4 V10 M3.5 10 H6.5 M3.2 15 Q3.2 13.6 4.9 13.6 Q6.6 13.6 6.6 15.2 Q6.6 16.6 3.2 20 H6.8 M10 6 H21 M10 12 H21 M10 18 H21</Geometry>
+
+    <!-- Three lines behind ticks: the checkbox a Task Marker shows in the document. -->
+    <Geometry x:Key="Icon.ToggleTaskList">M3 6.2 L4.6 7.8 L7.6 4.8 M3 17.2 L4.6 18.8 L7.6 15.8 M11 6 H21 M11 12 H21 M11 18 H21</Geometry>
+
+    <!-- A header row over two cells, for the Table dropdown. Deliberately not a full 3x3 grid: at
+         18px the extra rules crowd into a mesh and stop reading as a table at all. -->
+    <Geometry x:Key="Icon.Table">M3 5 H21 V19 H3 Z M3 10 H21 M12 10 V19</Geometry>
+
+    <!-- Fold actions: chevrons that close toward a line, and open away from it. The line is what
+         makes them legible — two facing chevrons alone merge into an X (collapse) and a diamond
+         (expand), which say nothing. It also reads as the Section Heading the fold closes onto. -->
+    <Geometry x:Key="Icon.CollapseAllFolds">M3 12 H21 M8 3.5 L12 8 L16 3.5 M8 20.5 L12 16 L16 20.5</Geometry>
+    <Geometry x:Key="Icon.ExpandAllFolds">M3 12 H21 M8 8 L12 3.5 L16 8 M8 16 L12 20.5 L16 16</Geometry>
+
+    <!-- Panel toggles. Each shows the pane it opens on the side it opens: the Navigation Panel to
+         the left of the editing surface, the Source Panel to its right. -->
+    <Geometry x:Key="Icon.ToggleNavigationPanel">M3 4 H21 V20 H3 Z M9 4 V20</Geometry>
+    <Geometry x:Key="Icon.ToggleSourcePanel">M3 4 H21 V20 H3 Z M15 4 V20</Geometry>
+
+    <!-- Theme toggle. Each shows the theme it switches you to, not the one you are in. -->
+    <Geometry x:Key="Icon.ThemeDark">M12 3 A6 6 0 0 0 21 12 A9 9 0 1 1 12 3 Z</Geometry>
+    <Geometry x:Key="Icon.ThemeLight">M8 12 A4 4 0 1 0 16 12 A4 4 0 1 0 8 12 Z M12 2 V4.5 M12 19.5 V22 M2 12 H4.5 M19.5 12 H22 M4.9 4.9 L6.7 6.7 M17.3 17.3 L19.1 19.1 M19.1 4.9 L17.3 6.7 M6.7 17.3 L4.9 19.1</Geometry>
+
+</ResourceDictionary>
