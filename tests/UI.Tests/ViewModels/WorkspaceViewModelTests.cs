@@ -137,6 +137,35 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task OpenPath_LoadsFileIntoNewTab_AndActivatesIt_INV020()
+    {
+        // A Startup Document arrives as a path (no picker involved) and opens like any other file.
+        _store.Seed(Path, "# Loaded");
+        var workspace = CreateWorkspace();
+
+        await workspace.OpenPathAsync(Path);
+
+        workspace.Sessions.Count.ShouldBe(2);
+        workspace.ActiveSession!.FilePath.ShouldBe(Path);
+        workspace.ActiveSession.Markdown.ShouldBe("# Loaded");
+    }
+
+    [Fact]
+    public async Task OpenPath_WhenFileAlreadyOpen_ActivatesExistingTab_INV009_INV020()
+    {
+        _store.Seed(Path, "# Loaded");
+        var workspace = CreateWorkspace();
+        await workspace.OpenPathAsync(Path);
+        var firstOpen = workspace.ActiveSession;
+        workspace.New();
+
+        await workspace.OpenPathAsync(Path);
+
+        workspace.Sessions.Count.ShouldBe(3); // initial empty + opened + new empty; no duplicate
+        workspace.ActiveSession.ShouldBe(firstOpen);
+    }
+
+    [Fact]
     public async Task Open_WhenUserCancels_AddsNoTab()
     {
         _picker.OpenResult = null;

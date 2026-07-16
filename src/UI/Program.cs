@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using Application;
 using Domain;
 using Infrastructure;
@@ -6,7 +7,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using UI.Core;
 using UI.Diagnostics;
+using UI.Platform;
+using UI.ViewModels;
 
 namespace UI;
 
@@ -16,6 +20,9 @@ namespace UI;
 /// </summary>
 public static class Program
 {
+    // The application-wide Single Instance name (INV-020) shared by the mutex and the pipe.
+    private const string InstanceName = "LiveMarkDownEditor";
+
     /// <summary>
     /// Composes configuration and logging, then runs the application. Serilog is
     /// configured entirely from the <c>Serilog</c> section of the loaded
@@ -32,6 +39,16 @@ public static class Program
         // logs and, previously, crashed before the logger was even built.
         var baseDirectory = AppContext.BaseDirectory;
         Directory.SetCurrentDirectory(baseDirectory);
+
+        // Single Instance (INV-020): the first launch holds the instance and serves every later
+        // one; a later launch forwards its Startup Document to the holder and exits immediately.
+        var startupDocument = StartupArguments.DocumentPath(args);
+        using var instance = SingleInstanceGuard.TryAcquire(InstanceName);
+        if (instance is null)
+        {
+            SingleInstanceGuard.ForwardDocumentPath(InstanceName, startupDocument ?? string.Empty);
+            return;
+        }
 
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
         {
@@ -80,7 +97,20 @@ public static class Program
             host.Services.GetRequiredService<Core.IThemeService>().Apply(Core.AppTheme.Light);
 
             var window = host.Services.GetRequiredService<MainWindow>();
-            window.DataContext = host.Services.GetRequiredService<ViewModels.WorkspaceViewModel>();
+            var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
+            window.DataContext = workspace;
+
+            // A later launch forwards its Startup Document here; open it on the UI thread and bring
+            // the one editor window to the front (INV-020).
+            instance.Listen(path => application.Dispatcher.InvokeAsync(
+                () => OpenForwardedDocument(window, workspace, path)));
+
+            if (startupDocument is not null)
+            {
+                // Queued so it runs once the dispatcher starts pumping inside Run.
+                application.Dispatcher.InvokeAsync(() => OpenDocument(workspace, startupDocument));
+            }
+
             application.Run(window);
         }
         catch (Exception exception)
@@ -90,6 +120,39 @@ public static class Program
         finally
         {
             Log.CloseAndFlush();
+        }
+    }
+
+    // Handles a Startup Document forwarded by a later launch: open it (or activate its existing
+    // Tab, INV-009) and surface the one editor window. An empty path is just "activate yourself".
+    private static void OpenForwardedDocument(MainWindow window, WorkspaceViewModel workspace, string path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            OpenDocument(workspace, path);
+        }
+
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Activate();
+    }
+
+    // Opens a Startup Document into the Workspace, tolerating a path that no longer exists.
+    private static async void OpenDocument(WorkspaceViewModel workspace, string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                await workspace.OpenPathAsync(path);
+            }
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "Failed to open the Startup Document {Path}", path);
         }
     }
 

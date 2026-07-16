@@ -50,6 +50,27 @@
                 <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="I"
                         FontStyle="Italic" ToolTip="Italic (Ctrl+I)"
                         Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&lt;/&gt;"
+                        FontFamily="Consolas" FontSize="12"
+                        ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
+                        Command="controls:MarkdownEditingCommands.ToggleCode"
+                        CommandTarget="{Binding ElementName=Editor}" />
+
+                <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}" Header="Table"
+                              ToolTip="Insert a table, or grow the table at the caret">
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Table"
+                                  Command="controls:MarkdownEditingCommands.InsertTable"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Row"
+                                  Command="controls:MarkdownEditingCommands.AddTableRow"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Column"
+                                  Command="controls:MarkdownEditingCommands.AddTableColumn"
+                                  CommandTarget="{Binding ElementName=Editor}" />
+                    </MenuItem>
+                </Menu>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
