@@ -375,7 +375,9 @@ internal static class ListFormatting
         return items;
     }
 
-    private static Paragraph? FirstParagraphOf(ListItem item) => item.Blocks.FirstBlock as Paragraph;
+    // Nullable in: the caret is far more often in no List Item at all than in one, and asking for a
+    // non-existent item's first paragraph is a fair question with "none" for an answer.
+    private static Paragraph? FirstParagraphOf(ListItem? item) => item?.Blocks.FirstBlock as Paragraph;
 
     private static bool IsOrdered(WpfList list) => list.MarkerStyle == TextMarkerStyle.Decimal;
 
