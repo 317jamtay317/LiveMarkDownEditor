@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Flat, rounded control styles for the editor shell. All colours are DynamicResource lookups
          into the active palette (Palette.Light.xaml / Palette.Dark.xaml) so a theme swap recolours
@@ -139,6 +140,59 @@
         <Setter Property="Margin" Value="7,7" />
         <Setter Property="Fill" Value="{DynamicResource BorderBrush}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- Thin horizontal divider between the rows of a floating panel (the Find Bar's Find row and
+         its Replace Row). The horizontal counterpart of CommandSeparator. -->
+    <Style x:Key="PanelSeparator" TargetType="Rectangle">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Margin" Value="0,5" />
+        <Setter Property="Fill" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- A borderless text box for the Find Bar, showing its Watermark (controls:Watermark.Text)
+         while empty — without it an empty, unfocused box is invisible against the panel. -->
+    <Style x:Key="FindBarTextBox" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource CaretBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid>
+                        <!-- Sits behind the text host, so it is covered the moment anything is
+                             typed; hit-test invisible so clicking it still focuses the box. -->
+                        <TextBlock x:Name="Watermark" Visibility="Collapsed" IsHitTestVisible="False"
+                                   Text="{Binding (controls:Watermark.Text), RelativeSource={RelativeSource TemplatedParent}}"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   VerticalAlignment="Center" Margin="2,0,0,0" />
+                        <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Watermark" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A compact text button for the Find Bar's Replace Row: the flat CommandButton look, sized to
+         sit beside the query and Replacement boxes rather than in the command bar. Its vertical
+         padding and font match the row above's icon buttons, so the Replace Row stands exactly as
+         tall as the Find row and the bar reads as one grid. -->
+    <Style x:Key="FindBarButton" TargetType="Button" BasedOn="{StaticResource CommandButton}">
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Margin" Value="4,0,0,0" />
     </Style>
 
     <!-- The tab strip: a horizontal ListBox with no chrome. -->

@@ -187,12 +187,14 @@ and tested.
   / Find Previous, and opening or closing the Find Bar never change the Markdown Document. Find is a
   read-only overlay on the Visual Document: it computes Matches from a snapshot of the document's
   text and highlights, scrolls, and selects, but the Captured Markdown source text is identical
-  before and after any Find. There is no replace.
+  before and after any Find. Replacing a Match (INV-022) is a separate operation and is not part of
+  Find: locating a Match never edits, and only Replace and Replace All do.
 - **Enforced by:** The pure `MatchFinder` (which computes ordered, non-overlapping Matches from a
-  text snapshot with no reference to the document), the `FindHighlightAdorner` (which only draws),
-  and Find state (`FindQuery`, Current Match, Find Bar visibility) being presentation-only on the
-  `MarkdownRichEditor` Control — none of it feeds back into Capture.
-- **Tested by:** `MatchFinderTests.*`,
+  text snapshot with no reference to the document), the pure `MatchScanner` (which maps those
+  Matches onto a Visual Document as ranges and only reads it), the `FindHighlightAdorner` (which
+  only draws), and Find state (`FindQuery`, Current Match, Find Bar visibility) being
+  presentation-only on the `MarkdownRichEditor` Control — none of it feeds back into Capture.
+- **Tested by:** `MatchFinderTests.*`, `MatchScannerTests.*`,
   `MarkdownRichEditorTests.Find_DoesNotChangeCapturedMarkdown_INV016`.
 
 ### INV-017 — Code Shading is view-only
@@ -262,6 +264,35 @@ and tested.
 - **Tested by:** `ConflictDifferenceTests.Compute_GivenSameInputsTwice_YieldsIdenticalLines_INV021`,
   `ConflictDifferenceTests.Compute_AccountsForEveryLineOfBothSides_INV021`,
   `EditorSessionViewModelTests.ViewDifference_ShowsDifference_WithoutChangingMarkdownOrConflict_INV021`.
+
+### INV-022 — Replace is a real edit that Captures to canonical Markdown
+- **Statement:** Replace swaps the Current Match for the Replacement; Replace All swaps every Match
+  for it. Both are real edits (the counterpart of Find's INV-016 view-only guarantee), and both edit
+  the Visual Document, so the result Captures as canonical Markdown: Round-Tripping it preserves its
+  semantics (INV-004) and converges (INV-005). Three rules bound the edit:
+  - **The Replacement is inserted verbatim** — exactly as typed, never adapting its case to the Match
+    it replaces (a Match is found case-insensitively, but a Replacement is not rewritten to suit it).
+    It inherits the Match's formatting when the Match *has* one: replacing a word inside bold text
+    leaves it bold. A Match spanning a formatting boundary has no single formatting to inherit, so
+    its Replacement is plain. An empty Replacement deletes the Match.
+  - **Replace All spans the whole Markdown Document.** Because Find searches only the visible Visual
+    Document, Replace All Unfolds every Folded Section first (INV-011, view-only) and re-finds, so an
+    occurrence hidden inside a Folded Section Body is replaced rather than silently left behind.
+  - **Replace All terminates.** It replaces exactly the Matches present when it is invoked, so a
+    Replacement that contains the query does not re-match and cannot cascade.
+- **Enforced by:** `MatchReplacer` (which swaps a Match's span for the Replacement through the same
+  `TextRange.Text` mechanism a Spelling Suggestion uses — WPF carries the surrounding formatting into
+  the new text, and flattens where the span had no single formatting), and `MarkdownRichEditor`'s
+  `ReplaceCurrentMatch` / `ReplaceAllMatches`, which Unfold before Replacing All and iterate a
+  snapshot of the Match ranges taken before the first edit. The edit then flows through the same
+  `OnTextChanged` → Capture path as any other edit, which is what makes the Captured source
+  canonical. Replace All's availability (`CanReplaceAll`) turns on the query alone and never on the
+  Match count: Find cannot see into a Folded Section, so gating the command on the count would
+  disable it in precisely the case this invariant exists to cover.
+- **Tested by:** `MarkdownRichEditorReplaceTests.*_INV022`, in particular
+  `ReplaceAll_CapturesCanonicalMarkdown_ThatRoundTrips_INV022` (anti-corruption),
+  `ReplaceAll_UnfoldsFoldedSections_SoNoMatchIsMissed_INV022`, and
+  `ReplaceAll_WhenReplacementContainsQuery_ReplacesOnlyTheOriginalMatches_INV022` (termination).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
