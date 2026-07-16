@@ -98,6 +98,13 @@
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleItalic}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Strikethrough — strike the selection through, or restore struck-through text"
+                        AutomationProperties.Name="Strikethrough"
+                        Command="controls:MarkdownEditingCommands.ToggleStrikethrough"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleStrikethrough}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
                         AutomationProperties.Name="Code"
                         Command="controls:MarkdownEditingCommands.ToggleCode"
@@ -127,6 +134,14 @@
                         Command="controls:MarkdownEditingCommands.ToggleTaskList"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
+                </Button>
+
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Block quote — quote the blocks the selection touches, or unquote them"
+                        AutomationProperties.Name="Block quote"
+                        Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
                 </Button>
 
                 <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. The

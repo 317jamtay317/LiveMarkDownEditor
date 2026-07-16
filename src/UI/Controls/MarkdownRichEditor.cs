@@ -141,6 +141,14 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => ToggleCodeAtSelection(),
             (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleStrikethrough,
+            (_, _) => ToggleStrikethroughAtSelection(),
+            (_, e) => e.CanExecute = StrikethroughFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleBlockQuote,
+            (_, _) => ToggleBlockQuoteAtSelection(),
+            (_, e) => e.CanExecute = QuoteFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.SetHeadingLevel,
             (_, e) => SetHeadingLevelAtCaret(e.Parameter),
             (_, e) => e.CanExecute = HeadingFormatting.CanSetLevel(this)));
@@ -493,6 +501,22 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
+    /// struck through, or struck-through prose is restored to plain text — whether that
+    /// Strikethrough was loaded or applied by a previous toggle (INV-029). The edit Captures back
+    /// into <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void ToggleStrikethroughAtSelection() => StrikethroughFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Toggle Block Quote Formatting Action at the current selection: the whole blocks
+    /// the selection touches become a Block Quote, or the selected Block Quote's blocks become plain
+    /// blocks again (INV-028). The edit Captures back into <see cref="Markdown"/> like any other
+    /// edit (INV-018).
+    /// </summary>
+    public void ToggleBlockQuoteAtSelection() => QuoteFormatting.Toggle(this);
 
     /// <summary>
     /// Applies the Set Heading Level Formatting Action at the caret: the block at the caret becomes a

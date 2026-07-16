@@ -42,6 +42,26 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands));
 
     /// <summary>
+    /// The Toggle Strikethrough Formatting Action: the selection is struck through, or
+    /// struck-through prose is restored to plain text. It removes a Strikethrough the Projector
+    /// loaded exactly as readily as one a previous toggle applied (INV-029).
+    /// </summary>
+    public static RoutedUICommand ToggleStrikethrough { get; } = new(
+        "Strikethrough",
+        nameof(ToggleStrikethrough),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Block Quote Formatting Action: the blocks the selection touches become a Block
+    /// Quote, or the selected Block Quote's blocks become plain blocks again. Whole blocks are
+    /// quoted (INV-028).
+    /// </summary>
+    public static RoutedUICommand ToggleBlockQuote { get; } = new(
+        "Block quote",
+        nameof(ToggleBlockQuote),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
     /// The <see cref="SetHeadingLevel"/> parameter that means "not a Heading" — the Heading Level
     /// Picker's Paragraph choice, which turns the Heading at the caret back into a plain paragraph.
     /// </summary>

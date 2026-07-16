@@ -50,7 +50,6 @@ work that is still in review, noted inline.
 ## Rounds out the Formatting Actions
 
 - [ ] **Insert Link (Ctrl+K) and Insert Image.**
-- [ ] **Block Quote and strikethrough actions.**
 
 ## Quality of life
 

@@ -151,18 +151,13 @@ public sealed class MarkdownToFlowDocumentProjector
     }
 
     // A block quote becomes a Section with a left rule and muted text, holding the projected child
-    // blocks. The BlockSemantic.Quote tag lets Capture re-emit the "> " prefix.
+    // blocks. Composed through the same seam the Toggle Block Quote Formatting Action uses, so a
+    // loaded Block Quote and a user-made one are identical to Capture (INV-018); its
+    // BlockSemantic.Quote tag lets Capture re-emit the "> " prefix.
     private static WpfBlock ProjectQuote(QuoteBlock quoteBlock)
     {
-        var section = new Section
-        {
-            Tag = BlockSemantic.Quote,
-            BorderThickness = new Thickness(3, 0, 0, 0),
-            Padding = new Thickness(10, 0, 0, 0),
-            Margin = BodySpacing,
-        };
-        section.SetResourceReference(TextElement.ForegroundProperty, "MutedTextBrush");
-        section.SetResourceReference(WpfBlock.BorderBrushProperty, "BorderBrush");
+        var section = new Section();
+        QuoteFormatting.ApplyQuote(section);
 
         foreach (var child in quoteBlock)
         {
@@ -412,13 +407,23 @@ public sealed class MarkdownToFlowDocumentProjector
     {
         Span span = emphasis.DelimiterChar switch
         {
-            '~' => new Span { Tag = InlineSemantic.Strikethrough, TextDecorations = TextDecorations.Strikethrough },
+            // Struck through by the same seam the Toggle Strikethrough Formatting Action uses, so a
+            // loaded Strikethrough and a user-struck one are identical to Capture — and the action
+            // can remove either alike (INV-029).
+            '~' => Struck(),
             _ when emphasis.DelimiterCount == 2 => new Bold(),
             _ => new Italic(),
         };
 
         AppendInlines(span.Inlines, emphasis);
         return span;
+
+        static Span Struck()
+        {
+            var span = new Span();
+            StrikethroughFormatting.ApplyStrikethrough(span);
+            return span;
+        }
     }
 
 }

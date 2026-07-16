@@ -221,6 +221,13 @@ and tested.
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
   never corrupts the document — after it runs, the Visual Document and the Markdown Document still
   describe the same content.
+- **An emphasis delimiter hugs its text.** `**bold **` and `~~struck ~~` do not close in Markdown: a
+  closing delimiter preceded by whitespace is not right-flanking, so it emits literal asterisks or
+  tildes rather than emphasis. A user selecting a word by double-click or Ctrl+Shift+Right takes its
+  trailing space with it, so Capture hoists whitespace surrounding an emphasised span **outside** the
+  delimiters (`one ~~two~~ three`, never `one ~~two ~~three`). Whitespace alone carries no emphasis
+  and is emitted bare. Without this the Markdown would say "literal tildes" where the Visual Document
+  says "struck through" — the two would stop describing the same content.
 - **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
   Projector emits (`InlineSemantic.Code`, `InlineSemantic.Strikethrough`, `HeadingRole`,
   `BlockSemantic.Quote`, `LinkRole`, `ImageRole`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`)
@@ -230,8 +237,14 @@ and tested.
   its kind rides on the WPF `List`'s own `MarkerStyle` — so the Projector composes a List through
   `ListFormatting.ApplyList` and a Task Marker through `TaskMarkerEditing.CreateMarker`, the same
   seams the Formatting Actions use (mirroring `CodeFormatting.ApplyCodeSpan` / `TableEditing.WrapCell`).
+  The whitespace rule lives in the Capturer's `Emit`, so it holds for every emphasised span alike —
+  including the bold and italic actions that predate it.
 - **Tested by:** `MarkdownRichEditorToggleCodeTests.*_INV018`,
-  `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`.
+  `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`,
+  `MarkdownRichEditorHeadingTests.*_INV018`, `MarkdownRichEditorQuoteTests.*_INV018`,
+  `MarkdownRichEditorStrikethroughTests.*_INV018` — in particular
+  `ToggleStrikethrough_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018` and
+  `ToggleBold_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`.
 
 ### INV-019 — A Table stays rectangular
 - **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
@@ -436,6 +449,47 @@ and tested.
   `SetHeadingLevel_PreservesInlineFormatting_INV027`,
   `SetHeadingLevel_ToTheSameLevel_LeavesItAHeading_INV027`, and
   `SetHeadingLevel_GivenLevelOutsideOneToSix_LeavesTheDocumentUnchanged_INV027`.
+
+### INV-028 — Toggle Block Quote quotes whole blocks, and preserves them
+- **Statement:** Toggle Block Quote turns the blocks the selection touches into a Block Quote, and
+  turns a Block Quote's blocks back into plain blocks. Three rules bound it:
+  - **It quotes whole blocks, never part of one.** A Block Quote is captured as a `> ` prefix on
+    every line, so quoting half a paragraph cannot be expressed in Markdown. A selection that starts
+    or ends mid-block quotes that whole block, and a caret alone quotes the block it sits in.
+  - **Content survives both directions.** Quoting blocks and unquoting them preserves each block's
+    text, its inline formatting, its kind (a Heading stays a Heading, a List stays a List), and the
+    order of the blocks. The blocks are **moved** into the Block Quote and back out again, never
+    re-created from their text.
+  - **Unquoting restores the blocks at top level.** A Block Quote turned off leaves its blocks in the
+    document in their original order, in its place — not merged into a neighbour, and not dropped.
+- **Enforced by:** The `QuoteFormatting` helper, which moves the selected top-level blocks into a
+  `Section` composed through the same `ApplyQuote` seam the Projector uses (INV-018) — so a loaded
+  Block Quote and a user-made one are identical to Capture — and moves them back out on the reverse
+  toggle, in both cases relocating the existing blocks rather than rebuilding them.
+- **Tested by:** `MarkdownRichEditorQuoteTests.*_INV028`, in particular
+  `ToggleBlockQuote_WithPartialSelection_QuotesTheWholeBlock_INV028`,
+  `ToggleBlockQuote_PreservesInlineFormatting_INV028`, and
+  `ToggleBlockQuote_OnAQuote_RestoresItsBlocksAtTopLevel_INV028`.
+
+### INV-029 — Toggle Strikethrough is symmetric over where the Strikethrough came from
+- **Statement:** Toggle Strikethrough strikes the selection through, or restores struck-through prose
+  to plain text. It removes a Strikethrough the Projector loaded exactly as readily as one a previous
+  toggle applied: the two are the same thing to the user, so the action cannot be able to undo only
+  its own work. Its content survives both directions — striking text through and restoring it
+  preserves the text and its other inline formatting (bold stays bold).
+- **Rationale:** Unlike bold and italic — which ride on `FontWeight` / `FontStyle`, inherited
+  properties an inner Run can override — a Strikethrough rides on `TextDecorations`, which Capture
+  reads by walking a Run's **ancestors**. So clearing the decoration on the selected Run alone would
+  leave an enclosing struck Span still striking it, and the text would still Capture as `~~text~~`
+  while looking plain. The Strikethrough must be removed where it lives.
+- **Enforced by:** The `StrikethroughFormatting` helper, which finds the struck Spans the selection
+  touches — by the same `InlineSemantic.Strikethrough` role and `TextDecorations` that Capture reads
+  — and clears them, and which otherwise wraps the selection in a Span composed through the same
+  `ApplyStrikethrough` seam the Projector uses (INV-018), mirroring `CodeFormatting`'s treatment of a
+  Code Span.
+- **Tested by:** `MarkdownRichEditorStrikethroughTests.*_INV029`, in particular
+  `ToggleStrikethrough_OnALoadedStrikethrough_RemovesIt_INV029` and
+  `ToggleStrikethrough_PreservesOtherInlineFormatting_INV029`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
