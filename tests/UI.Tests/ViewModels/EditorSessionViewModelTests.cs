@@ -1,3 +1,4 @@
+using Domain;
 using Shouldly;
 using UI.Tests.TestDoubles;
 using UI.ViewModels;
@@ -7,8 +8,9 @@ namespace UI.Tests.ViewModels;
 
 /// <summary>
 /// Tests for <see cref="EditorSessionViewModel"/> — one Tab's Editor Session: its Markdown Document
-/// source, its Watched File, unsaved-edit tracking, load/save, and External Change handling
-/// (INV-006/007). File selection and Tab management live in <see cref="WorkspaceViewModel"/>.
+/// source, its Watched File, unsaved-edit tracking, load/save, External Change handling
+/// (INV-006/007), and View Difference over a Conflict (INV-021). File selection and Tab management
+/// live in <see cref="WorkspaceViewModel"/>.
 /// </summary>
 public sealed class EditorSessionViewModelTests
 {
@@ -156,5 +158,109 @@ public sealed class EditorSessionViewModelTests
         session.Markdown.ShouldBe("# My edit");
         session.HasConflict.ShouldBeFalse();
         session.HasUnsavedEdits.ShouldBeTrue();
+    }
+
+    private async Task<EditorSessionViewModel> ConflictedSessionAsync(
+        string edit = "# Mine",
+        string disk = "# Disk")
+    {
+        var session = await LoadedSessionAsync("# Original");
+        session.Markdown = edit;
+        _store.Seed(Path, disk);
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+        return session;
+    }
+
+    [Fact]
+    public async Task ViewDifference_ShowsDifference_WithoutChangingMarkdownOrConflict_INV021()
+    {
+        var session = await ConflictedSessionAsync();
+
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.IsDifferenceVisible.ShouldBeTrue();
+        session.DifferenceLines.ShouldContain(
+            new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine"));
+        session.DifferenceLines.ShouldContain(
+            new DifferenceLine(DifferenceLineKind.DiskOnly, "# Disk"));
+        session.Markdown.ShouldBe("# Mine");
+        session.HasConflict.ShouldBeTrue();
+        session.HasUnsavedEdits.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ViewDifference_ExecutedTwice_HidesTheDifference()
+    {
+        var session = await ConflictedSessionAsync();
+
+        session.ViewDifferenceCommand.Execute(null);
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.IsDifferenceVisible.ShouldBeFalse();
+        session.DifferenceLines.ShouldBeEmpty();
+        session.HasConflict.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ViewDifference_WithoutConflict_CannotExecute()
+    {
+        var session = CreateSession();
+
+        session.ViewDifferenceCommand.CanExecute(null).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ResolveConflict_KeepMyEdits_HidesDifference()
+    {
+        var session = await ConflictedSessionAsync();
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.KeepMyEditsCommand.Execute(null);
+
+        session.IsDifferenceVisible.ShouldBeFalse();
+        session.DifferenceLines.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveConflict_ReloadFromDisk_HidesDifference()
+    {
+        var session = await ConflictedSessionAsync();
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.ReloadFromDiskCommand.Execute(null);
+
+        session.IsDifferenceVisible.ShouldBeFalse();
+        session.DifferenceLines.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExternalChange_WhileDifferenceVisible_RefreshesDifferenceLines()
+    {
+        var session = await ConflictedSessionAsync();
+        session.ViewDifferenceCommand.Execute(null);
+
+        _store.Seed(Path, "# Disk again");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.DifferenceLines.ShouldContain(
+            new DifferenceLine(DifferenceLineKind.DiskOnly, "# Disk again"));
+        session.DifferenceLines.ShouldNotContain(
+            new DifferenceLine(DifferenceLineKind.DiskOnly, "# Disk"));
+    }
+
+    [Fact]
+    public async Task EditingMarkdown_WhileDifferenceVisible_RefreshesDifferenceLines()
+    {
+        var session = await ConflictedSessionAsync();
+        session.ViewDifferenceCommand.Execute(null);
+
+        session.Markdown = "# Mine again";
+
+        session.DifferenceLines.ShouldContain(
+            new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine again"));
+        session.DifferenceLines.ShouldNotContain(
+            new DifferenceLine(DifferenceLineKind.SessionOnly, "# Mine"));
     }
 }
