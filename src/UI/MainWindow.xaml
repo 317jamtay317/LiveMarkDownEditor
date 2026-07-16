@@ -56,6 +56,22 @@
                         Command="controls:MarkdownEditingCommands.ToggleCode"
                         CommandTarget="{Binding ElementName=Editor}" />
 
+                <!-- List toggles. The checklist glyph matches the checkbox a Task Marker shows in
+                     the document; Checklist is disabled (faded) outside a List. -->
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2022;"
+                        ToolTip="Bulleted list — turn the selected paragraphs into a list, or a bulleted list back into paragraphs"
+                        Command="controls:MarkdownEditingCommands.ToggleUnorderedList"
+                        CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="1."
+                        FontSize="12"
+                        ToolTip="Numbered list — turn the selected paragraphs into a list, or a numbered list back into paragraphs"
+                        Command="controls:MarkdownEditingCommands.ToggleOrderedList"
+                        CommandTarget="{Binding ElementName=Editor}" />
+                <Button DockPanel.Dock="Left" Style="{StaticResource FormatButton}" Content="&#x2611;"
+                        ToolTip="Checklist — give the selected list items checkboxes, or remove them; click a checkbox to tick it"
+                        Command="controls:MarkdownEditingCommands.ToggleTaskList"
+                        CommandTarget="{Binding ElementName=Editor}" />
+
                 <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
                     <MenuItem Style="{StaticResource CommandMenuItem}" Header="Table"

@@ -36,7 +36,6 @@ work that is still in review, noted inline.
 
 - [ ] **Heading level picker.** Headings are the backbone of Sections, the Outline, and Folding, and
       are the one structural construct with no command-bar action.
-- [ ] **List toggles** — Unordered, Ordered, and Task Marker.
 - [ ] **Insert Link (Ctrl+K) and Insert Image.**
 - [ ] **Block Quote and strikethrough actions.**
 

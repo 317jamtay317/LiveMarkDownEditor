@@ -215,9 +215,9 @@ public sealed class FlowDocumentToMarkdownCapturer
                 break;
 
             case Run { Tag: TaskMarkerRole task }:
-                // No trailing space: the following literal ("_todo") already carries the separator,
-                // so the canonical "- [ ] todo" is reproduced with a single space.
-                segments.Add(Verbatim(task.Checked ? "[x]" : "[ ]"));
+                // The marker owns the separator (the Projector strips the one the source carried on
+                // the following text), so it emits its own trailing space: "- [ ] todo".
+                segments.Add(Verbatim(task.Checked ? "[x] " : "[ ] "));
                 break;
 
             case Run run when run.Text.Length > 0:

@@ -67,6 +67,36 @@ public static class MarkdownEditingCommands
         nameof(AddTableColumn),
         typeof(MarkdownEditingCommands));
 
+    /// <summary>
+    /// The Toggle Unordered List Formatting Action: the selected paragraphs become an Unordered List,
+    /// an Unordered List becomes plain paragraphs again, and an Ordered List is converted rather than
+    /// removed (INV-023).
+    /// </summary>
+    public static RoutedUICommand ToggleUnorderedList { get; } = new(
+        "Bulleted list",
+        nameof(ToggleUnorderedList),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Ordered List Formatting Action: the selected paragraphs become an Ordered List, an
+    /// Ordered List becomes plain paragraphs again, and an Unordered List is converted rather than
+    /// removed (INV-023).
+    /// </summary>
+    public static RoutedUICommand ToggleOrderedList { get; } = new(
+        "Numbered list",
+        nameof(ToggleOrderedList),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Task List Formatting Action: gives the selected List Items their Task Markers, or
+    /// clears them when every one already carries one. Available only while the selection is inside a
+    /// List (INV-023).
+    /// </summary>
+    public static RoutedUICommand ToggleTaskList { get; } = new(
+        "Checklist",
+        nameof(ToggleTaskList),
+        typeof(MarkdownEditingCommands));
+
     /// <summary>Opens the Find Bar and focuses its query box (Ctrl+F).</summary>
     public static RoutedUICommand ShowFind { get; } = new(
         "Find",
