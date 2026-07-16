@@ -11,8 +11,9 @@ namespace UI.ViewModels;
 /// Markdown Document's source text (bound two-way to the WYSIWYG editor as the canonical model), the
 /// associated Watched File, and whether unsaved edits exist. It loads and saves its own Watched File
 /// and reacts to External Change on it — reloading live when clean, or raising a Conflict when there
-/// are unsaved edits (INV-006/007). Choosing files and managing Tabs belong to the
-/// <see cref="WorkspaceViewModel"/>, not here.
+/// are unsaved edits (INV-006/007). While a Conflict awaits resolution it can also show the Conflict
+/// Difference between the two sides (View Difference, INV-021). Choosing files and managing Tabs
+/// belong to the <see cref="WorkspaceViewModel"/>, not here.
 /// </summary>
 public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 {
@@ -25,6 +26,8 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private bool _hasUnsavedEdits;
     private bool _hasConflict;
     private string _conflictingDiskText = string.Empty;
+    private bool _isDifferenceVisible;
+    private IReadOnlyList<DifferenceLine> _differenceLines = [];
 
     /// <summary>Creates a new, empty Editor Session over the given store, watcher, and dispatcher.</summary>
     /// <param name="store">The port used to load and save the Watched File.</param>
@@ -40,6 +43,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
         KeepMyEditsCommand = new RelayCommand(KeepMyEdits, () => HasConflict);
         ReloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => HasConflict);
+        ViewDifferenceCommand = new RelayCommand(ToggleViewDifference, () => HasConflict);
     }
 
     /// <summary>
@@ -54,6 +58,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             if (Set(ref _markdown, value))
             {
                 HasUnsavedEdits = true;
+                RefreshDifferenceIfVisible();
             }
         }
     }
@@ -87,12 +92,32 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Whether an External Change was detected while the session had unsaved edits and is awaiting
-    /// the user's resolution (keep edits, or reload from disk).
+    /// the user's resolution (keep edits, reload from disk, or view the difference).
     /// </summary>
     public bool HasConflict
     {
         get => _hasConflict;
         private set => Set(ref _hasConflict, value);
+    }
+
+    /// <summary>
+    /// Whether the Conflict Difference is shown over the editing area (View Difference, INV-021).
+    /// Presentation-only: it never affects the Markdown Document or the Conflict.
+    /// </summary>
+    public bool IsDifferenceVisible
+    {
+        get => _isDifferenceVisible;
+        private set => Set(ref _isDifferenceVisible, value);
+    }
+
+    /// <summary>
+    /// The Conflict Difference currently shown — the Difference Lines between the unsaved source
+    /// text and the conflicting on-disk contents. Empty while the difference is hidden.
+    /// </summary>
+    public IReadOnlyList<DifferenceLine> DifferenceLines
+    {
+        get => _differenceLines;
+        private set => Set(ref _differenceLines, value);
     }
 
     /// <summary>The Watched File's name, or "Untitled" when unsaved. Shown on the session's Tab.</summary>
@@ -106,6 +131,12 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     /// <summary>Resolves a Conflict by discarding unsaved edits and loading the on-disk contents.</summary>
     public ICommand ReloadFromDiskCommand { get; }
+
+    /// <summary>
+    /// Shows the Conflict Difference over the editing area, or hides it again — the action toggles.
+    /// Available only while a Conflict awaits resolution; it resolves nothing itself (INV-021).
+    /// </summary>
+    public ICommand ViewDifferenceCommand { get; }
 
     /// <summary>Loads the Markdown file at <paramref name="path"/> into this session and watches it.</summary>
     /// <param name="path">The absolute path of the Watched File to load.</param>
@@ -167,6 +198,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         {
             _conflictingDiskText = disk.Source.Text;
             HasConflict = true;
+            RefreshDifferenceIfVisible();
         }
     }
 
@@ -186,10 +218,44 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         ClearConflict();
     }
 
+    /// <summary>Shows the Conflict Difference, or hides it when already shown (INV-021).</summary>
+    private void ToggleViewDifference()
+    {
+        if (IsDifferenceVisible)
+        {
+            HideDifference();
+            return;
+        }
+
+        RefreshDifference();
+        IsDifferenceVisible = true;
+    }
+
+    /// <summary>Recomputes the shown Conflict Difference after either side changed.</summary>
+    private void RefreshDifferenceIfVisible()
+    {
+        if (IsDifferenceVisible)
+        {
+            RefreshDifference();
+        }
+    }
+
+    private void RefreshDifference() =>
+        DifferenceLines = ConflictDifference.Compute(
+            new MarkdownSource(Markdown),
+            new MarkdownSource(_conflictingDiskText));
+
+    private void HideDifference()
+    {
+        IsDifferenceVisible = false;
+        DifferenceLines = [];
+    }
+
     private void ClearConflict()
     {
         HasConflict = false;
         _conflictingDiskText = string.Empty;
+        HideDifference();
     }
 
     private void OnWatcherChanged(object? sender, ExternalChange change) =>
