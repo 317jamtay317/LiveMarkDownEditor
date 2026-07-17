@@ -31,17 +31,6 @@ internal static class LinkFormatting
     }
 
     /// <summary>
-    /// Tags <paramref name="run"/> as an Image, exactly as the Projector does. An Image is shown in
-    /// the Visual Document by its alt text, which is the run's own text.
-    /// </summary>
-    /// <param name="run">The run carrying the Image's alt text.</param>
-    /// <param name="url">The Image's source URL.</param>
-    /// <param name="alt">The Image's alt text.</param>
-    /// <param name="title">The optional image title, or <see langword="null"/>.</param>
-    internal static void ApplyImage(Run run, string url, string alt, string? title) =>
-        run.Tag = new ImageRole(url, alt, title);
-
-    /// <summary>
     /// The Insert Link Formatting Action: asks <paramref name="prompt"/> for the Link's text and
     /// destination URL — seeded with the selection — and turns the selection into that Link. No edit
     /// is made when the Link Prompt is dismissed or gives no URL (INV-030).
@@ -80,7 +69,9 @@ internal static class LinkFormatting
     /// </summary>
     /// <param name="editor">The editor the Image is inserted into.</param>
     /// <param name="prompt">The Link Prompt to ask, or <see langword="null"/> to make no edit.</param>
-    internal static void InsertImage(RichTextBox editor, ILinkPrompt? prompt)
+    /// <param name="baseDirectory">The Base Directory a relative Image Source resolves against, or
+    /// <see langword="null"/> when the Editor Session has no file yet (INV-031).</param>
+    internal static void InsertImage(RichTextBox editor, ILinkPrompt? prompt, string? baseDirectory)
     {
         if (Ask(editor, prompt, image: true) is not { } details)
         {
@@ -93,9 +84,15 @@ internal static class LinkFormatting
             var alt = details.Text.Length > 0 ? details.Text : details.Url;
             var start = ReplaceSelection(editor);
 
-            var run = new Run(alt, start);
-            ApplyImage(run, details.Url, alt, title: null);
-            editor.Selection.Select(run.ContentEnd, run.ContentEnd);
+            // Composed through the same seam the Projector uses, so the Image the user just inserted
+            // is identical to the one a reload would project (INV-018/031). It is placed by way of an
+            // anchor because an Image's picture is an InlineUIContainer, which — unlike a Run — cannot
+            // be constructed at a TextPointer.
+            var anchor = new Run(string.Empty, start);
+            var image = ImageFormatting.CreateImage(details.Url, alt, title: null, baseDirectory);
+            anchor.SiblingInlines?.InsertAfter(anchor, image);
+            anchor.SiblingInlines?.Remove(anchor);
+            editor.Selection.Select(image.ContentEnd, image.ContentEnd);
         }
         finally
         {

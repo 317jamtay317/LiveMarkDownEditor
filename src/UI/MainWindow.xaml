@@ -346,6 +346,7 @@
                 <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
                 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                             BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 

@@ -210,6 +210,13 @@ public sealed class FlowDocumentToMarkdownCapturer
     {
         switch (inline)
         {
+            // An Image, whichever way it is being shown: as its picture (an InlineUIContainer) or as
+            // its alt text (a Run). Both carry the same ImageRole, so both re-emit the Image Source
+            // their author wrote rather than the absolute path it resolved to (INV-031).
+            case InlineUIContainer { Tag: ImageRole picture }:
+                segments.Add(Verbatim(EmitImage(picture)));
+                break;
+
             case Run { Tag: ImageRole image }:
                 segments.Add(Verbatim(EmitImage(image)));
                 break;

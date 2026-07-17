@@ -31,13 +31,19 @@ and tested.
 - **Tested by:** `MarkdigMarkdownRendererTests.Render_GivenSameSourceTwice_ProducesIdenticalOutput_INV002`.
 
 ### INV-003 — Projecting is deterministic
-- **Statement:** Projecting the same Markdown Document source text always produces the same Visual
-  Document. Project has no hidden state.
-- **Enforced by:** Pure Project operation driven solely by the source text
-  (`MarkdownToFlowDocumentProjector`).
+- **Statement:** Projecting the same Markdown Document source text against the same Base Directory
+  always produces the same Visual Document. Project has no hidden state.
+- **Enforced by:** Pure Project operation driven solely by its two inputs — the source text and the
+  Base Directory (`MarkdownToFlowDocumentProjector`).
 - **Tested by:** `WysiwygRoundTripTests.RoundTrip_IsIdempotent_INV005` (a deterministic Project is a
   precondition of the stable Round-Trip). _(Dedicated projection-determinism test to be added as
   more constructs land.)_
+- **Note:** The Base Directory is the second input because an Image's source may be a relative path,
+  which names a file only in relation to the Markdown Document that references it — `![](cat.png)`
+  is a different picture in a different folder. It is an explicit *input*, not hidden state: the
+  same text and the same Base Directory always project alike. Projection stays synchronous and pure
+  regardless of what an Image's source resolves to; a remote Image's pixels arrive afterwards,
+  through WPF's own decoding, and change no part of the Visual Document's structure.
 
 ### INV-004 — A Round-Trip preserves semantic content
 - **Statement:** For any supported Markdown Document, Capturing its Projected Visual Document yields
@@ -506,14 +512,36 @@ and tested.
   - **An empty answer for the text alone is not fatal.** Only the URL is required.
 - **Enforced by:** The `LinkFormatting` helper, which returns before touching the document when the
   `ILinkPrompt` port yields no answer or a blank URL, and otherwise composes a `Hyperlink` carrying a
-  `LinkRole` (or a `Run` carrying an `ImageRole`) through the same `ApplyLink` / `ApplyImage` seams
-  the Projector uses, so Capture treats a user-inserted Link and a loaded one uniformly (INV-018).
+  `LinkRole` (or an Image carrying an `ImageRole`) through the same `ApplyLink` seam and
+  `ImageFormatting.CreateImage` seam the Projector uses, so Capture treats a user-inserted Link and a
+  loaded one uniformly (INV-018/031).
   The port keeps the Link Prompt's WPF dialog out of the editor, so the rules above are testable
   headlessly against a stub.
 - **Tested by:** `MarkdownRichEditorLinkTests.*_INV030`, in particular
   `InsertLink_WhenThePromptIsDismissed_MakesNoEdit_INV030`,
   `InsertLink_WithAnEmptyUrl_MakesNoEdit_INV030`, and
   `InsertLink_SeedsThePromptWithTheSelection_INV030`.
+
+### INV-031 — An Image shows its picture, or its alt text
+- **Statement:** An Image is shown in the Visual Document as the picture its Image Source names. Four
+  rules bound it:
+  - **A relative Image Source resolves against the Base Directory.** `![](cat.png)` names the file
+    beside the Markdown Document, which is the form Markdown authors write most.
+  - **An Image that cannot be shown falls back to its alt text.** A missing file, an unreachable
+    address, a source that is not an image, or a relative source with no Base Directory to resolve
+    against (an unsaved Editor Session) — every one of them shows the alt text instead. A picture
+    that failed to load must never leave a hole where the author's words were: the alt text *is* the
+    fallback, which is what it is for.
+  - **An Image Captures as `![alt](url)` either way.** Whether its picture is shown or its alt text
+    is, an Image re-emits the Image Source and alt text it was built with — never the resolved
+    absolute path, so a relative Image Source stays relative and the Markdown Document remains
+    portable (INV-004/INV-018).
+  - **A failed load is not an edit.** An Image whose picture never arrives leaves the Markdown
+    Document untouched: showing is not editing, and a broken link is the author's to fix.
+- **Enforced by:** The `ApplyImage` seam the Projector and Insert Image share, which carries the
+  `ImageRole` (the original Image Source and alt text) that Capture keys on regardless of which of
+  the two presentations is shown (INV-018).
+- **Tested by:** `MarkdownRichEditorImageTests.*_INV031`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

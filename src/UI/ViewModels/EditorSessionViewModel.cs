@@ -84,9 +84,17 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(Name));
                 Raise(nameof(Title));
+                Raise(nameof(BaseDirectory));
             }
         }
     }
+
+    /// <summary>
+    /// The Base Directory: the folder the Watched File lives in, which a relative Image Source
+    /// resolves against. <see langword="null"/> while the session is unsaved — an Image written
+    /// "beside this document" names no folder until the document has one (INV-031).
+    /// </summary>
+    public string? BaseDirectory => FilePath is null ? null : Path.GetDirectoryName(FilePath);
 
     /// <summary>Whether the session holds edits not yet persisted to the Watched File.</summary>
     public bool HasUnsavedEdits

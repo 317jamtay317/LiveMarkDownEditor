@@ -45,6 +45,18 @@ public sealed class MarkdownRichEditor : RichTextBox
             OnMarkdownChanged));
 
     /// <summary>
+    /// Identifies the <see cref="BaseDirectory"/> dependency property. It is the folder the bound
+    /// Editor Session's file lives in, and the folder a relative Image Source resolves against
+    /// (INV-031). Changing it re-projects, because the same source text against a different Base
+    /// Directory names different pictures (INV-003).
+    /// </summary>
+    public static readonly DependencyProperty BaseDirectoryProperty = DependencyProperty.Register(
+        nameof(BaseDirectory),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null, OnBaseDirectoryChanged));
+
+    /// <summary>
     /// Identifies the <see cref="LinkPrompt"/> dependency property. Insert Link and Insert Image ask
     /// through it for their text and URL; the composition root supplies the real Link Prompt, and a
     /// test supplies a stub. Left unset, neither action edits (INV-030).
@@ -252,6 +264,18 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (string)GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
+    }
+
+    /// <summary>
+    /// The Base Directory: the folder the Editor Session's file lives in, which a relative Image
+    /// Source resolves against. <see langword="null"/> for an unsaved Editor Session, whose relative
+    /// Images fall back to their alt text — there is no folder yet for "beside this document" to
+    /// mean (INV-031).
+    /// </summary>
+    public string? BaseDirectory
+    {
+        get => (string?)GetValue(BaseDirectoryProperty);
+        set => SetValue(BaseDirectoryProperty, value);
     }
 
     /// <summary>The Find query. Every occurrence in the Visual Document is highlighted as a Match.</summary>
@@ -542,7 +566,7 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// when the Link Prompt is dismissed or gives no URL (INV-030). The edit Captures back into
     /// <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
-    public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt);
+    public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt, BaseDirectory);
 
     /// <summary>
     /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
@@ -975,6 +999,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         editor.ProjectFromMarkdown(markdown);
     }
 
+    // The same source text against a different Base Directory names different pictures, so a Session
+    // saved to a new folder — or an unsaved one gaining its first file — must re-project (INV-031).
+    private static void OnBaseDirectoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var editor = (MarkdownRichEditor)d;
+        if (!editor._isSynchronising)
+        {
+            editor.ProjectFromMarkdown(editor.Markdown);
+        }
+    }
+
     private void ProjectFromMarkdown(string markdown)
     {
         _isSynchronising = true;
@@ -982,7 +1017,7 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             // Fold state references the outgoing document's blocks; a fresh projection clears it.
             _foldedBodies.Clear();
-            Document = _projector.Project(markdown);
+            Document = _projector.Project(markdown, BaseDirectory);
         }
         finally
         {
