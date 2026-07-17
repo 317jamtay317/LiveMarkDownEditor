@@ -49,7 +49,7 @@ work that is still in review, noted inline.
 
 ## Quality of life
 
-- [ ] **Export the Rendered Output as HTML.** Render already produces it for interoperability;
+- [x] **Export the Rendered Output as HTML.** Render already produces it for interoperability;
   nothing in the UI reaches it.
 - [ ] **Print / export as PDF.** A Visual Document is a `FlowDocument`, which WPF prints natively.
 - [ ] **Copy as rich text**, so a selection pastes formatted into Word or Outlook.

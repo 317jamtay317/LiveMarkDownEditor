@@ -34,7 +34,12 @@ public sealed class WorkspaceViewModelTests
             return new EditorSessionViewModel(_store, watcher, _dispatcher, _roundTrip);
         };
         return new WorkspaceViewModel(
-            factory, _picker, _prompt, new StubLinkPrompt(answer: null), new AppearanceViewModel(_theme));
+            factory,
+            _picker,
+            _prompt,
+            new StubLinkPrompt(answer: null),
+            new AppearanceViewModel(_theme),
+            new ExportViewModel(_picker, new StubMarkdownRenderer(), new FakeHtmlExportStore()));
     }
 
     [Fact]

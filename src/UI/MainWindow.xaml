@@ -50,6 +50,12 @@
                         AutomationProperties.Name="Save">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
                 </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding Export.ExportHtmlCommand}" CommandParameter="{Binding ActiveSession}"
+                        ToolTip="Export as HTML — write the rendered document to an .html file"
+                        AutomationProperties.Name="Export as HTML">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
+                </Button>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 

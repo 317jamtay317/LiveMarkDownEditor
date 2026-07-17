@@ -30,18 +30,21 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="unsavedEditsPrompt">Asks the user how to close a Tab with unsaved edits (INV-010).</param>
     /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
+    /// <param name="export">The Export as HTML actions exposed to the shell's chrome (INV-032).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
         IUnsavedEditsPrompt unsavedEditsPrompt,
         ILinkPrompt linkPrompt,
-        AppearanceViewModel appearance)
+        AppearanceViewModel appearance,
+        ExportViewModel export)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
+        Export = export ?? throw new ArgumentNullException(nameof(export));
 
         Sessions = new ReadOnlyObservableCollection<EditorSessionViewModel>(_sessions);
 
@@ -86,6 +89,12 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>The visual-theme ViewModel for the shell's chrome (light/dark toggle).</summary>
     public AppearanceViewModel Appearance { get; }
+
+    /// <summary>
+    /// The Export as HTML actions (INV-032). Its commands take the Editor Session to export as their
+    /// parameter, so the Command Bar passes the <see cref="ActiveSession"/>.
+    /// </summary>
+    public ExportViewModel Export { get; }
 
     /// <summary>
     /// The Link Prompt the editing surface asks for a Link's or Image's text and URL (INV-030).

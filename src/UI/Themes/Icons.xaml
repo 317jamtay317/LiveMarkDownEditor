@@ -28,6 +28,12 @@
     <!-- A floppy disk: still the one shape every editor agrees means "save". -->
     <Geometry x:Key="Icon.Save">M4 4 H16 L20 8 V20 H4 Z M8 4 V9 H15 V4 M7 20 V14 H17 V20</Geometry>
 
+    <!-- An open tray with content rising up and out of it: the export glyph. It is not a floppy
+         (Save) or a folder (Open) — it says the document leaves as a new file, which is exactly what
+         Export as HTML does. There is no upload or cloud in this app for the outbound arrow to be
+         confused with. -->
+    <Geometry x:Key="Icon.ExportHtml">M4 13 V20 H20 V13 M12 15 V3 M7.5 7.5 L12 3 L16.5 7.5</Geometry>
+
     <!-- Formatting Actions. -->
 
     <!-- A bold letter B, drawn as its two bowls over a shared stem. -->

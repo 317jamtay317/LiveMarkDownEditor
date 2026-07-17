@@ -19,6 +19,7 @@ public static class InfrastructureRegistry
         {
             services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
+            services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
 
             // Transient: each Editor Session (Tab) owns its own watcher so several Tabs can watch
             // different Watched Files at once.
