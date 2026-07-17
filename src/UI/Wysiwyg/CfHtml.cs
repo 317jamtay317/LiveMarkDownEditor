@@ -40,5 +40,29 @@ public static class CfHtml
         return header + DocumentStart + FragmentStart + htmlFragment + FragmentEnd + DocumentEnd;
     }
 
+    /// <summary>
+    /// Extracts the HTML fragment from a CF_HTML clipboard string — the markup between the fragment
+    /// markers, or everything from the first tag when they are absent. The inverse of <see cref="Wrap"/>.
+    /// </summary>
+    /// <param name="cfHtml">The CF_HTML string from the clipboard.</param>
+    /// <returns>The HTML fragment.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="cfHtml"/> is <see langword="null"/>.</exception>
+    public static string ExtractFragment(string cfHtml)
+    {
+        ArgumentNullException.ThrowIfNull(cfHtml);
+
+        var start = cfHtml.IndexOf(FragmentStart, StringComparison.OrdinalIgnoreCase);
+        var end = cfHtml.IndexOf(FragmentEnd, StringComparison.OrdinalIgnoreCase);
+        if (start >= 0 && end > start)
+        {
+            start += FragmentStart.Length;
+            return cfHtml[start..end];
+        }
+
+        // No fragment markers: drop the CF_HTML header (everything before the first tag).
+        var firstTag = cfHtml.IndexOf('<');
+        return firstTag >= 0 ? cfHtml[firstTag..] : cfHtml;
+    }
+
     private static int Utf8Length(string text) => Encoding.UTF8.GetByteCount(text);
 }

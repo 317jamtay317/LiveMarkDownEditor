@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using Domain;
@@ -214,6 +216,10 @@ public sealed class MarkdownRichEditor : RichTextBox
 
         // Ctrl+Clicking a Link follows it: a web URL to the browser, a relative .md into a new Tab.
         AddHandler(Hyperlink.RequestNavigateEvent, new RequestNavigateEventHandler(OnRequestNavigate));
+
+        // Smart Paste: a URL over a selection becomes a Link, a clipboard image is written beside the
+        // Watched File and inserted as an Image, and HTML converts to Markdown (INV-041).
+        DataObject.AddPastingHandler(this, OnPasting);
 
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
@@ -751,6 +757,153 @@ public sealed class MarkdownRichEditor : RichTextBox
     // Opens a web address in the default browser. A platform boundary — the shell picks the browser.
     private static void LaunchBrowser(string url) =>
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+    // Smart Paste (INV-041): inspects the clipboard data and, when it recognises a special case,
+    // performs the paste itself and reports it handled so the default paste is cancelled.
+    private void OnPasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (SmartPaste(e.SourceDataObject ?? e.DataObject))
+        {
+            e.CancelCommand();
+        }
+    }
+
+    /// <summary>
+    /// Applies Smart Paste to the given clipboard data: a URL pasted over a selection becomes a Link,
+    /// an image is written beside the Watched File and inserted as an Image, and HTML converts to
+    /// Markdown and inserts as formatted content. Returns whether it handled the paste (INV-041).
+    /// </summary>
+    /// <param name="source">The clipboard data being pasted.</param>
+    /// <returns><see langword="true"/> if Smart Paste handled the paste; otherwise <see langword="false"/>.</returns>
+    public bool SmartPaste(IDataObject source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        // A URL pasted over a selection turns the selection into a Link.
+        if (!Selection.IsEmpty
+            && source.GetDataPresent(DataFormats.UnicodeText)
+            && source.GetData(DataFormats.UnicodeText) is string text
+            && IsWebUrl(text))
+        {
+            LinkFormatting.WrapSelectionAsLink(this, text.Trim());
+            return true;
+        }
+
+        // An image on the clipboard is written beside the Watched File and inserted as an Image.
+        if (source.GetDataPresent(DataFormats.Bitmap) && source.GetData(DataFormats.Bitmap) is BitmapSource image)
+        {
+            return TryPasteImage(image);
+        }
+
+        // HTML converts to Markdown and inserts as formatted content.
+        if (source.GetDataPresent(DataFormats.Html) && source.GetData(DataFormats.Html) is string cfHtml)
+        {
+            var markdown = HtmlToMarkdown.Convert(CfHtml.ExtractFragment(cfHtml));
+            if (markdown.Length > 0)
+            {
+                InsertProjectedMarkdown(markdown);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Writes a pasted image beside the Watched File and inserts it as an Image. An unsaved document has
+    // no folder to write beside, so the image is dropped rather than pasted un-representably.
+    private bool TryPasteImage(BitmapSource image)
+    {
+        if (string.IsNullOrEmpty(BaseDirectory))
+        {
+            return true;
+        }
+
+        try
+        {
+            var fileName = $"pasted-{Guid.NewGuid():N}.png";
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            using (var stream = File.Create(Path.Combine(BaseDirectory, fileName)))
+            {
+                encoder.Save(stream);
+            }
+
+            LinkFormatting.InsertImageSource(this, fileName, "pasted image", BaseDirectory);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // A failed write drops the image rather than corrupting the document.
+        }
+
+        return true;
+    }
+
+    // Projects the given Markdown to a document fragment and inserts it at the selection, so pasted
+    // HTML lands as formatted content the same as any projected Markdown. The projected blocks are
+    // MOVED into the document (not serialised), so their roles survive and Capture re-emits the
+    // Markdown — a XAML round-trip would drop the role Tags and paste plain text.
+    private void InsertProjectedMarkdown(string markdown)
+    {
+        var fragment = _projector.Project(markdown, BaseDirectory);
+        var fragmentBlocks = fragment.Blocks.ToList();
+        if (fragmentBlocks.Count == 0)
+        {
+            return;
+        }
+
+        BeginChange();
+        try
+        {
+            if (!Selection.IsEmpty)
+            {
+                Selection.Text = string.Empty;
+            }
+
+            var caretParagraph = Selection.Start.Paragraph;
+            var topLevelCaret = caretParagraph is not null && ReferenceEquals(caretParagraph.Parent, Document);
+            var insertAfter = topLevelCaret ? caretParagraph : Document.Blocks.LastBlock;
+
+            foreach (var block in fragmentBlocks)
+            {
+                fragment.Blocks.Remove(block);
+                if (insertAfter is null)
+                {
+                    Document.Blocks.Add(block);
+                }
+                else
+                {
+                    Document.Blocks.InsertAfter(insertAfter, block);
+                }
+
+                insertAfter = block;
+            }
+
+            // A caret in an empty placeholder paragraph leaves it behind; drop it so the paste does not
+            // sit beneath a stray blank line.
+            if (topLevelCaret && caretParagraph!.Inlines.Count == 0)
+            {
+                Document.Blocks.Remove(caretParagraph);
+            }
+
+            if (insertAfter is not null)
+            {
+                Selection.Select(insertAfter.ContentEnd, insertAfter.ContentEnd);
+            }
+        }
+        finally
+        {
+            EndChange();
+        }
+    }
+
+    private static bool IsWebUrl(string text)
+    {
+        var trimmed = text.Trim();
+        return trimmed.Length > 0
+            && !trimmed.Any(char.IsWhiteSpace)
+            && Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
 
     /// <summary>
     /// Prints the whole document. The Visual Document is re-projected from the current

@@ -730,6 +730,29 @@ and tested.
   unaccepted one is judged by the speller) and `FileUserDictionaryTests.*` (accepted words are held,
   case-insensitive, and persisted across instances).
 
+### INV-041 — Smart Paste adapts to the clipboard, and only handles what it recognises
+- **Statement:** A paste into the editing surface adapts to the clipboard's content. Three cases are
+  handled specially, and anything else pastes as it normally would:
+  - **A URL pasted over a selection becomes a Link.** The selected text is kept as the Link's text and
+    the pasted URL as its destination — the common "select a phrase, paste a URL" gesture — composed
+    through the same seam Insert Link uses (INV-030), so it Captures as `[text](url)` (INV-018). Over
+    no selection a URL pastes as ordinary text.
+  - **An image on the clipboard is written beside the Watched File and inserted as an Image.** The
+    picture is saved as a file in the Base Directory and referenced by its relative name, so the
+    Markdown Document stays portable (INV-031) and Captures as `![alt](file)`. An unsaved document has
+    no folder to write beside, so a pasted image is dropped rather than inserted un-representably.
+  - **HTML is converted to Markdown and pasted as formatted content.** HTML copied from a web page is
+    converted to Markdown and projected into the Visual Document, so it lands formatted the same as any
+    projected Markdown rather than as raw markup or plain text.
+- **Enforced by:** `MarkdownRichEditor.SmartPaste` (hooked through `DataObject.Pasting`), which
+  classifies the clipboard data and either handles it — through `LinkFormatting.WrapSelectionAsLink`,
+  an image written and inserted through `LinkFormatting.InsertImageSource`, or `HtmlToMarkdown.Convert`
+  (over `CfHtml.ExtractFragment`) projected in at the selection — or reports it unhandled so the
+  default paste proceeds.
+- **Tested by:** `MarkdownRichEditorSmartPasteTests.*_INV041` (a URL over a selection becomes a Link;
+  HTML pastes as Markdown; plain text is left to the default paste), `HtmlToMarkdownTests.*`, and
+  `CfHtmlTests.ExtractFragment_*`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

@@ -100,6 +100,61 @@ internal static class LinkFormatting
         }
     }
 
+    /// <summary>
+    /// Turns the current selection into a Link to <paramref name="url"/>, keeping the selected text as
+    /// the Link's text. Used by Smart Paste when a URL is pasted over a selection (INV-041). Does
+    /// nothing when the selection is empty.
+    /// </summary>
+    /// <param name="editor">The editor whose selection is being linked.</param>
+    /// <param name="url">The destination URL, already known (no prompt).</param>
+    internal static void WrapSelectionAsLink(RichTextBox editor, string url)
+    {
+        var text = editor.Selection.Text;
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        editor.BeginChange();
+        try
+        {
+            var start = ReplaceSelection(editor);
+            var hyperlink = new Hyperlink(new Run(text), start);
+            ApplyLink(hyperlink, url, title: null);
+            editor.Selection.Select(hyperlink.ContentEnd, hyperlink.ContentEnd);
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+    }
+
+    /// <summary>
+    /// Inserts an Image with the given source and alt text at the selection, through the same seam the
+    /// Projector uses (INV-018/031). Used by Smart Paste when an image is pasted (INV-041).
+    /// </summary>
+    /// <param name="editor">The editor the Image is inserted into.</param>
+    /// <param name="source">The Image Source (a path or URL), captured as <c>![alt](source)</c>.</param>
+    /// <param name="alt">The Image's alt text.</param>
+    /// <param name="baseDirectory">The Base Directory a relative source resolves against (INV-031).</param>
+    internal static void InsertImageSource(RichTextBox editor, string source, string alt, string? baseDirectory)
+    {
+        editor.BeginChange();
+        try
+        {
+            var start = ReplaceSelection(editor);
+            var anchor = new Run(string.Empty, start);
+            var image = ImageFormatting.CreateImage(source, alt, title: null, baseDirectory);
+            anchor.SiblingInlines?.InsertAfter(anchor, image);
+            anchor.SiblingInlines?.Remove(anchor);
+            editor.Selection.Select(image.ContentEnd, image.ContentEnd);
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+    }
+
     // Asks the Link Prompt, seeded with the selection, and keeps only a usable answer: a dismissed
     // prompt or a blank URL must leave the document untouched (INV-030).
     private static LinkDetails? Ask(RichTextBox editor, ILinkPrompt? prompt, bool image)

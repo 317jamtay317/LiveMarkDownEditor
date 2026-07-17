@@ -48,6 +48,25 @@ public sealed class CfHtmlTests
         endHtml.ShouldBe(bytes.Length);
     }
 
+    [Fact]
+    public void ExtractFragment_RoundTripsWrap()
+    {
+        CfHtml.ExtractFragment(CfHtml.Wrap("<p>hi there</p>")).ShouldBe("<p>hi there</p>");
+    }
+
+    [Fact]
+    public void ExtractFragment_WithoutMarkers_ReturnsFromTheFirstTag()
+    {
+        CfHtml.ExtractFragment("Version:0.9\r\n<html><body><p>x</p></body></html>")
+            .ShouldBe("<html><body><p>x</p></body></html>");
+    }
+
+    [Fact]
+    public void ExtractFragment_GivenNull_Throws()
+    {
+        Should.Throw<ArgumentNullException>(() => CfHtml.ExtractFragment(null!));
+    }
+
     private static int ReadOffset(string cf, string label)
     {
         var start = cf.IndexOf(label, StringComparison.Ordinal) + label.Length;

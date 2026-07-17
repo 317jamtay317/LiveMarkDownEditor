@@ -56,7 +56,7 @@ work that is still in review, noted inline.
 - [x] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
   Tabs, offer an MRU list, and register a Windows Jump List. *(Pairs with the Startup Document*
   *and file-association work, in review.)*
-- [ ] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is
+- [x] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is
   written beside the Watched File and inserted as an Image; HTML converts to Markdown.
 - [x] **Status bar** — word and character count, reading time, caret line and column, and the
   Current Section.
