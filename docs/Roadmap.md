@@ -53,7 +53,7 @@ work that is still in review, noted inline.
   nothing in the UI reaches it.
 - [x] **Print / export as PDF.** A Visual Document is a `FlowDocument`, which WPF prints natively.
 - [x] **Copy as rich text**, so a selection pastes formatted into Word or Outlook.
-- [ ] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
+- [x] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
   Tabs, offer an MRU list, and register a Windows Jump List. *(Pairs with the Startup Document*
   *and file-association work, in review.)*
 - [ ] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is

@@ -43,6 +43,9 @@
          sheet emerging below. The one shape every editor agrees means "print". -->
     <Geometry x:Key="Icon.Print">M7 8 V3 H17 V8 M4 8 H20 V16 H4 Z M7 12 H17 M8 16 H16 V21 H8 Z</Geometry>
 
+    <!-- A clock, for Open Recent: the "history / recently used" glyph, a circle with two hands. -->
+    <Geometry x:Key="Icon.OpenRecent">M12 4 A8 8 0 0 1 12 20 A8 8 0 0 1 12 4 Z M12 8 V12 L15 14</Geometry>
+
     <!-- Formatting Actions. -->
 
     <!-- A bold letter B, drawn as its two bowls over a shared stem. -->

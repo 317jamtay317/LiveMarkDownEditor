@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Windows.Input;
+using Application;
 using Domain;
 using UI.Core;
 
@@ -19,9 +21,12 @@ public sealed class WorkspaceViewModel : ObservableObject
     private readonly EditorSessionFactory _createSession;
     private readonly IFilePicker _filePicker;
     private readonly IUnsavedEditsPrompt _unsavedEditsPrompt;
+    private readonly IWorkspaceStateStore _stateStore;
     private readonly ObservableCollection<EditorSessionViewModel> _sessions = [];
 
     private EditorSessionViewModel? _activeSession;
+    private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
+    private bool _isRestoring;
     private bool _isNavigationPanelVisible;
     private bool _isSourcePanelVisible;
 
@@ -34,6 +39,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
+    /// <param name="stateStore">Persists and restores the Workspace across runs — open Tabs and Recent Files (INV-037).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
@@ -42,11 +48,13 @@ public sealed class WorkspaceViewModel : ObservableObject
         IDocumentPrinter documentPrinter,
         IMarkdownRenderer renderer,
         AppearanceViewModel appearance,
-        ExportViewModel export)
+        ExportViewModel export,
+        IWorkspaceStateStore stateStore)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
+        _stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
@@ -59,6 +67,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
+        OpenRecentCommand = new AsyncRelayCommand<string>(OpenRecentAsync);
         ToggleNavigationPanelCommand = new RelayCommand(ToggleNavigationPanel);
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
 
@@ -102,6 +111,12 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// parameter, so the Command Bar passes the <see cref="ActiveSession"/>.
     /// </summary>
     public ExportViewModel Export { get; }
+
+    /// <summary>
+    /// The Recent Files — recently opened or saved Watched File paths, newest first — shown in the
+    /// Open Recent menu and mirrored to the Windows Jump List. Persisted across runs (INV-037).
+    /// </summary>
+    public IReadOnlyList<string> RecentFiles => _recent.Paths;
 
     /// <summary>
     /// The Link Prompt the editing surface asks for a Link's or Image's text and URL (INV-030).
@@ -157,6 +172,9 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <summary>Closes a Tab, prompting to save when it has unsaved edits (INV-010). Parameter: the session.</summary>
     public ICommand CloseSessionCommand { get; }
 
+    /// <summary>Opens a Recent File by its path, dropping it from the list if it has since gone. Parameter: the path.</summary>
+    public ICommand OpenRecentCommand { get; }
+
     /// <summary>Shows the Navigation Panel if hidden, or hides it if shown.</summary>
     public ICommand ToggleNavigationPanelCommand { get; }
 
@@ -203,13 +221,110 @@ public sealed class WorkspaceViewModel : ObservableObject
         if (alreadyOpen is not null)
         {
             ActiveSession = alreadyOpen;
+        }
+        else
+        {
+            var opened = _createSession();
+            await opened.LoadAsync(path).ConfigureAwait(true);
+            _sessions.Add(opened);
+            ActiveSession = opened;
+        }
+
+        // Restoring seeds the Recent Files straight from persisted state, so it must not reorder them
+        // by re-remembering each restored path (INV-037).
+        if (!_isRestoring)
+        {
+            RememberRecent(path);
+            await PersistStateAsync().ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>
+    /// Restores the Workspace from the last run: reopens the Watched Files that were open — skipping
+    /// any that have since gone — and loads the Recent Files. Only saved documents are restored; an
+    /// unsaved Tab was never persisted (INV-037). Call once at startup.
+    /// </summary>
+    public async Task RestoreAsync()
+    {
+        var state = _stateStore.Load();
+        _recent = Domain.RecentFiles.From(state.RecentFiles);
+        Raise(nameof(RecentFiles));
+
+        // The empty Tab the constructor seeds is a placeholder; replace it if we restore real Tabs.
+        var placeholder = _sessions.Count == 1 && _sessions[0].FilePath is null && !_sessions[0].HasUnsavedEdits
+            ? _sessions[0]
+            : null;
+
+        _isRestoring = true;
+        try
+        {
+            foreach (var path in state.OpenDocuments)
+            {
+                try
+                {
+                    await OpenPathAsync(path).ConfigureAwait(true);
+                }
+                catch (IOException)
+                {
+                    // A Watched File that has gone is simply not restored (INV-037).
+                }
+            }
+        }
+        finally
+        {
+            _isRestoring = false;
+        }
+
+        if (placeholder is not null && _sessions.Count > 1)
+        {
+            RemoveSession(placeholder);
+        }
+    }
+
+    /// <summary>
+    /// Persists the Workspace: the open Tabs' Watched File paths (unsaved Tabs are skipped) and the
+    /// Recent Files, so the next run can restore them (INV-037).
+    /// </summary>
+    public Task PersistStateAsync()
+    {
+        var openDocuments = _sessions
+            .Where(session => session.FilePath is not null)
+            .Select(session => session.FilePath!)
+            .ToList();
+
+        return _stateStore.SaveAsync(new WorkspaceState(openDocuments, _recent.Paths));
+    }
+
+    /// <summary>
+    /// Opens a Recent File. A path that no longer exists is dropped from the Recent Files rather than
+    /// opened, so the list keeps only files that are still there.
+    /// </summary>
+    /// <param name="path">The Recent File's path.</param>
+    public async Task OpenRecentAsync(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
             return;
         }
 
-        var opened = _createSession();
-        await opened.LoadAsync(path).ConfigureAwait(true);
-        _sessions.Add(opened);
-        ActiveSession = opened;
+        try
+        {
+            await OpenPathAsync(path).ConfigureAwait(true);
+        }
+        catch (IOException)
+        {
+            // A Recent File that has gone drops off the list rather than opening.
+            _recent = Domain.RecentFiles.From(_recent.Paths.Where(
+                existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)));
+            Raise(nameof(RecentFiles));
+            await PersistStateAsync().ConfigureAwait(true);
+        }
+    }
+
+    private void RememberRecent(string path)
+    {
+        _recent = _recent.Add(path);
+        Raise(nameof(RecentFiles));
     }
 
     /// <summary>Saves the Active Session, prompting for a path when it has no Watched File yet.</summary>
@@ -245,6 +360,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         }
 
         RemoveSession(session);
+        await PersistStateAsync().ConfigureAwait(true);
     }
 
     private void ToggleNavigationPanel() => IsNavigationPanelVisible = !IsNavigationPanelVisible;
@@ -263,6 +379,8 @@ public sealed class WorkspaceViewModel : ObservableObject
         }
 
         await session.SaveAsync(path).ConfigureAwait(true);
+        RememberRecent(path);
+        await PersistStateAsync().ConfigureAwait(true);
         return true;
     }
 

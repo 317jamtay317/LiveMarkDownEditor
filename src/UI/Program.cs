@@ -100,18 +100,36 @@ public static class Program
             var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
             window.DataContext = workspace;
 
+            // Mirror the Recent Files to the Windows Jump List whenever they change (INV-037).
+            var jumpList = host.Services.GetRequiredService<IJumpList>();
+            workspace.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(WorkspaceViewModel.RecentFiles))
+                {
+                    jumpList.ShowRecentFiles(workspace.RecentFiles);
+                }
+            };
+
             // A later launch forwards its Startup Document here; open it on the UI thread and bring
             // the one editor window to the front (INV-020).
             instance.Listen(path => application.Dispatcher.InvokeAsync(
                 () => OpenForwardedDocument(window, workspace, path)));
 
-            if (startupDocument is not null)
+            // Restore the previous session's Tabs and Recent Files, then open any Startup Document on
+            // top of them (INV-037, INV-020). Queued so it runs once the dispatcher starts pumping.
+            application.Dispatcher.InvokeAsync(async () =>
             {
-                // Queued so it runs once the dispatcher starts pumping inside Run.
-                application.Dispatcher.InvokeAsync(() => OpenDocument(workspace, startupDocument));
-            }
+                await workspace.RestoreAsync();
+                if (startupDocument is not null)
+                {
+                    OpenDocument(workspace, startupDocument);
+                }
+            });
 
             application.Run(window);
+
+            // Capture the final open Tabs and Recent Files as the app closes (INV-037).
+            PersistWorkspace(workspace);
         }
         catch (Exception exception)
         {
@@ -153,6 +171,20 @@ public static class Program
         catch (Exception exception)
         {
             Log.Error(exception, "Failed to open the Startup Document {Path}", path);
+        }
+    }
+
+    // Persists the Workspace as the app closes, best-effort — a failure to save state must not crash
+    // shutdown.
+    private static void PersistWorkspace(WorkspaceViewModel workspace)
+    {
+        try
+        {
+            workspace.PersistStateAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "Failed to persist the Workspace on exit");
         }
     }
 

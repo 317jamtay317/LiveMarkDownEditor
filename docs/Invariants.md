@@ -649,6 +649,39 @@ and tested.
   `SelectionAsCfHtml_RendersTheSelectionToTheHtmlFlavor_INV035`, and
   `Copy_SerialisesTheSelectionAsRichText_INV035`.
 
+### INV-036 — Recent Files are distinct, newest-first, and capped
+- **Statement:** The Recent Files list holds Watched File paths newest first, with no duplicates
+  (compared case-insensitively) and no blank entries, and never more than a fixed capacity — adding
+  beyond it drops the oldest. Adding a path already present promotes it to the front rather than
+  duplicating it. It is a value object: adding returns a new list and never mutates the original.
+- **Enforced by:** The immutable `RecentFiles` value object (Domain), whose `Add` rebuilds the list
+  with the new path at the front, the prior copy of it removed, trimmed to `Capacity`.
+- **Tested by:** `RecentFilesTests.*` — in particular
+  `Add_AnExistingPath_MovesItToTheFront_WithoutDuplicating`,
+  `Add_TrimsToCapacity_DroppingTheOldest`, and `Add_DoesNotMutateTheOriginal`.
+
+### INV-037 — The Workspace restores its saved documents, and never persists unsaved ones
+- **Statement:** The Workspace persists and restores across runs. Four rules bound it:
+  - **Only saved documents are persisted.** The Workspace State records the open Tabs' Watched File
+    paths and the Recent Files — never a Tab that has no Watched File, and never any unsaved edits.
+    Restoring reopens the documents, not a snapshot of unsaved work.
+  - **Restore reopens the saved Tabs by path, skipping any that have gone.** A path that no longer
+    loads is simply not reopened; it never blocks the rest of the restore or the app from starting.
+  - **An empty or unreadable state restores nothing, leaving the one empty Tab.** A first run, or a
+    corrupt state file, starts with the single empty Tab (INV-008) rather than failing.
+  - **Recent Files track opens and saves.** Opening or saving a Watched File records it in the Recent
+    Files (INV-036), which are persisted, shown in the Open Recent menu, and mirrored to the Windows
+    Jump List. Restoring is not itself an open, so it loads the persisted Recent Files without
+    reordering them.
+- **Enforced by:** `WorkspaceViewModel.RestoreAsync` / `PersistStateAsync` (which record only Tabs
+  with a Watched File and reopen through the same `OpenPathAsync`, tolerating a load that fails), the
+  Application `WorkspaceState` snapshot and `IWorkspaceStateStore` port, and the
+  `JsonWorkspaceStateStore` adapter that treats a missing or corrupt file as `WorkspaceState.Empty`.
+  `Program` restores at startup, persists on exit, and mirrors the Recent Files to the `IJumpList`.
+- **Tested by:** `WorkspaceViewModelTests.*_INV037` (restore reopens saved Tabs, skips files that
+  have gone, keeps the empty Tab when there is nothing to restore, and tracks Recent Files) and
+  `JsonWorkspaceStateStoreTests.*` (round-trip and corruption tolerance).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

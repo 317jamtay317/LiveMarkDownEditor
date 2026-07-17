@@ -47,6 +47,25 @@
                         AutomationProperties.Name="Open a Markdown file">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Open}" />
                 </Button>
+
+                <!-- Open Recent: the recently opened or saved files, newest first (INV-037). -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Open a recent file" AutomationProperties.Name="Open recent"
+                              ItemsSource="{Binding RecentFiles}">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.OpenRecent}" />
+                        </MenuItem.Header>
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem" BasedOn="{StaticResource CommandMenuEntry}">
+                                <Setter Property="Header" Value="{Binding}" />
+                                <Setter Property="Command"
+                                        Value="{Binding DataContext.OpenRecentCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
                         Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)"
                         AutomationProperties.Name="Save">

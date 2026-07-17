@@ -23,6 +23,11 @@ public static class InfrastructureRegistry
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
             services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
             services.AddSingleton<IPdfExportStore, FilePdfExportStore>();
+            services.AddSingleton<IWorkspaceStateStore>(_ => new JsonWorkspaceStateStore(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "LiveMarkDownEditor",
+                    "workspace.json")));
 
             // Transient: each Editor Session (Tab) owns its own watcher so several Tabs can watch
             // different Watched Files at once.

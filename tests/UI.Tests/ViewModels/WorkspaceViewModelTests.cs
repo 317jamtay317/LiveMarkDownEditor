@@ -1,3 +1,4 @@
+using Application;
 using Shouldly;
 using UI.Core;
 using UI.Tests.TestDoubles;
@@ -23,6 +24,7 @@ public sealed class WorkspaceViewModelTests
     private readonly InlineUiDispatcher _dispatcher = new();
     private readonly FakeThemeService _theme = new();
     private readonly FakeMarkdownRoundTrip _roundTrip = new();
+    private readonly FakeWorkspaceStateStore _stateStore = new();
     private readonly List<FakeDocumentWatcher> _watchers = [];
 
     private WorkspaceViewModel CreateWorkspace()
@@ -46,7 +48,8 @@ public sealed class WorkspaceViewModelTests
                 new StubMarkdownRenderer(),
                 new FakeHtmlExportStore(),
                 new FakePdfExporter(),
-                new FakePdfExportStore()));
+                new FakePdfExportStore()),
+            _stateStore);
     }
 
     [Fact]
@@ -332,5 +335,90 @@ public sealed class WorkspaceViewModelTests
 
         workspace.Sessions.ShouldNotContain(initialEmpty);
         workspace.ActiveSession.ShouldBe(opened);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_ReopensTheSavedTabs_INV037()
+    {
+        _store.Seed(Path, "# One");
+        _store.Seed(OtherPath, "# Two");
+        _stateStore.StateToLoad = new WorkspaceState([Path, OtherPath], []);
+        var workspace = CreateWorkspace();
+
+        await workspace.RestoreAsync();
+
+        // The placeholder empty Tab is replaced by the restored Tabs.
+        workspace.Sessions.Select(session => session.FilePath).ShouldBe([Path, OtherPath]);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_SkipsFilesThatHaveGone_INV037()
+    {
+        _store.Seed(Path, "# One"); // OtherPath is not seeded, so it "has gone".
+        _stateStore.StateToLoad = new WorkspaceState([Path, OtherPath], []);
+        var workspace = CreateWorkspace();
+
+        await workspace.RestoreAsync();
+
+        workspace.Sessions.Select(session => session.FilePath).ShouldBe([Path]);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_WithNothingToRestore_KeepsTheEmptyTab_INV008_INV037()
+    {
+        var workspace = CreateWorkspace(); // the store loads WorkspaceState.Empty
+
+        await workspace.RestoreAsync();
+
+        workspace.Sessions.Count.ShouldBe(1);
+        workspace.ActiveSession!.FilePath.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RestoreAsync_LoadsTheRecentFiles_INV037()
+    {
+        _stateStore.StateToLoad = new WorkspaceState([], [Path, OtherPath]);
+        var workspace = CreateWorkspace();
+
+        await workspace.RestoreAsync();
+
+        workspace.RecentFiles.ShouldBe([Path, OtherPath]);
+    }
+
+    [Fact]
+    public async Task Open_AddsTheFileToRecentFiles_INV037()
+    {
+        _store.Seed(Path, "# Loaded");
+        _picker.OpenResult = Path;
+        var workspace = CreateWorkspace();
+
+        await workspace.OpenAsync();
+
+        workspace.RecentFiles.ShouldContain(Path);
+    }
+
+    [Fact]
+    public async Task Save_AddsTheFileToRecentFiles_INV037()
+    {
+        _picker.SaveResult = OtherPath;
+        var workspace = CreateWorkspace();
+        workspace.ActiveSession!.Markdown = "# New";
+
+        await workspace.SaveActiveAsync();
+
+        workspace.RecentFiles.ShouldContain(OtherPath);
+    }
+
+    [Fact]
+    public async Task Open_PersistsOnlySavedTabs_INV037()
+    {
+        _store.Seed(Path, "# Loaded");
+        _picker.OpenResult = Path;
+        var workspace = CreateWorkspace(); // starts with one empty (unsaved) Tab
+
+        await workspace.OpenAsync();
+
+        // The empty Tab has no Watched File, so only the opened file is persisted.
+        _stateStore.SavedState!.OpenDocuments.ShouldBe([Path]);
     }
 }
