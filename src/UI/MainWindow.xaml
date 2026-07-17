@@ -18,6 +18,8 @@
         <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
                     CommandParameter="{Binding ActiveSession}" />
+        <KeyBinding Modifiers="Ctrl" Key="P" Command="controls:MarkdownEditingCommands.Print"
+                    CommandTarget="{Binding ElementName=Editor}" />
         <KeyBinding Modifiers="Ctrl" Key="F" Command="controls:MarkdownEditingCommands.ShowFind"
                     CommandTarget="{Binding ElementName=Editor}" />
     </Window.InputBindings>
@@ -55,6 +57,18 @@
                         ToolTip="Export as HTML — write the rendered document to an .html file"
                         AutomationProperties.Name="Export as HTML">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding Export.ExportPdfCommand}" CommandParameter="{Binding ActiveSession}"
+                        ToolTip="Export as PDF — write the document to a .pdf file"
+                        AutomationProperties.Name="Export as PDF">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportPdf}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="controls:MarkdownEditingCommands.Print" CommandTarget="{Binding ElementName=Editor}"
+                        ToolTip="Print (Ctrl+P) — choose &quot;Microsoft Print to PDF&quot; to print to a PDF"
+                        AutomationProperties.Name="Print">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Print}" />
                 </Button>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
@@ -354,6 +368,7 @@
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
+                                             DocumentPrinter="{Binding DocumentPrinter}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->

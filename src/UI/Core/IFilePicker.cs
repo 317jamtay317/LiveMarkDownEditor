@@ -23,4 +23,9 @@ public interface IFilePicker
     /// <param name="suggestedFileName">A suggested file name, or <see langword="null"/> for none.</param>
     /// <returns>The chosen target, or <see langword="null"/> if the user cancelled.</returns>
     HtmlExportTarget? PickHtmlExport(string? suggestedFileName);
+
+    /// <summary>Prompts the user to choose a destination path for an Export as PDF (INV-033).</summary>
+    /// <param name="suggestedFileName">A suggested file name, or <see langword="null"/> for none.</param>
+    /// <returns>The chosen file path, or <see langword="null"/> if the user cancelled.</returns>
+    string? PickPdfExport(string? suggestedFileName);
 }

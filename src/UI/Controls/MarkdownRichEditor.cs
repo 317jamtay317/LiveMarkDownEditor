@@ -68,6 +68,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         new PropertyMetadata(defaultValue: null));
 
     /// <summary>
+    /// Identifies the <see cref="DocumentPrinter"/> dependency property. Print sends the Visual
+    /// Document through it; the composition root supplies the real printer, and a test supplies a
+    /// fake. Left unset, Print does nothing (INV-034).
+    /// </summary>
+    public static readonly DependencyProperty DocumentPrinterProperty = DependencyProperty.Register(
+        nameof(DocumentPrinter),
+        typeof(IDocumentPrinter),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
     /// Identifies the <see cref="FindQuery"/> dependency property. The Find Bar binds its query box
     /// here; changing it re-runs the Find over the Visual Document.
     /// </summary>
@@ -154,6 +165,8 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
     {
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.Print, (_, _) => PrintVisualDocument()));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
         CommandBindings.Add(new CommandBinding(
@@ -550,6 +563,35 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (ILinkPrompt?)GetValue(LinkPromptProperty);
         set => SetValue(LinkPromptProperty, value);
+    }
+
+    /// <summary>
+    /// The printer Print sends the Visual Document to. Supplied by the composition root; when
+    /// <see langword="null"/>, Print does nothing (INV-034).
+    /// </summary>
+    public IDocumentPrinter? DocumentPrinter
+    {
+        get => (IDocumentPrinter?)GetValue(DocumentPrinterProperty);
+        set => SetValue(DocumentPrinterProperty, value);
+    }
+
+    /// <summary>
+    /// Prints the whole document. The Visual Document is re-projected from the current
+    /// <see cref="Markdown"/> source rather than taken from the live editing surface, so a Folded
+    /// Section's hidden Section Body prints too — Print means the whole document, never merely the
+    /// visible part (INV-034, the fold rule of INV-032 reached from printing) — and the surface the
+    /// user is editing is left undisturbed. Printing reads the document and writes no file the editor
+    /// owns, so it is not an edit. Does nothing when no <see cref="DocumentPrinter"/> is set.
+    /// </summary>
+    public void PrintVisualDocument()
+    {
+        if (DocumentPrinter is null)
+        {
+            return;
+        }
+
+        var document = _projector.Project(Markdown, BaseDirectory);
+        DocumentPrinter.Print(document, "LiveMarkDownEditor document");
     }
 
     /// <summary>

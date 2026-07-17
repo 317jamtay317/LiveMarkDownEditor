@@ -574,6 +574,55 @@ and tested.
   `ExportHtml_WithUnsavedEdits_ExportsTheSessionsText_AndLeavesThemUnsaved_INV032`, and
   `Compose_StandalonePage_CarriesTheSameRenderedOutputAsTheFragment_INV032`.
 
+### INV-033 — Export as PDF writes the document, and edits nothing
+- **Statement:** Export as PDF writes the Active Session's Markdown Document to the PDF file the user
+  chooses. Four rules bound it, the same discipline as Export as HTML (INV-032):
+  - **Exporting is not an edit.** It never changes the Markdown Document, the Watched File, or the
+    Editor Session's unsaved-edits state. An export is a *read* of the document that happens to write
+    a different file: the Watched File is the only file an Editor Session ever writes to (INV-006),
+    and exporting must not quietly join it.
+  - **Cancelling the save dialog writes nothing.** Asking the user where to put a file is not an
+    export — no file is created, and nothing changes.
+  - **It exports the document as it stands, unsaved edits and all.** The PDF is produced from the
+    Editor Session's current source text, never re-read from the Watched File, so an export can never
+    quietly write a stale document while the user looks at a newer one.
+  - **Fold state cannot reach it.** The export is re-laid-out from the whole source text (INV-011:
+    Folding never changes it), so a Folded Section's Section Body exports exactly as an Unfolded one
+    does. "Export" means the whole Markdown Document, never merely the visible part.
+- **Consequence (accepted):** Because a PDF cannot embed the Visual Document, an Export as PDF is
+  **re-laid-out** from the Markdown rather than captured from the on-screen document, so it need not
+  match the Visual Document line for line. (Print, INV-034, is the full-fidelity path.)
+- **Enforced by:** `ExportViewModel.ExportPdfAsync`, which returns before writing when the
+  `IFilePicker` port yields no path, exports the Editor Session's own `Markdown` through the
+  `IPdfExporter` port, and writes through the `IPdfExportStore` port — never through `IDocumentStore`,
+  so an export has no route to the Watched File at all. The `MigraDocPdfExporter` adapter re-lays-out
+  the Markdown (parsed through the shared `GfmPipeline`) into a PDF.
+- **Tested by:** `ExportViewModelTests.*_INV033` — in particular
+  `ExportPdf_WhenTheSaveDialogIsCancelled_WritesNothing_INV033`,
+  `ExportPdf_WithUnsavedEdits_ExportsTheSessionsText_INV033`, and
+  `ExportPdf_NeverWritesTheWatchedFile_INV033`; and `MigraDocPdfExporterTests.*` for the re-layout.
+
+### INV-034 — Printing is not an edit
+- **Statement:** Print sends the Active Session's Visual Document to a printer and changes nothing: not
+  the Markdown Document, the Watched File, or the Editor Session's unsaved-edits state. Two rules bound
+  it:
+  - **Printing is not an edit.** It reads the document and produces no file the editor owns — the
+    printout (and any PDF made through the print dialog's "Microsoft Print to PDF") leaves every
+    document exactly as it was.
+  - **It prints the whole document.** The document printed is re-projected from the current Markdown
+    source, not taken from the live editing surface, so a Folded Section's hidden Section Body prints
+    too (INV-011: Folding never changes the source) and the surface the user is editing is left
+    undisturbed. Print means the whole document, never merely the visible part — the fold rule of
+    INV-032/INV-033 reached from printing.
+- **Enforced by:** `MarkdownRichEditor.PrintVisualDocument`, which re-projects `Markdown` through the
+  same `MarkdownToFlowDocumentProjector` the editing surface uses (yielding a self-contained
+  `FlowDocument` that references none of the live document's state) and hands it to the
+  `IDocumentPrinter` port — doing nothing when no printer is set. The port keeps the WPF print dialog
+  out of the editor, so the rules above are testable headlessly against a fake.
+- **Tested by:** `MarkdownRichEditorPrintTests.*_INV034` — in particular
+  `Print_PrintsTheWholeDocument_IncludingFoldedSections_INV034` and
+  `Print_DoesNotChangeTheMarkdownDocument_INV034`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

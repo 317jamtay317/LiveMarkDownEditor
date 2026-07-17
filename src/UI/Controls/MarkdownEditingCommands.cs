@@ -11,6 +11,17 @@ namespace UI.Controls;
 /// </summary>
 public static class MarkdownEditingCommands
 {
+    /// <summary>
+    /// Prints the whole document (Ctrl+P). The Visual Document is re-projected from the current
+    /// Markdown source before printing, so a Folded Section's hidden body prints too and the live
+    /// editing surface is left undisturbed. Printing is not an edit (INV-034).
+    /// </summary>
+    public static RoutedUICommand Print { get; } = new(
+        "Print",
+        nameof(Print),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.P, ModifierKeys.Control)]);
+
     /// <summary>Folds or Unfolds the Section that contains the caret (Ctrl+M).</summary>
     public static RoutedUICommand ToggleFold { get; } = new(
         "Collapse / expand section",

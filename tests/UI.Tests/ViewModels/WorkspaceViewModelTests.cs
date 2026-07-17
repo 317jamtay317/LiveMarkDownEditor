@@ -38,8 +38,14 @@ public sealed class WorkspaceViewModelTests
             _picker,
             _prompt,
             new StubLinkPrompt(answer: null),
+            new FakeDocumentPrinter(),
             new AppearanceViewModel(_theme),
-            new ExportViewModel(_picker, new StubMarkdownRenderer(), new FakeHtmlExportStore()));
+            new ExportViewModel(
+                _picker,
+                new StubMarkdownRenderer(),
+                new FakeHtmlExportStore(),
+                new FakePdfExporter(),
+                new FakePdfExportStore()));
     }
 
     [Fact]

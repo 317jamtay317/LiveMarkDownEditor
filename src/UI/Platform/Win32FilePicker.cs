@@ -22,6 +22,8 @@ public sealed class Win32FilePicker : IFilePicker
     private const string HtmlExportFilter =
         "HTML document (*.html)|*.html|HTML fragment (*.html)|*.html";
 
+    private const string PdfExportFilter = "PDF document (*.pdf)|*.pdf";
+
     /// <inheritdoc />
     public string? PickOpen()
     {
@@ -69,5 +71,20 @@ public sealed class Win32FilePicker : IFilePicker
 
         var index = Math.Clamp(dialog.FilterIndex - 1, 0, ExportShapes.Length - 1);
         return new HtmlExportTarget(dialog.FileName, ExportShapes[index]);
+    }
+
+    /// <inheritdoc />
+    public string? PickPdfExport(string? suggestedFileName)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = PdfExportFilter,
+            FileName = suggestedFileName ?? "Untitled.pdf",
+            DefaultExt = ".pdf",
+            AddExtension = true,
+            Title = "Export as PDF",
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
     }
 }

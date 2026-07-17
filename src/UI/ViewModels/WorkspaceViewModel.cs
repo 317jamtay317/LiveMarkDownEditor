@@ -29,13 +29,15 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="filePicker">The abstraction used to prompt for Watched File paths.</param>
     /// <param name="unsavedEditsPrompt">Asks the user how to close a Tab with unsaved edits (INV-010).</param>
     /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
+    /// <param name="documentPrinter">Sends the Visual Document to a printer for Print (INV-034).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
-    /// <param name="export">The Export as HTML actions exposed to the shell's chrome (INV-032).</param>
+    /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
         IUnsavedEditsPrompt unsavedEditsPrompt,
         ILinkPrompt linkPrompt,
+        IDocumentPrinter documentPrinter,
         AppearanceViewModel appearance,
         ExportViewModel export)
     {
@@ -43,6 +45,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
+        DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
 
@@ -102,6 +105,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// Actions but is composed in XAML rather than by the container.
     /// </summary>
     public ILinkPrompt LinkPrompt { get; }
+
+    /// <summary>
+    /// The printer the editing surface sends the Visual Document to for Print (INV-034). Exposed so
+    /// the View can hand it to the <c>MarkdownRichEditor</c>, which owns Print but is composed in XAML
+    /// rather than by the container — the same reason <see cref="LinkPrompt"/> is exposed.
+    /// </summary>
+    public IDocumentPrinter DocumentPrinter { get; }
 
     /// <summary>
     /// Whether the Navigation Panel — the left-edge Outline of the Active Session — is shown. Hidden

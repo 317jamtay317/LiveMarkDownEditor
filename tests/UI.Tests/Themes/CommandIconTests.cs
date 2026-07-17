@@ -22,6 +22,8 @@ public sealed class CommandIconTests
         "Icon.Open",
         "Icon.Save",
         "Icon.ExportHtml",
+        "Icon.ExportPdf",
+        "Icon.Print",
         "Icon.SetHeadingLevel",
         "Icon.ToggleBold",
         "Icon.ToggleItalic",

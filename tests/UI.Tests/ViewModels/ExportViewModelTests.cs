@@ -19,12 +19,15 @@ public sealed class ExportViewModelTests
 
     private readonly FakeDocumentStore _store = new();
     private readonly FakeHtmlExportStore _exports = new();
+    private readonly FakePdfExporter _pdfExporter = new();
+    private readonly FakePdfExportStore _pdfExports = new();
     private readonly StubFilePicker _picker = new();
     private readonly InlineUiDispatcher _dispatcher = new();
     private readonly FakeMarkdownRoundTrip _roundTrip = new();
     private readonly StubMarkdownRenderer _renderer = new();
 
-    private ExportViewModel CreateExport() => new(_picker, _renderer, _exports);
+    private ExportViewModel CreateExport() =>
+        new(_picker, _renderer, _exports, _pdfExporter, _pdfExports);
 
     private EditorSessionViewModel CreateSession() =>
         new(_store, new FakeDocumentWatcher(), _dispatcher, _roundTrip);
@@ -32,19 +35,36 @@ public sealed class ExportViewModelTests
     [Fact]
     public void Constructor_GivenNullFilePicker_ThrowsAndPreservesInvariant()
     {
-        Should.Throw<ArgumentNullException>(() => new ExportViewModel(null!, _renderer, _exports));
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(null!, _renderer, _exports, _pdfExporter, _pdfExports));
     }
 
     [Fact]
     public void Constructor_GivenNullRenderer_ThrowsAndPreservesInvariant()
     {
-        Should.Throw<ArgumentNullException>(() => new ExportViewModel(_picker, null!, _exports));
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(_picker, null!, _exports, _pdfExporter, _pdfExports));
     }
 
     [Fact]
     public void Constructor_GivenNullExportStore_ThrowsAndPreservesInvariant()
     {
-        Should.Throw<ArgumentNullException>(() => new ExportViewModel(_picker, _renderer, null!));
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(_picker, _renderer, null!, _pdfExporter, _pdfExports));
+    }
+
+    [Fact]
+    public void Constructor_GivenNullPdfExporter_ThrowsAndPreservesInvariant()
+    {
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(_picker, _renderer, _exports, null!, _pdfExports));
+    }
+
+    [Fact]
+    public void Constructor_GivenNullPdfExportStore_ThrowsAndPreservesInvariant()
+    {
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(_picker, _renderer, _exports, _pdfExporter, null!));
     }
 
     [Fact]
@@ -172,5 +192,109 @@ public sealed class ExportViewModelTests
         await CreateExport().ExportHtmlAsync(session);
 
         _exports.SavedHtml(ExportPath).ShouldContain("<title>note</title>");
+    }
+
+    private const string PdfPath = @"C:\docs\note.pdf";
+
+    [Fact]
+    public async Task ExportPdf_WritesTheExportedBytes_ToTheChosenPath_INV033()
+    {
+        _picker.PdfExportResult = PdfPath;
+        var session = CreateSession();
+        session.Markdown = "# Title";
+
+        await CreateExport().ExportPdfAsync(session);
+
+        _pdfExports.SavedBytes(PdfPath).ShouldBe(FakePdfExporter.BytesFor("# Title"));
+    }
+
+    [Fact]
+    public async Task ExportPdf_WhenTheSaveDialogIsCancelled_WritesNothing_INV033()
+    {
+        _picker.PdfExportResult = null;
+        var session = CreateSession();
+        session.Markdown = "# Title";
+
+        await CreateExport().ExportPdfAsync(session);
+
+        _pdfExports.WriteCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ExportPdf_WithNoActiveSession_WritesNothing_INV033()
+    {
+        _picker.PdfExportResult = PdfPath;
+
+        await CreateExport().ExportPdfAsync(session: null);
+
+        _pdfExports.WriteCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ExportPdf_WithUnsavedEdits_ExportsTheSessionsText_INV033()
+    {
+        // The export must show what the user is looking at, not what the Watched File still holds —
+        // and exporting must not quietly count as saving.
+        _store.Seed(DocumentPath, "# On disk");
+        _picker.PdfExportResult = PdfPath;
+        var session = CreateSession();
+        await session.LoadAsync(DocumentPath);
+        session.Markdown = "# Edited but unsaved";
+
+        await CreateExport().ExportPdfAsync(session);
+
+        _pdfExporter.Exported.ShouldContain("# Edited but unsaved");
+        _pdfExporter.Exported.ShouldNotContain("# On disk");
+        session.HasUnsavedEdits.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ExportPdf_NeverWritesTheWatchedFile_INV033()
+    {
+        _store.Seed(DocumentPath, "# On disk");
+        _picker.PdfExportResult = PdfPath;
+        var session = CreateSession();
+        await session.LoadAsync(DocumentPath);
+        session.Markdown = "# Edited but unsaved";
+
+        await CreateExport().ExportPdfAsync(session);
+
+        _store.SavedText(DocumentPath).ShouldBe("# On disk");
+    }
+
+    [Fact]
+    public async Task ExportPdf_LeavesTheMarkdownDocumentUnchanged_INV033()
+    {
+        _picker.PdfExportResult = PdfPath;
+        var session = CreateSession();
+        session.Markdown = "# Title";
+
+        await CreateExport().ExportPdfAsync(session);
+
+        session.Markdown.ShouldBe("# Title");
+    }
+
+    [Fact]
+    public async Task ExportPdf_SeedsTheDialogWithTheWatchedFilesName_INV033()
+    {
+        // Exporting note.md should propose note.pdf, not "Untitled".
+        _store.Seed(DocumentPath, "# Title");
+        _picker.PdfExportResult = PdfPath;
+        var session = CreateSession();
+        await session.LoadAsync(DocumentPath);
+
+        await CreateExport().ExportPdfAsync(session);
+
+        _picker.SuggestedPdfExportName.ShouldBe("note.pdf");
+    }
+
+    [Fact]
+    public async Task ExportPdf_ForAnUnsavedSession_SeedsTheDialogWithUntitled_INV033()
+    {
+        _picker.PdfExportResult = PdfPath;
+
+        await CreateExport().ExportPdfAsync(CreateSession());
+
+        _picker.SuggestedPdfExportName.ShouldBe("Untitled.pdf");
     }
 }
