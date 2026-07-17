@@ -600,6 +600,23 @@
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusText}" Text="Unsaved changes"
                            Margin="12,0,0,0"
                            Visibility="{Binding ActiveSession.HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- Document statistics and caret position, from the editor's live status (INV-039). -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.CurrentSection, ElementName=Editor}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.CaretLine, ElementName=Editor, StringFormat='Ln {0}'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="6,0,0,0"
+                               Text="{Binding Status.CaretColumn, ElementName=Editor, StringFormat='Col {0}'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.ReadingTimeText, ElementName=Editor}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.WordCount, ElementName=Editor, StringFormat='{}{0} words'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="6,0,0,0"
+                               Text="{Binding Status.CharacterCount, ElementName=Editor, StringFormat='{}{0} chars'}" />
+                </StackPanel>
+
                 <TextBlock Style="{StaticResource StatusText}"
                            Text="{Binding ActiveSession.FilePath, TargetNullValue='Unsaved document'}" />
             </DockPanel>

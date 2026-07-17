@@ -279,7 +279,11 @@ public sealed class MarkdownRichEditor : RichTextBox
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
-        SelectionChanged += (_, _) => CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+        SelectionChanged += (_, _) =>
+        {
+            UpdateCaretStatus();
+            CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+        };
 
         // Right-clicking a Misspelling offers its Spelling Suggestions; the menu is built on demand so
         // it reflects the current Misspellings and the word actually under the pointer.
@@ -700,6 +704,12 @@ public sealed class MarkdownRichEditor : RichTextBox
         get => (ICommand?)GetValue(FollowLinkCommandProperty);
         set => SetValue(FollowLinkCommandProperty, value);
     }
+
+    /// <summary>
+    /// The live document status shown in the Status Bar — word and character counts, reading time,
+    /// the caret's line and column, and the Current Section. Presentation-only (INV-039).
+    /// </summary>
+    public DocumentStatus Status { get; } = new();
 
     /// <summary>
     /// Follows a Link's destination: a web address opens in the default browser, a Markdown file opens
@@ -1277,6 +1287,11 @@ public sealed class MarkdownRichEditor : RichTextBox
     protected override void OnTextChanged(TextChangedEventArgs e)
     {
         base.OnTextChanged(e);
+
+        // The Status Bar counts follow the visible document, whether the change was a user edit or a
+        // fresh projection (which returns below before Capturing).
+        UpdateStatistics();
+
         if (_isSynchronising)
         {
             return;
@@ -1302,6 +1317,28 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             RecomputeMatches();
         }
+    }
+
+    // Recomputes the word / character counts and reading time from the visible document text.
+    private void UpdateStatistics()
+    {
+        var statistics = TextStatistics.Compute(new TextRange(Document.ContentStart, Document.ContentEnd).Text);
+        Status.WordCount = statistics.WordCount;
+        Status.CharacterCount = statistics.CharacterCount;
+        Status.ReadingTime = statistics.ReadingTime;
+    }
+
+    // Updates the caret's line and column and the Current Section shown in the Status Bar.
+    private void UpdateCaretStatus()
+    {
+        var caret = CaretPosition;
+        caret.GetLineStartPosition(-int.MaxValue, out var linesMovedBack);
+        Status.CaretLine = 1 - linesMovedBack;
+
+        var lineStart = caret.GetLineStartPosition(0);
+        Status.CaretColumn = lineStart is null ? 1 : new TextRange(lineStart, caret).Text.Length + 1;
+
+        Status.CurrentSection = CurrentSection?.Text ?? string.Empty;
     }
 
     // The full logical block sequence: every visible block, with each Folded Section Body spliced

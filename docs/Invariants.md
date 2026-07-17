@@ -701,6 +701,19 @@ and tested.
   `MarkdownRichEditorFollowLinkTests.*_INV038` (a Markdown Link opens a Tab; following is not an edit;
   a non-Markdown target does nothing).
 
+### INV-039 — The Status Bar reflects the document, and never changes it
+- **Statement:** The Status Bar shows the Active Session's Document Statistics — word count, character
+  count, and estimated reading time — together with the caret's line and column and the Current
+  Section. It is presentation-only: computing or showing it never changes the Markdown Document, the
+  Visual Document, or the Watched File (the view-only guarantee of the Outline, INV-012, applied to the
+  Status Bar). The Document Statistics are a deterministic function of the text — the same text always
+  yields the same counts and reading time.
+- **Enforced by:** The pure static `TextStatistics.Compute` (Domain), and `MarkdownRichEditor.Status`
+  (a `DocumentStatus` the editor recomputes from the visible document text on every change and from the
+  caret on every selection change) — a read of the document that makes no edit.
+- **Tested by:** `TextStatisticsTests.*` (the counts, the reading time, and determinism) and
+  `MarkdownRichEditorStatusTests.*_INV039` (the Status reflects and follows the document).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
