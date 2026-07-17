@@ -168,8 +168,19 @@ public sealed class MarkdownRichEditor : RichTextBox
     // The blocks are retained (not discarded) so Capture can reproduce the full source (INV-011).
     private readonly Dictionary<Block, IReadOnlyList<Block>> _foldedBodies = new();
 
-    // Created lazily the first time the built-in dictionary is needed, and shared across sessions.
-    private static readonly Lazy<ISpellDictionary> SharedDictionary = new(() => new WindowsSpellDictionary());
+    // The User Dictionary of accepted words, shared across sessions and persisted to per-user storage.
+    private static readonly Lazy<IUserDictionary> SharedUserDictionary = new(CreateUserDictionary);
+
+    // Created lazily the first time the dictionary is needed, and shared across sessions. The
+    // operating system's speller, made aware of the User Dictionary so an accepted word is not a
+    // Misspelling (INV-040).
+    private static readonly Lazy<ISpellDictionary> SharedDictionary = new(() =>
+        new UserAwareSpellDictionary(new WindowsSpellDictionary(), SharedUserDictionary.Value));
+
+    private static IUserDictionary CreateUserDictionary() => new FileUserDictionary(System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "LiveMarkDownEditor",
+        "user-dictionary.txt"));
 
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
@@ -955,11 +966,24 @@ public sealed class MarkdownRichEditor : RichTextBox
         if (misspelling is not null)
         {
             AddSuggestionItems(menu, misspelling);
+
+            var word = misspelling.Text;
+            var addToDictionary = new MenuItem { Header = "Add to Dictionary" };
+            addToDictionary.Click += (_, _) => AddToDictionary(word);
+            menu.Items.Add(addToDictionary);
+
             menu.Items.Add(new Separator());
         }
 
         AddClipboardItems(menu);
         ContextMenu = menu;
+    }
+
+    // Accepts a Misspelling into the User Dictionary and re-checks, so it stops being marked (INV-040).
+    private void AddToDictionary(string word)
+    {
+        SharedUserDictionary.Value.Add(word);
+        _spellCheckAdorner?.Refresh();
     }
 
     private void AddSuggestionItems(ContextMenu menu, TextRange misspelling)

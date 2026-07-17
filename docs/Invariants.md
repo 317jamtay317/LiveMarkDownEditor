@@ -714,6 +714,22 @@ and tested.
 - **Tested by:** `TextStatisticsTests.*` (the counts, the reading time, and determinism) and
   `MarkdownRichEditorStatusTests.*_INV039` (the Status reflects and follows the document).
 
+### INV-040 — An accepted word is never a Misspelling, permanently
+- **Statement:** A word the user has accepted through Add to Dictionary is never marked a Misspelling,
+  whatever the operating system's speller thinks, and the acceptance is permanent: the User Dictionary
+  is persisted, so the word stays accepted across runs. Accepting a word is not an edit — it changes
+  what counts as a Misspelling, never the Markdown Document — and Spell Check re-checks so the word's
+  squiggle clears at once. Words are compared case-insensitively.
+- **Enforced by:** The `UserAwareSpellDictionary` decorator, which reports a word not misspelled when
+  the `IUserDictionary` contains it and otherwise defers to the inner speller; the `FileUserDictionary`
+  adapter, which loads the accepted words from a per-user file and appends each newly accepted one; and
+  `MarkdownRichEditor.AddToDictionary`, which accepts the Misspelling's word and calls the spell-check
+  adorner's `Refresh` (a re-check, not an edit). Spelling Suggestions still come from the inner speller
+  unchanged.
+- **Tested by:** `UserAwareSpellDictionaryTests.*_INV040` (an accepted word is not a Misspelling; an
+  unaccepted one is judged by the speller) and `FileUserDictionaryTests.*` (accepted words are held,
+  case-insensitive, and persisted across instances).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

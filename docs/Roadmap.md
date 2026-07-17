@@ -60,7 +60,7 @@ work that is still in review, noted inline.
   written beside the Watched File and inserted as an Image; HTML converts to Markdown.
 - [x] **Status bar** — word and character count, reading time, caret line and column, and the
   Current Section.
-- [ ] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
+- [x] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
   accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
 - [x] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
 
