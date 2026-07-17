@@ -369,6 +369,7 @@
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
                                              DocumentPrinter="{Binding DocumentPrinter}"
+                                             Renderer="{Binding Renderer}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->

@@ -39,6 +39,7 @@ public sealed class WorkspaceViewModelTests
             _prompt,
             new StubLinkPrompt(answer: null),
             new FakeDocumentPrinter(),
+            new StubMarkdownRenderer(),
             new AppearanceViewModel(_theme),
             new ExportViewModel(
                 _picker,

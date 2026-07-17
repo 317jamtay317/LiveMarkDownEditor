@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using Domain;
 using UI.Core;
 
 namespace UI.ViewModels;
@@ -30,6 +31,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="unsavedEditsPrompt">Asks the user how to close a Tab with unsaved edits (INV-010).</param>
     /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
     /// <param name="documentPrinter">Sends the Visual Document to a printer for Print (INV-034).</param>
+    /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
     public WorkspaceViewModel(
@@ -38,6 +40,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         IUnsavedEditsPrompt unsavedEditsPrompt,
         ILinkPrompt linkPrompt,
         IDocumentPrinter documentPrinter,
+        IMarkdownRenderer renderer,
         AppearanceViewModel appearance,
         ExportViewModel export)
     {
@@ -46,6 +49,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
+        Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
 
@@ -112,6 +116,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// rather than by the container — the same reason <see cref="LinkPrompt"/> is exposed.
     /// </summary>
     public IDocumentPrinter DocumentPrinter { get; }
+
+    /// <summary>
+    /// The renderer the editing surface uses to render a copied selection to HTML for the clipboard's
+    /// HTML flavor (INV-035). Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which
+    /// owns Copy but is composed in XAML rather than by the container — as with <see cref="LinkPrompt"/>.
+    /// </summary>
+    public IMarkdownRenderer Renderer { get; }
 
     /// <summary>
     /// Whether the Navigation Panel — the left-edge Outline of the Active Session — is shown. Hidden

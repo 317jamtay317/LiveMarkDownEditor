@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Domain;
 using UI.Core;
 using UI.Find;
 using UI.Spelling;
@@ -75,6 +76,17 @@ public sealed class MarkdownRichEditor : RichTextBox
     public static readonly DependencyProperty DocumentPrinterProperty = DependencyProperty.Register(
         nameof(DocumentPrinter),
         typeof(IDocumentPrinter),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="Renderer"/> dependency property. A Copy renders the selection to
+    /// HTML through it for the clipboard's HTML flavor; the composition root supplies the real
+    /// renderer. Left unset, Copy adds no HTML flavor (the built-in rich text is unaffected) (INV-035).
+    /// </summary>
+    public static readonly DependencyProperty RendererProperty = DependencyProperty.Register(
+        nameof(Renderer),
+        typeof(IMarkdownRenderer),
         typeof(MarkdownRichEditor),
         new PropertyMetadata(defaultValue: null));
 
@@ -167,6 +179,15 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.Print, (_, _) => PrintVisualDocument()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.CopyAsMarkdown,
+            (_, _) => CopySelectionAsMarkdown(),
+            (_, e) => e.CanExecute = !Selection.IsEmpty));
+
+        // A Copy also carries an HTML flavor, so a selection pastes formatted into web editors, not
+        // only into the RTF-native Word and Outlook the RichTextBox already serves (INV-035).
+        DataObject.AddCopyingHandler(this, OnCopying);
+
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
         CommandBindings.Add(new CommandBinding(
@@ -548,6 +569,73 @@ public sealed class MarkdownRichEditor : RichTextBox
     public string Capture() => _capturer.Capture(BuildLogicalBlocks());
 
     /// <summary>
+    /// Captures the Markdown source of the blocks the current selection spans. A partial selection
+    /// captures the whole blocks it touches (whole-block granularity); an empty selection captures
+    /// nothing. It reads the document and is not an edit (INV-035).
+    /// </summary>
+    /// <returns>The canonical Markdown source of the selected blocks; the empty string for no selection.</returns>
+    public string CaptureSelection()
+    {
+        if (Selection.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var start = Selection.Start;
+        var end = Selection.End;
+        var selectedBlocks = Document.Blocks.Where(block => Overlaps(block, start, end)).ToList();
+        return _capturer.Capture(selectedBlocks);
+    }
+
+    /// <summary>
+    /// Renders the current selection to the CF_HTML clipboard flavor, or <see langword="null"/> when
+    /// there is no selection or no <see cref="Renderer"/>. A Copy adds this so a selection pastes
+    /// formatted into web editors (INV-035).
+    /// </summary>
+    /// <returns>The CF_HTML string, or <see langword="null"/> when no HTML flavor should be added.</returns>
+    public string? SelectionAsCfHtml()
+    {
+        if (Renderer is null)
+        {
+            return null;
+        }
+
+        var markdown = CaptureSelection();
+        if (string.IsNullOrEmpty(markdown))
+        {
+            return null;
+        }
+
+        var html = Renderer.Render(new MarkdownDocument(markdown)).Html;
+        return CfHtml.Wrap(html);
+    }
+
+    // Adds the HTML flavor to a Copy (or Cut / drag) so the selection pastes formatted into web
+    // editors; the RichTextBox's own RTF and text flavors are left untouched.
+    private void OnCopying(object sender, DataObjectCopyingEventArgs e)
+    {
+        var cfHtml = SelectionAsCfHtml();
+        if (cfHtml is not null)
+        {
+            e.DataObject.SetData(DataFormats.Html, cfHtml);
+        }
+    }
+
+    // Copies the selection's Markdown source to the clipboard for Copy as Markdown.
+    private void CopySelectionAsMarkdown()
+    {
+        var markdown = CaptureSelection();
+        if (!string.IsNullOrEmpty(markdown))
+        {
+            Clipboard.SetText(markdown);
+        }
+    }
+
+    // Whether a top-level Block's content range overlaps the selection [start, end].
+    private static bool Overlaps(Block block, TextPointer start, TextPointer end) =>
+        block.ContentStart.CompareTo(end) < 0 && block.ContentEnd.CompareTo(start) > 0;
+
+    /// <summary>
     /// Applies the Toggle Code Formatting Action at the current selection: a selection within a
     /// single line becomes a Code Span, a selection spanning multiple lines (or a whole line)
     /// becomes a Code Block, and inside existing code the code formatting is removed. The edit
@@ -573,6 +661,17 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (IDocumentPrinter?)GetValue(DocumentPrinterProperty);
         set => SetValue(DocumentPrinterProperty, value);
+    }
+
+    /// <summary>
+    /// The renderer a Copy uses to render the selection to HTML for the clipboard's HTML flavor.
+    /// Supplied by the composition root; when <see langword="null"/>, Copy adds no HTML flavor and the
+    /// built-in rich text (RTF) is unaffected (INV-035).
+    /// </summary>
+    public IMarkdownRenderer? Renderer
+    {
+        get => (IMarkdownRenderer?)GetValue(RendererProperty);
+        set => SetValue(RendererProperty, value);
     }
 
     /// <summary>
@@ -818,6 +917,12 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         menu.Items.Add(new MenuItem { Header = "Cut", Command = ApplicationCommands.Cut, CommandTarget = this });
         menu.Items.Add(new MenuItem { Header = "Copy", Command = ApplicationCommands.Copy, CommandTarget = this });
+        menu.Items.Add(new MenuItem
+        {
+            Header = "Copy as Markdown",
+            Command = MarkdownEditingCommands.CopyAsMarkdown,
+            CommandTarget = this,
+        });
         menu.Items.Add(new MenuItem { Header = "Paste", Command = ApplicationCommands.Paste, CommandTarget = this });
     }
 

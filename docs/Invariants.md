@@ -623,6 +623,32 @@ and tested.
   `Print_PrintsTheWholeDocument_IncludingFoldedSections_INV034` and
   `Print_DoesNotChangeTheMarkdownDocument_INV034`.
 
+### INV-035 — Copying is not an edit, and carries the selection in rich flavors
+- **Statement:** Copy places the current selection on the clipboard. Four rules bound it:
+  - **Copying is not an edit.** It reads the document and never changes the Markdown Document, the
+    Visual Document, or the Watched File. (Cut is a separate, real edit; the flavors Copy adds do not
+    make Copy one.)
+  - **A normal Copy carries rich text.** The selection is placed as RTF — the editing surface's own
+    serialization, which Word and Outlook paste formatted — and as HTML, so it also pastes formatted
+    into web editors that read the clipboard's HTML flavor rather than its RTF.
+  - **Copy as Markdown carries the selection's Markdown source.** A separate command places the
+    canonical Markdown of the selection on the clipboard, for a Markdown-aware target.
+  - **The HTML and Markdown flavors are Captured from the blocks the selection spans.** They are
+    produced by the same Capture (and Render) seams the editor already uses, so a copied Link,
+    Heading, or List is the same as a saved one (INV-018). A partial selection copies the whole blocks
+    it touches (whole-block granularity), and a selection cannot include what a Fold has hidden — the
+    counterpart of Print's whole-document rule (INV-034), reached from the other direction.
+- **Enforced by:** `MarkdownRichEditor.CaptureSelection` (the top-level Blocks the selection overlaps,
+  Captured through the same `FlowDocumentToMarkdownCapturer` a save uses), `SelectionAsCfHtml` (which
+  Renders that Markdown through the `IMarkdownRenderer` port and wraps it with the pure `CfHtml`), the
+  `DataObject.Copying` handler that adds the HTML flavor to a Copy, and `CopyAsMarkdown`. RTF is the
+  `RichTextBox`'s own selection serialization, left untouched.
+- **Tested by:** `CfHtmlTests.*` (the clipboard wrapper's byte offsets) and
+  `MarkdownRichEditorCopyTests.*_INV035` — in particular
+  `CaptureSelection_WithAPartialSelection_CapturesTheWholeBlock_INV035`,
+  `SelectionAsCfHtml_RendersTheSelectionToTheHtmlFlavor_INV035`, and
+  `Copy_SerialisesTheSelectionAsRichText_INV035`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
