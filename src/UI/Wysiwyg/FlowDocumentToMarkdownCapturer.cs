@@ -210,6 +210,13 @@ public sealed class FlowDocumentToMarkdownCapturer
     {
         switch (inline)
         {
+            // An Image, whichever way it is being shown: as its picture (an InlineUIContainer) or as
+            // its alt text (a Run). Both carry the same ImageRole, so both re-emit the Image Source
+            // their author wrote rather than the absolute path it resolved to (INV-031).
+            case InlineUIContainer { Tag: ImageRole picture }:
+                segments.Add(Verbatim(EmitImage(picture)));
+                break;
+
             case Run { Tag: ImageRole image }:
                 segments.Add(Verbatim(EmitImage(image)));
                 break;
@@ -329,8 +336,34 @@ public sealed class FlowDocumentToMarkdownCapturer
             + (segment.Bold ? "**" : string.Empty)
             + (segment.Strike ? "~~" : string.Empty);
 
-        return prefix + segment.Text + suffix;
+        if (prefix.Length == 0)
+        {
+            return segment.Text;
+        }
+
+        // An emphasis delimiter must hug its text: `**bold **` and `~~struck ~~` do not close in
+        // Markdown, because a closing delimiter preceded by whitespace is not right-flanking. A user
+        // selecting a word by double-click or Ctrl+Shift+Right takes its trailing space with it, so
+        // the surrounding whitespace is hoisted outside the delimiters rather than emitted inside
+        // them — otherwise the Markdown would say "literal tildes" where the Visual Document says
+        // "struck through" (INV-018).
+        var core = segment.Text.AsSpan().Trim(WhitespaceChars);
+        if (core.Length == 0)
+        {
+            // Whitespace alone carries no emphasis, and `~~ ~~` would be nonsense.
+            return segment.Text;
+        }
+
+        var leadingLength = segment.Text.Length - segment.Text.AsSpan().TrimStart(WhitespaceChars).Length;
+        var leading = segment.Text[..leadingLength];
+        var trailing = segment.Text[(leadingLength + core.Length)..];
+
+        return leading + prefix + core.ToString() + suffix + trailing;
     }
+
+    // The whitespace an emphasis delimiter must not sit against. Newlines included: a segment can
+    // span a soft line break, and a delimiter left against one closes no better than against a space.
+    private static readonly char[] WhitespaceChars = [' ', '\t', '\r', '\n'];
 
     private static string InlineText(InlineCollection inlines)
     {

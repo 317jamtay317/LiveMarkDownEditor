@@ -24,6 +24,7 @@ public static class UiRegistry
             services.AddSingleton<IFilePicker, Win32FilePicker>();
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
+            services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
             services.AddSingleton<IThemeService, WpfThemeService>();
             services.AddSingleton<IMarkdownRoundTrip, Wysiwyg.FlowDocumentRoundTrip>();
 

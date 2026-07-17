@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using UI.Wysiwyg;
 
 namespace UI.Controls;
 
@@ -38,6 +39,64 @@ public static class MarkdownEditingCommands
     public static RoutedUICommand ToggleCode { get; } = new(
         "Toggle code",
         nameof(ToggleCode),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Insert Link Formatting Action: turns the selection into a Link, or inserts a new one at
+    /// the caret, asking for its text and destination URL through the Link Prompt (Ctrl+K). No edit
+    /// is made when the Link Prompt is dismissed or gives no URL (INV-030).
+    /// </summary>
+    public static RoutedUICommand InsertLink { get; } = new(
+        "Insert link",
+        nameof(InsertLink),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.K, ModifierKeys.Control)]);
+
+    /// <summary>
+    /// The Insert Image Formatting Action: inserts an Image at the caret, asking for its alt text
+    /// and source URL through the Link Prompt. No edit is made when the Link Prompt is dismissed or
+    /// gives no URL (INV-030).
+    /// </summary>
+    public static RoutedUICommand InsertImage { get; } = new(
+        "Insert image",
+        nameof(InsertImage),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Strikethrough Formatting Action: the selection is struck through, or
+    /// struck-through prose is restored to plain text. It removes a Strikethrough the Projector
+    /// loaded exactly as readily as one a previous toggle applied (INV-029).
+    /// </summary>
+    public static RoutedUICommand ToggleStrikethrough { get; } = new(
+        "Strikethrough",
+        nameof(ToggleStrikethrough),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Block Quote Formatting Action: the blocks the selection touches become a Block
+    /// Quote, or the selected Block Quote's blocks become plain blocks again. Whole blocks are
+    /// quoted (INV-028).
+    /// </summary>
+    public static RoutedUICommand ToggleBlockQuote { get; } = new(
+        "Block quote",
+        nameof(ToggleBlockQuote),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The <see cref="SetHeadingLevel"/> parameter that means "not a Heading" — the Heading Level
+    /// Picker's Paragraph choice, which turns the Heading at the caret back into a plain paragraph.
+    /// </summary>
+    public const int ParagraphHeadingLevel = HeadingFormatting.ParagraphLevel;
+
+    /// <summary>
+    /// The Set Heading Level Formatting Action: makes the block at the caret a Heading at the
+    /// Heading Level given as the command parameter (1–6), or a plain paragraph again given
+    /// <see cref="ParagraphHeadingLevel"/>. It sets a level rather than toggling one, so choosing a
+    /// Heading's current level leaves it unchanged (INV-027).
+    /// </summary>
+    public static RoutedUICommand SetHeadingLevel { get; } = new(
+        "Heading level",
+        nameof(SetHeadingLevel),
         typeof(MarkdownEditingCommands));
 
     /// <summary>

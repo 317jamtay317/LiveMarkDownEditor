@@ -53,6 +53,40 @@
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
+                <!-- Heading Level Picker. Like the Table dropdown, its entries keep their words: six
+                     near-identical glyphs would separate the levels far less than the words do. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Heading level — make the block at the caret a heading, or a paragraph again"
+                              AutomationProperties.Name="Heading level">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.SetHeadingLevel}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 1"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="1" CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 2"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="2" CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 3"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="3" CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 4"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="4" CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 5"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="5" CommandTarget="{Binding ElementName=Editor}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 6"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="6" CommandTarget="{Binding ElementName=Editor}" />
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Paragraph"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="0" CommandTarget="{Binding ElementName=Editor}" />
+                    </MenuItem>
+                </Menu>
+
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Bold (Ctrl+B)" AutomationProperties.Name="Bold"
                         Command="EditingCommands.ToggleBold" CommandTarget="{Binding ElementName=Editor}">
@@ -62,6 +96,13 @@
                         ToolTip="Italic (Ctrl+I)" AutomationProperties.Name="Italic"
                         Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleItalic}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Strikethrough — strike the selection through, or restore struck-through text"
+                        AutomationProperties.Name="Strikethrough"
+                        Command="controls:MarkdownEditingCommands.ToggleStrikethrough"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleStrikethrough}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
@@ -93,6 +134,28 @@
                         Command="controls:MarkdownEditingCommands.ToggleTaskList"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
+                </Button>
+
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Insert link (Ctrl+K) — turn the selection into a link"
+                        AutomationProperties.Name="Insert link"
+                        Command="controls:MarkdownEditingCommands.InsertLink"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Insert image"
+                        AutomationProperties.Name="Insert image"
+                        Command="controls:MarkdownEditingCommands.InsertImage"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Block quote — quote the blocks the selection touches, or unquote them"
+                        AutomationProperties.Name="Block quote"
+                        Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
                 </Button>
 
                 <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. The
@@ -283,6 +346,8 @@
                 <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
                 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                             BaseDirectory="{Binding ActiveSession.BaseDirectory}"
+                                             LinkPrompt="{Binding LinkPrompt}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->

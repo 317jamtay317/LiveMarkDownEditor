@@ -33,7 +33,8 @@ public sealed class WorkspaceViewModelTests
             _watchers.Add(watcher);
             return new EditorSessionViewModel(_store, watcher, _dispatcher, _roundTrip);
         };
-        return new WorkspaceViewModel(factory, _picker, _prompt, new AppearanceViewModel(_theme));
+        return new WorkspaceViewModel(
+            factory, _picker, _prompt, new StubLinkPrompt(answer: null), new AppearanceViewModel(_theme));
     }
 
     [Fact]

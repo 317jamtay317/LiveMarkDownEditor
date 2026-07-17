@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Core;
 using UI.Find;
 using UI.Spelling;
 using UI.Wysiwyg;
@@ -42,6 +43,29 @@ public sealed class MarkdownRichEditor : RichTextBox
             string.Empty,
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnMarkdownChanged));
+
+    /// <summary>
+    /// Identifies the <see cref="BaseDirectory"/> dependency property. It is the folder the bound
+    /// Editor Session's file lives in, and the folder a relative Image Source resolves against
+    /// (INV-031). Changing it re-projects, because the same source text against a different Base
+    /// Directory names different pictures (INV-003).
+    /// </summary>
+    public static readonly DependencyProperty BaseDirectoryProperty = DependencyProperty.Register(
+        nameof(BaseDirectory),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null, OnBaseDirectoryChanged));
+
+    /// <summary>
+    /// Identifies the <see cref="LinkPrompt"/> dependency property. Insert Link and Insert Image ask
+    /// through it for their text and URL; the composition root supplies the real Link Prompt, and a
+    /// test supplies a stub. Left unset, neither action edits (INV-030).
+    /// </summary>
+    public static readonly DependencyProperty LinkPromptProperty = DependencyProperty.Register(
+        nameof(LinkPrompt),
+        typeof(ILinkPrompt),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
 
     /// <summary>
     /// Identifies the <see cref="FindQuery"/> dependency property. The Find Bar binds its query box
@@ -141,6 +165,22 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => ToggleCodeAtSelection(),
             (_, e) => e.CanExecute = CodeFormatting.CanToggle(this)));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertLink, (_, _) => InsertLinkAtSelection()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertImage, (_, _) => InsertImageAtSelection()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleStrikethrough,
+            (_, _) => ToggleStrikethroughAtSelection(),
+            (_, e) => e.CanExecute = StrikethroughFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleBlockQuote,
+            (_, _) => ToggleBlockQuoteAtSelection(),
+            (_, e) => e.CanExecute = QuoteFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.SetHeadingLevel,
+            (_, e) => SetHeadingLevelAtCaret(e.Parameter),
+            (_, e) => e.CanExecute = HeadingFormatting.CanSetLevel(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.InsertTable,
             (_, _) => InsertTableAtCaret(),
             (_, e) => e.CanExecute = !IsCaretInTable));
@@ -224,6 +264,18 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (string)GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
+    }
+
+    /// <summary>
+    /// The Base Directory: the folder the Editor Session's file lives in, which a relative Image
+    /// Source resolves against. <see langword="null"/> for an unsaved Editor Session, whose relative
+    /// Images fall back to their alt text — there is no folder yet for "beside this document" to
+    /// mean (INV-031).
+    /// </summary>
+    public string? BaseDirectory
+    {
+        get => (string?)GetValue(BaseDirectoryProperty);
+        set => SetValue(BaseDirectoryProperty, value);
     }
 
     /// <summary>The Find query. Every occurrence in the Visual Document is highlighted as a Match.</summary>
@@ -489,6 +541,73 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Captures back into <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void ToggleCodeAtSelection() => CodeFormatting.Toggle(this);
+
+    /// <summary>
+    /// The Link Prompt that Insert Link and Insert Image ask for a text and URL. Left
+    /// <see langword="null"/>, neither action makes an edit (INV-030).
+    /// </summary>
+    public ILinkPrompt? LinkPrompt
+    {
+        get => (ILinkPrompt?)GetValue(LinkPromptProperty);
+        set => SetValue(LinkPromptProperty, value);
+    }
+
+    /// <summary>
+    /// Applies the Insert Link Formatting Action: asks the <see cref="LinkPrompt"/> for the Link's
+    /// text (seeded with the selection) and destination URL, and turns the selection into that Link.
+    /// No edit is made when the Link Prompt is dismissed or gives no URL (INV-030). The edit Captures
+    /// back into <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void InsertLinkAtSelection() => LinkFormatting.InsertLink(this, LinkPrompt);
+
+    /// <summary>
+    /// Applies the Insert Image Formatting Action: asks the <see cref="LinkPrompt"/> for the Image's
+    /// alt text (seeded with the selection) and source URL, and inserts that Image. No edit is made
+    /// when the Link Prompt is dismissed or gives no URL (INV-030). The edit Captures back into
+    /// <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt, BaseDirectory);
+
+    /// <summary>
+    /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
+    /// struck through, or struck-through prose is restored to plain text — whether that
+    /// Strikethrough was loaded or applied by a previous toggle (INV-029). The edit Captures back
+    /// into <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    public void ToggleStrikethroughAtSelection() => StrikethroughFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Toggle Block Quote Formatting Action at the current selection: the whole blocks
+    /// the selection touches become a Block Quote, or the selected Block Quote's blocks become plain
+    /// blocks again (INV-028). The edit Captures back into <see cref="Markdown"/> like any other
+    /// edit (INV-018).
+    /// </summary>
+    public void ToggleBlockQuoteAtSelection() => QuoteFormatting.Toggle(this);
+
+    /// <summary>
+    /// Applies the Set Heading Level Formatting Action at the caret: the block at the caret becomes a
+    /// Heading at <paramref name="level"/> (1–6), or a plain paragraph again given
+    /// <see cref="MarkdownEditingCommands.ParagraphHeadingLevel"/>. It sets a level rather than
+    /// toggling one, and its content survives the change (INV-027). The edit Captures back into
+    /// <see cref="Markdown"/> like any other edit (INV-018).
+    /// </summary>
+    /// <param name="level">The Heading Level to set, or the Paragraph level to clear the Heading.</param>
+    public void SetHeadingLevelAtCaret(int level) => HeadingFormatting.SetLevel(this, level);
+
+    // The Heading Level Picker's XAML passes its CommandParameter as a string ("2"), while a test or
+    // caller passes an int — so the parameter is resolved to a level before the action runs. An
+    // unreadable parameter names no level, and so relevels nothing.
+    private void SetHeadingLevelAtCaret(object? parameter)
+    {
+        if (parameter is int level)
+        {
+            SetHeadingLevelAtCaret(level);
+        }
+        else if (int.TryParse(parameter?.ToString(), out var parsed))
+        {
+            SetHeadingLevelAtCaret(parsed);
+        }
+    }
 
     /// <summary>
     /// Applies the Insert Table Formatting Action: inserts a new three-column Table (header row plus
@@ -880,6 +999,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         editor.ProjectFromMarkdown(markdown);
     }
 
+    // The same source text against a different Base Directory names different pictures, so a Session
+    // saved to a new folder — or an unsaved one gaining its first file — must re-project (INV-031).
+    private static void OnBaseDirectoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var editor = (MarkdownRichEditor)d;
+        if (!editor._isSynchronising)
+        {
+            editor.ProjectFromMarkdown(editor.Markdown);
+        }
+    }
+
     private void ProjectFromMarkdown(string markdown)
     {
         _isSynchronising = true;
@@ -887,7 +1017,7 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             // Fold state references the outgoing document's blocks; a fresh projection clears it.
             _foldedBodies.Clear();
-            Document = _projector.Project(markdown);
+            Document = _projector.Project(markdown, BaseDirectory);
         }
         finally
         {

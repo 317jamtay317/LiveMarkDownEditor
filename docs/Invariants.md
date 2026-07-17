@@ -31,13 +31,19 @@ and tested.
 - **Tested by:** `MarkdigMarkdownRendererTests.Render_GivenSameSourceTwice_ProducesIdenticalOutput_INV002`.
 
 ### INV-003 — Projecting is deterministic
-- **Statement:** Projecting the same Markdown Document source text always produces the same Visual
-  Document. Project has no hidden state.
-- **Enforced by:** Pure Project operation driven solely by the source text
-  (`MarkdownToFlowDocumentProjector`).
+- **Statement:** Projecting the same Markdown Document source text against the same Base Directory
+  always produces the same Visual Document. Project has no hidden state.
+- **Enforced by:** Pure Project operation driven solely by its two inputs — the source text and the
+  Base Directory (`MarkdownToFlowDocumentProjector`).
 - **Tested by:** `WysiwygRoundTripTests.RoundTrip_IsIdempotent_INV005` (a deterministic Project is a
   precondition of the stable Round-Trip). _(Dedicated projection-determinism test to be added as
   more constructs land.)_
+- **Note:** The Base Directory is the second input because an Image's source may be a relative path,
+  which names a file only in relation to the Markdown Document that references it — `![](cat.png)`
+  is a different picture in a different folder. It is an explicit *input*, not hidden state: the
+  same text and the same Base Directory always project alike. Projection stays synchronous and pure
+  regardless of what an Image's source resolves to; a remote Image's pixels arrive afterwards,
+  through WPF's own decoding, and change no part of the Visual Document's structure.
 
 ### INV-004 — A Round-Trip preserves semantic content
 - **Statement:** For any supported Markdown Document, Capturing its Projected Visual Document yields
@@ -214,21 +220,37 @@ and tested.
   `MarkdownRichEditorTests.CodeShading_DoesNotChangeCapturedMarkdown_INV017`.
 
 ### INV-018 — A Formatting Action Captures to canonical Markdown
-- **Statement:** Applying a Formatting Action (Toggle Code, Insert Table, Add Row, Add Column,
+- **Statement:** Applying a Formatting Action (Toggle Strikethrough, Toggle Code, Set Heading Level,
+  Insert Link, Insert Image, Toggle Block Quote, Insert Table, Add Row, Add Column,
   Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual Document using the
   same tagged elements a Project produces, so the Captured source text is canonical Markdown:
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
   never corrupts the document — after it runs, the Visual Document and the Markdown Document still
   describe the same content.
+- **An emphasis delimiter hugs its text.** `**bold **` and `~~struck ~~` do not close in Markdown: a
+  closing delimiter preceded by whitespace is not right-flanking, so it emits literal asterisks or
+  tildes rather than emphasis. A user selecting a word by double-click or Ctrl+Shift+Right takes its
+  trailing space with it, so Capture hoists whitespace surrounding an emphasised span **outside** the
+  delimiters (`one ~~two~~ three`, never `one ~~two ~~three`). Whitespace alone carries no emphasis
+  and is emitted bare. Without this the Markdown would say "literal tildes" where the Visual Document
+  says "struck through" — the two would stop describing the same content.
 - **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
-  Projector emits (`InlineSemantic.Code`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`) through the
-  shared `CodeFormatting` / `TableEditing` / `ListFormatting` / `TaskMarkerEditing` helpers, so Capture
+  Projector emits (`InlineSemantic.Code`, `InlineSemantic.Strikethrough`, `HeadingRole`,
+  `BlockSemantic.Quote`, `LinkRole`, `ImageRole`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`)
+  through the shared `CodeFormatting` / `HeadingFormatting` / `InlineFormatting` / `QuoteFormatting` /
+  `LinkFormatting` / `TableEditing` / `ListFormatting` / `TaskMarkerEditing` helpers, so Capture
   treats user-applied formatting and loaded formatting uniformly. A List carries no role of its own —
   its kind rides on the WPF `List`'s own `MarkerStyle` — so the Projector composes a List through
   `ListFormatting.ApplyList` and a Task Marker through `TaskMarkerEditing.CreateMarker`, the same
   seams the Formatting Actions use (mirroring `CodeFormatting.ApplyCodeSpan` / `TableEditing.WrapCell`).
+  The whitespace rule lives in the Capturer's `Emit`, so it holds for every emphasised span alike —
+  including the bold and italic actions that predate it.
 - **Tested by:** `MarkdownRichEditorToggleCodeTests.*_INV018`,
-  `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`.
+  `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`,
+  `MarkdownRichEditorHeadingTests.*_INV018`, `MarkdownRichEditorQuoteTests.*_INV018`,
+  `MarkdownRichEditorStrikethroughTests.*_INV018` — in particular
+  `ToggleStrikethrough_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018` and
+  `ToggleBold_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`.
 
 ### INV-019 — A Table stays rectangular
 - **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
@@ -407,6 +429,119 @@ and tested.
 - **Tested by:** `EditorSessionViewModelTests.ExternalChange_ThatMatchesSession_IsIgnored_INV026`,
   `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WhenSessionClean_IsIgnored_INV026`,
   `EditorSessionViewModelTests.ExternalChange_ThatOnlyRestylesTheWatchedFile_WithUnsavedEdits_RaisesNoConflict_INV026`.
+
+### INV-027 — Set Heading Level changes a block's level, never its content
+- **Statement:** Set Heading Level changes only the Heading Level of the block at the caret. Four rules
+  bound it:
+  - **Content survives.** Making a paragraph a Heading, changing a Heading's level, and turning a
+    Heading back into a paragraph all preserve the block's text, its inline formatting, and its
+    position in the document. One block goes in and the same block, relevelled, comes out.
+  - **It sets, it does not toggle.** Choosing the level a Heading already has leaves it a Heading of
+    that level, so the action is idempotent. Only **Paragraph** clears a Heading — a level is a value
+    the user picks, so reaching for a level can never silently destroy the Heading.
+  - **A Heading Level is always 1–6.** No other level is reachable: the Heading Level Picker offers
+    exactly six, and Set Heading Level refuses any level outside 1–6 (Paragraph aside) rather than
+    writing one. `#` repeats once per level, and a seventh `#` is not a heading in Markdown at all.
+  - **A Heading is sized, never weighted.** The Heading a Set Heading Level produces is styled by the
+    same seam the Projector uses, so it is distinguished by size alone — a bold weight would make
+    Capture read the Heading's text as inline-bold and emit `# **text**` (INV-018).
+- **Enforced by:** The `HeadingFormatting` helper, which **relevels the caret's existing paragraph in
+  place** — setting or clearing its `HeadingRole` and restyling it — rather than re-creating it from
+  text, so inline formatting cannot be flattened by a change of level. `HeadingFormatting.ApplyHeading`
+  is the one place a Heading's styling lives, applied by the Projector and by Set Heading Level alike
+  (mirroring `ListFormatting.ApplyList`), and `HeadingFormatting.SetLevel` ignoring a level outside
+  the Paragraph-or-1–6 range.
+- **Tested by:** `MarkdownRichEditorHeadingTests.*_INV027`, in particular
+  `SetHeadingLevel_PreservesInlineFormatting_INV027`,
+  `SetHeadingLevel_ToTheSameLevel_LeavesItAHeading_INV027`, and
+  `SetHeadingLevel_GivenLevelOutsideOneToSix_LeavesTheDocumentUnchanged_INV027`.
+
+### INV-028 — Toggle Block Quote quotes whole blocks, and preserves them
+- **Statement:** Toggle Block Quote turns the blocks the selection touches into a Block Quote, and
+  turns a Block Quote's blocks back into plain blocks. Three rules bound it:
+  - **It quotes whole blocks, never part of one.** A Block Quote is captured as a `> ` prefix on
+    every line, so quoting half a paragraph cannot be expressed in Markdown. A selection that starts
+    or ends mid-block quotes that whole block, and a caret alone quotes the block it sits in.
+  - **Content survives both directions.** Quoting blocks and unquoting them preserves each block's
+    text, its inline formatting, its kind (a Heading stays a Heading, a List stays a List), and the
+    order of the blocks. The blocks are **moved** into the Block Quote and back out again, never
+    re-created from their text.
+  - **Unquoting restores the blocks at top level.** A Block Quote turned off leaves its blocks in the
+    document in their original order, in its place — not merged into a neighbour, and not dropped.
+- **Enforced by:** The `QuoteFormatting` helper, which moves the selected top-level blocks into a
+  `Section` composed through the same `ApplyQuote` seam the Projector uses (INV-018) — so a loaded
+  Block Quote and a user-made one are identical to Capture — and moves them back out on the reverse
+  toggle, in both cases relocating the existing blocks rather than rebuilding them.
+- **Tested by:** `MarkdownRichEditorQuoteTests.*_INV028`, in particular
+  `ToggleBlockQuote_WithPartialSelection_QuotesTheWholeBlock_INV028`,
+  `ToggleBlockQuote_PreservesInlineFormatting_INV028`, and
+  `ToggleBlockQuote_OnAQuote_RestoresItsBlocksAtTopLevel_INV028`.
+
+### INV-029 — Toggle Strikethrough is symmetric over where the Strikethrough came from
+- **Statement:** Toggle Strikethrough strikes the selection through, or restores struck-through prose
+  to plain text. It removes a Strikethrough the Projector loaded exactly as readily as one a previous
+  toggle applied: the two are the same thing to the user, so the action cannot be able to undo only
+  its own work. Its content survives both directions — striking text through and restoring it
+  preserves the text and its other inline formatting (bold stays bold).
+- **Rationale:** Unlike bold and italic — which ride on `FontWeight` / `FontStyle`, inherited
+  properties an inner Run can override — a Strikethrough rides on `TextDecorations`, which Capture
+  reads by walking a Run's **ancestors**. So clearing the decoration on the selected Run alone would
+  leave an enclosing struck Span still striking it, and the text would still Capture as `~~text~~`
+  while looking plain. The Strikethrough must be removed where it lives.
+- **Enforced by:** The `StrikethroughFormatting` helper, which finds the struck Spans the selection
+  touches — by the same `InlineSemantic.Strikethrough` role and `TextDecorations` that Capture reads
+  — and clears them, and which otherwise wraps the selection in a Span composed through the same
+  `ApplyStrikethrough` seam the Projector uses (INV-018), mirroring `CodeFormatting`'s treatment of a
+  Code Span.
+- **Tested by:** `MarkdownRichEditorStrikethroughTests.*_INV029`, in particular
+  `ToggleStrikethrough_OnALoadedStrikethrough_RemovesIt_INV029` and
+  `ToggleStrikethrough_PreservesOtherInlineFormatting_INV029`.
+
+### INV-030 — Insert Link and Insert Image edit only on a complete answer
+- **Statement:** Insert Link and Insert Image ask for their text and URL through the Link Prompt, and
+  edit the Visual Document only when the user gives a usable answer. Four rules bound them:
+  - **Dismissing the Link Prompt makes no edit.** Cancelling leaves the Markdown Document, the
+    selection, and the Visual Document exactly as they were — asking a question is not an edit.
+  - **A Link is nothing without a destination.** An empty URL inserts no Link and no Image: the
+    Visual Document shows a Link by its text alone, so a Link with no destination would be
+    indistinguishable from prose the user could never repair from the Visual Document.
+  - **The selection seeds the text, and is replaced by the result.** The selected text is offered as
+    the proposed Link text (or Image alt text), so the common case — select a word, press Ctrl+K,
+    paste a URL — needs no retyping. At a caret with no selection, the Link's text is whatever the
+    user gives; a Link with neither selection nor text falls back to its URL, so it is never invisible.
+  - **An empty answer for the text alone is not fatal.** Only the URL is required.
+- **Enforced by:** The `LinkFormatting` helper, which returns before touching the document when the
+  `ILinkPrompt` port yields no answer or a blank URL, and otherwise composes a `Hyperlink` carrying a
+  `LinkRole` (or an Image carrying an `ImageRole`) through the same `ApplyLink` seam and
+  `ImageFormatting.CreateImage` seam the Projector uses, so Capture treats a user-inserted Link and a
+  loaded one uniformly (INV-018/031).
+  The port keeps the Link Prompt's WPF dialog out of the editor, so the rules above are testable
+  headlessly against a stub.
+- **Tested by:** `MarkdownRichEditorLinkTests.*_INV030`, in particular
+  `InsertLink_WhenThePromptIsDismissed_MakesNoEdit_INV030`,
+  `InsertLink_WithAnEmptyUrl_MakesNoEdit_INV030`, and
+  `InsertLink_SeedsThePromptWithTheSelection_INV030`.
+
+### INV-031 — An Image shows its picture, or its alt text
+- **Statement:** An Image is shown in the Visual Document as the picture its Image Source names. Four
+  rules bound it:
+  - **A relative Image Source resolves against the Base Directory.** `![](cat.png)` names the file
+    beside the Markdown Document, which is the form Markdown authors write most.
+  - **An Image that cannot be shown falls back to its alt text.** A missing file, an unreachable
+    address, a source that is not an image, or a relative source with no Base Directory to resolve
+    against (an unsaved Editor Session) — every one of them shows the alt text instead. A picture
+    that failed to load must never leave a hole where the author's words were: the alt text *is* the
+    fallback, which is what it is for.
+  - **An Image Captures as `![alt](url)` either way.** Whether its picture is shown or its alt text
+    is, an Image re-emits the Image Source and alt text it was built with — never the resolved
+    absolute path, so a relative Image Source stays relative and the Markdown Document remains
+    portable (INV-004/INV-018).
+  - **A failed load is not an edit.** An Image whose picture never arrives leaves the Markdown
+    Document untouched: showing is not editing, and a broken link is the author's to fix.
+- **Enforced by:** The `ApplyImage` seam the Projector and Insert Image share, which carries the
+  `ImageRole` (the original Image Source and alt text) that Capture keys on regardless of which of
+  the two presentations is shown (INV-018).
+- **Tested by:** `MarkdownRichEditorImageTests.*_INV031`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

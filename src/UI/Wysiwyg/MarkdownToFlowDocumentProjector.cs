@@ -25,8 +25,8 @@ namespace UI.Wysiwyg;
 /// Parsing uses the shared <see cref="GfmPipeline"/>, the same pipeline the HTML renderer uses, so
 /// the editing surface and any exported HTML agree on the GFM feature set. Each element is tagged
 /// with its <see cref="InlineSemantic"/> / role so the inverse <see cref="FlowDocumentToMarkdownCapturer"/>
-/// can reconstruct the original Markdown. Satisfies INV-003: the projection is a pure function of the
-/// source text.
+/// can reconstruct the original Markdown. Satisfies INV-003: the projection is a pure function of its
+/// two inputs — the source text and the Base Directory a relative Image Source resolves against.
 /// </remarks>
 public sealed class MarkdownToFlowDocumentProjector
 {
@@ -38,8 +38,12 @@ public sealed class MarkdownToFlowDocumentProjector
 
     /// <summary>Projects Markdown source text into a Visual Document.</summary>
     /// <param name="markdown">The Markdown source text. <see langword="null"/> is treated as empty.</param>
+    /// <param name="baseDirectory">The Base Directory a relative Image Source resolves against — the
+    /// folder the Editor Session's file lives in — or <see langword="null"/> for an unsaved Editor
+    /// Session, whose relative Images fall back to their alt text (INV-031). It is Project's second
+    /// input, not hidden state: the same text and the same Base Directory project alike (INV-003).</param>
     /// <returns>A <see cref="FlowDocument"/> presenting the formatted content.</returns>
-    public FlowDocument Project(string markdown)
+    public FlowDocument Project(string markdown, string? baseDirectory = null)
     {
         var pipeline = GfmPipeline.Create();
         var ast = Markdig.Markdown.Parse(markdown ?? string.Empty, pipeline);
@@ -47,7 +51,7 @@ public sealed class MarkdownToFlowDocumentProjector
         var document = new FlowDocument();
         foreach (var block in ast)
         {
-            var projected = ProjectBlock(block);
+            var projected = ProjectBlock(block, baseDirectory);
             if (projected is not null)
             {
                 document.Blocks.Add(projected);
@@ -57,36 +61,34 @@ public sealed class MarkdownToFlowDocumentProjector
         return document;
     }
 
-    private static WpfBlock? ProjectBlock(Markdig.Syntax.Block block)
+    private static WpfBlock? ProjectBlock(Markdig.Syntax.Block block, string? baseDirectory)
     {
         switch (block)
         {
             case HeadingBlock heading:
             {
-                // Headings are distinguished visually by size only, not FontWeight: an inherited
-                // bold weight would make Capture treat every heading run as inline-bold (# **x**).
-                var paragraph = new Paragraph
-                {
-                    Tag = new HeadingRole(heading.Level),
-                    FontSize = HeadingFontSize(heading.Level),
-                    Margin = HeadingSpacing,
-                };
-                AppendInlines(paragraph.Inlines, heading.Inline);
+                // Styled through the same seam the Set Heading Level Formatting Action uses, so a
+                // loaded Heading and a user-made one are identical to Capture (INV-018). Headings are
+                // distinguished visually by size only, not FontWeight: an inherited bold weight would
+                // make Capture treat every heading run as inline-bold (# **x**).
+                var paragraph = new Paragraph();
+                HeadingFormatting.ApplyHeading(paragraph, heading.Level);
+                AppendInlines(paragraph.Inlines, heading.Inline, baseDirectory);
                 return paragraph;
             }
 
             case ParagraphBlock paragraphBlock:
             {
                 var paragraph = new Paragraph { Margin = BodySpacing };
-                AppendInlines(paragraph.Inlines, paragraphBlock.Inline);
+                AppendInlines(paragraph.Inlines, paragraphBlock.Inline, baseDirectory);
                 return paragraph;
             }
 
             case ListBlock listBlock:
-                return ProjectList(listBlock);
+                return ProjectList(listBlock, baseDirectory);
 
             case QuoteBlock quoteBlock:
-                return ProjectQuote(quoteBlock);
+                return ProjectQuote(quoteBlock, baseDirectory);
 
             case FencedCodeBlock fenced:
                 return ProjectCodeBlock(fenced, fenced.Info);
@@ -98,7 +100,7 @@ public sealed class MarkdownToFlowDocumentProjector
                 return ProjectThematicBreak();
 
             case MarkdigTable table:
-                return ProjectTable(table);
+                return ProjectTable(table, baseDirectory);
 
             default:
                 return null;
@@ -110,7 +112,7 @@ public sealed class MarkdownToFlowDocumentProjector
     // own start number. Each List Item's own blocks are projected in turn, so an item's paragraph —
     // and any nested List — is shown rather than dropped. The one shared List composition, also used
     // by the List Formatting Actions, so Capture treats both identically (INV-018).
-    private static WpfBlock ProjectList(ListBlock listBlock)
+    private static WpfBlock ProjectList(ListBlock listBlock, string? baseDirectory)
     {
         var list = new List();
         ListFormatting.ApplyList(list, listBlock.IsOrdered);
@@ -130,7 +132,7 @@ public sealed class MarkdownToFlowDocumentProjector
             var listItem = new ListItem();
             foreach (var itemChild in itemBlock)
             {
-                var projected = ProjectBlock(itemChild);
+                var projected = ProjectBlock(itemChild, baseDirectory);
                 if (projected is not null)
                 {
                     listItem.Blocks.Add(projected);
@@ -153,22 +155,17 @@ public sealed class MarkdownToFlowDocumentProjector
     }
 
     // A block quote becomes a Section with a left rule and muted text, holding the projected child
-    // blocks. The BlockSemantic.Quote tag lets Capture re-emit the "> " prefix.
-    private static WpfBlock ProjectQuote(QuoteBlock quoteBlock)
+    // blocks. Composed through the same seam the Toggle Block Quote Formatting Action uses, so a
+    // loaded Block Quote and a user-made one are identical to Capture (INV-018); its
+    // BlockSemantic.Quote tag lets Capture re-emit the "> " prefix.
+    private static WpfBlock ProjectQuote(QuoteBlock quoteBlock, string? baseDirectory)
     {
-        var section = new Section
-        {
-            Tag = BlockSemantic.Quote,
-            BorderThickness = new Thickness(3, 0, 0, 0),
-            Padding = new Thickness(10, 0, 0, 0),
-            Margin = BodySpacing,
-        };
-        section.SetResourceReference(TextElement.ForegroundProperty, "MutedTextBrush");
-        section.SetResourceReference(WpfBlock.BorderBrushProperty, "BorderBrush");
+        var section = new Section();
+        QuoteFormatting.ApplyQuote(section);
 
         foreach (var child in quoteBlock)
         {
-            var projected = ProjectBlock(child);
+            var projected = ProjectBlock(child, baseDirectory);
             if (projected is not null)
             {
                 section.Blocks.Add(projected);
@@ -236,7 +233,7 @@ public sealed class MarkdownToFlowDocumentProjector
 
     // A GFM pipe table becomes a WPF Table. The TableRole tag records each column's alignment so
     // Capture can reproduce the delimiter row; the first (header) row is emboldened.
-    private static WpfBlock ProjectTable(MarkdigTable table)
+    private static WpfBlock ProjectTable(MarkdigTable table, string? baseDirectory)
     {
         var alignments = table.ColumnDefinitions
             .Select(column => MapAlignment(column.Alignment))
@@ -274,7 +271,7 @@ public sealed class MarkdownToFlowDocumentProjector
                 {
                     if (cellBlock is ParagraphBlock cellParagraph)
                     {
-                        AppendInlines(paragraph.Inlines, cellParagraph.Inline);
+                        AppendInlines(paragraph.Inlines, cellParagraph.Inline, baseDirectory);
                     }
                 }
 
@@ -298,7 +295,7 @@ public sealed class MarkdownToFlowDocumentProjector
         _ => ColumnAlignment.None,
     };
 
-    private static void AppendInlines(InlineCollection target, ContainerInline? container)
+    private static void AppendInlines(InlineCollection target, ContainerInline? container, string? baseDirectory)
     {
         if (container is null)
         {
@@ -308,7 +305,7 @@ public sealed class MarkdownToFlowDocumentProjector
         var afterTaskMarker = false;
         foreach (var inline in container)
         {
-            var projected = ProjectInline(inline);
+            var projected = ProjectInline(inline, baseDirectory);
             if (projected is null)
             {
                 continue;
@@ -328,7 +325,7 @@ public sealed class MarkdownToFlowDocumentProjector
         }
     }
 
-    private static WpfInline? ProjectInline(Markdig.Syntax.Inlines.Inline inline)
+    private static WpfInline? ProjectInline(Markdig.Syntax.Inlines.Inline inline, string? baseDirectory)
     {
         switch (inline)
         {
@@ -345,7 +342,7 @@ public sealed class MarkdownToFlowDocumentProjector
             }
 
             case EmphasisInline emphasis:
-                return ProjectEmphasis(emphasis);
+                return ProjectEmphasis(emphasis, baseDirectory);
 
             case MarkdigTaskList task:
                 // The one shared Task Marker composition, also used by the List Formatting Actions
@@ -353,10 +350,10 @@ public sealed class MarkdownToFlowDocumentProjector
                 return TaskMarkerEditing.CreateMarker(task.Checked);
 
             case LinkInline { IsImage: true } image:
-                return ProjectImage(image);
+                return ProjectImage(image, baseDirectory);
 
             case LinkInline link:
-                return ProjectLink(link);
+                return ProjectLink(link, baseDirectory);
 
             case AutolinkInline autolink:
                 // A bare URL re-autolinks when rendered, so a plain Run round-trips to the same link.
@@ -370,26 +367,21 @@ public sealed class MarkdownToFlowDocumentProjector
         }
     }
 
-    private static WpfInline ProjectLink(LinkInline link)
+    // Composed through the same seams the Insert Link / Insert Image Formatting Actions use, so a
+    // loaded Link or Image and a user-inserted one are identical to Capture (INV-018).
+    private static WpfInline ProjectLink(LinkInline link, string? baseDirectory)
     {
-        var hyperlink = new Hyperlink
-        {
-            Tag = new LinkRole(link.Url ?? string.Empty, link.Title),
-        };
-        AppendInlines(hyperlink.Inlines, link);
-        if (Uri.TryCreate(link.Url, UriKind.RelativeOrAbsolute, out var uri))
-        {
-            hyperlink.NavigateUri = uri;
-        }
-
+        var hyperlink = new Hyperlink();
+        AppendInlines(hyperlink.Inlines, link, baseDirectory);
+        LinkFormatting.ApplyLink(hyperlink, link.Url ?? string.Empty, link.Title);
         return hyperlink;
     }
 
-    private static WpfInline ProjectImage(LinkInline image)
-    {
-        var alt = ExtractText(image);
-        return new Run(alt) { Tag = new ImageRole(image.Url ?? string.Empty, alt, image.Title) };
-    }
+    // Shown as the picture its Image Source names, or as its alt text when that picture cannot be
+    // shown — composed through the same seam Insert Image uses, so Capture treats a loaded Image and
+    // a user-inserted one alike (INV-018/031).
+    private static WpfInline ProjectImage(LinkInline image, string? baseDirectory) =>
+        ImageFormatting.CreateImage(image.Url ?? string.Empty, ExtractText(image), image.Title, baseDirectory);
 
     private static string ExtractText(ContainerInline container)
     {
@@ -410,26 +402,27 @@ public sealed class MarkdownToFlowDocumentProjector
         return builder.ToString();
     }
 
-    private static WpfInline ProjectEmphasis(EmphasisInline emphasis)
+    private static WpfInline ProjectEmphasis(EmphasisInline emphasis, string? baseDirectory)
     {
         Span span = emphasis.DelimiterChar switch
         {
-            '~' => new Span { Tag = InlineSemantic.Strikethrough, TextDecorations = TextDecorations.Strikethrough },
+            // Struck through by the same seam the Toggle Strikethrough Formatting Action uses, so a
+            // loaded Strikethrough and a user-struck one are identical to Capture — and the action
+            // can remove either alike (INV-029).
+            '~' => Struck(),
             _ when emphasis.DelimiterCount == 2 => new Bold(),
             _ => new Italic(),
         };
 
-        AppendInlines(span.Inlines, emphasis);
+        AppendInlines(span.Inlines, emphasis, baseDirectory);
         return span;
+
+        static Span Struck()
+        {
+            var span = new Span();
+            StrikethroughFormatting.ApplyStrikethrough(span);
+            return span;
+        }
     }
 
-    private static double HeadingFontSize(int level) => level switch
-    {
-        1 => 28,
-        2 => 24,
-        3 => 20,
-        4 => 17,
-        5 => 15,
-        _ => 13,
-    };
 }

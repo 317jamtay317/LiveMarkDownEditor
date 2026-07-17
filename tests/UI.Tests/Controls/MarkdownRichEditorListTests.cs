@@ -414,6 +414,37 @@ public sealed class MarkdownRichEditorListTests
         });
     }
 
+    /// <summary>
+    /// Enter is pressed in an ordinary paragraph far more often than in a task item, so the Enter
+    /// path itself — not just the marking rule it delegates to — must tolerate a caret that is in no
+    /// List Item at all, and fall through to WPF's own paragraph break (INV-023).
+    /// </summary>
+    [Fact]
+    public void ContinueTaskList_WithTheCaretOutsideAList_FallsThroughWithoutThrowing_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha" };
+            VisualDocumentText.PlaceCaretIn(editor, "alpha");
+
+            editor.ContinueTaskListAtCaret().ShouldBeFalse();
+
+            editor.Markdown.ShouldBe("alpha");
+        });
+    }
+
+    [Fact]
+    public void ContinueTaskList_WithTheCaretInATable_FallsThroughWithoutThrowing_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "| a | b |\n| --- | --- |\n| c | d |" };
+            VisualDocumentText.PlaceCaretIn(editor, "c");
+
+            editor.ContinueTaskListAtCaret().ShouldBeFalse();
+        });
+    }
+
     [Fact]
     public void ContinueTaskList_DoesNotRemarkAnItemThatAlreadyHasACheckbox_INV023()
     {
