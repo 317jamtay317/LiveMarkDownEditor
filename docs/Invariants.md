@@ -682,6 +682,25 @@ and tested.
   have gone, keeps the empty Tab when there is nothing to restore, and tracks Recent Files) and
   `JsonWorkspaceStateStoreTests.*` (round-trip and corruption tolerance).
 
+### INV-038 — Following a Link is not an edit
+- **Statement:** Ctrl+Clicking a Link follows its destination and changes nothing: not the Markdown
+  Document, the Visual Document, or the Watched File. Where it leads is bounded:
+  - **A web address opens in the default browser** (http, https, or mailto).
+  - **A relative Markdown file opens in a new Tab**, its path resolved against the Base Directory
+    (INV-031's resolution rule, reached from following rather than showing). An unsaved document has
+    no Base Directory, so a relative Link resolves to nothing and is left alone.
+  - **Anything else is left alone** — a relative link to a non-Markdown file, or a bare fragment,
+    opens nothing rather than guessing.
+- **Enforced by:** The pure `MarkdownLink.Classify`, which resolves a Link's `NavigateUri` to a web
+  target, a Markdown-file target, or nothing; `MarkdownRichEditor.FollowLink`, which opens a web
+  target in the browser and routes a Markdown-file target to the `FollowLinkCommand`; and
+  `WorkspaceViewModel.FollowLinkCommand`, which opens that file in a Tab through the same
+  `OpenPathAsync` as any other open, tolerating a file that is not there. The Link carries a real
+  `NavigateUri` (INV-030), so WPF raises the follow on Ctrl+Click.
+- **Tested by:** `MarkdownLinkTests.*` (classification) and
+  `MarkdownRichEditorFollowLinkTests.*_INV038` (a Markdown Link opens a Tab; following is not an edit;
+  a non-Markdown target does nothing).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

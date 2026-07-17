@@ -62,7 +62,7 @@ work that is still in review, noted inline.
   Current Section.
 - [ ] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
   accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
-- [ ] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
+- [x] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
 
 ## Bigger swings
 

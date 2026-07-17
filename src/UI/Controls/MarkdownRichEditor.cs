@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using Domain;
 using UI.Core;
@@ -87,6 +89,17 @@ public sealed class MarkdownRichEditor : RichTextBox
     public static readonly DependencyProperty RendererProperty = DependencyProperty.Register(
         nameof(Renderer),
         typeof(IMarkdownRenderer),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="FollowLinkCommand"/> dependency property. Ctrl+Clicking a Link to a
+    /// Markdown file invokes it with the file's absolute path so the shell opens it in a new Tab; a
+    /// web Link is opened in the browser without it (INV-038).
+    /// </summary>
+    public static readonly DependencyProperty FollowLinkCommandProperty = DependencyProperty.Register(
+        nameof(FollowLinkCommand),
+        typeof(ICommand),
         typeof(MarkdownRichEditor),
         new PropertyMetadata(defaultValue: null));
 
@@ -187,6 +200,9 @@ public sealed class MarkdownRichEditor : RichTextBox
         // A Copy also carries an HTML flavor, so a selection pastes formatted into web editors, not
         // only into the RTF-native Word and Outlook the RichTextBox already serves (INV-035).
         DataObject.AddCopyingHandler(this, OnCopying);
+
+        // Ctrl+Clicking a Link follows it: a web URL to the browser, a relative .md into a new Tab.
+        AddHandler(Hyperlink.RequestNavigateEvent, new RequestNavigateEventHandler(OnRequestNavigate));
 
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
@@ -673,6 +689,47 @@ public sealed class MarkdownRichEditor : RichTextBox
         get => (IMarkdownRenderer?)GetValue(RendererProperty);
         set => SetValue(RendererProperty, value);
     }
+
+    /// <summary>
+    /// The command invoked to open a followed Markdown Link in a new Tab, with the file's absolute
+    /// path as its parameter. Supplied by the composition root; when <see langword="null"/>, a
+    /// Markdown Link is not followed (a web Link still opens in the browser) (INV-038).
+    /// </summary>
+    public ICommand? FollowLinkCommand
+    {
+        get => (ICommand?)GetValue(FollowLinkCommandProperty);
+        set => SetValue(FollowLinkCommandProperty, value);
+    }
+
+    /// <summary>
+    /// Follows a Link's destination: a web address opens in the default browser, a Markdown file opens
+    /// in a new Tab through <see cref="FollowLinkCommand"/>, and anything else is left alone. Following
+    /// reads the document and is not an edit (INV-038).
+    /// </summary>
+    /// <param name="uri">The Link's destination, as its <c>NavigateUri</c>.</param>
+    public void FollowLink(Uri uri)
+    {
+        var target = MarkdownLink.Classify(uri, BaseDirectory);
+        switch (target.Kind)
+        {
+            case LinkKind.Web:
+                LaunchBrowser(target.Value);
+                break;
+            case LinkKind.MarkdownFile when FollowLinkCommand?.CanExecute(target.Value) == true:
+                FollowLinkCommand.Execute(target.Value);
+                break;
+        }
+    }
+
+    private void OnRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        FollowLink(e.Uri);
+        e.Handled = true;
+    }
+
+    // Opens a web address in the default browser. A platform boundary — the shell picks the browser.
+    private static void LaunchBrowser(string url) =>
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
     /// <summary>
     /// Prints the whole document. The Visual Document is re-projected from the current

@@ -68,6 +68,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
         OpenRecentCommand = new AsyncRelayCommand<string>(OpenRecentAsync);
+        FollowLinkCommand = new AsyncRelayCommand<string>(FollowMarkdownLinkAsync);
         ToggleNavigationPanelCommand = new RelayCommand(ToggleNavigationPanel);
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
 
@@ -174,6 +175,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Opens a Recent File by its path, dropping it from the list if it has since gone. Parameter: the path.</summary>
     public ICommand OpenRecentCommand { get; }
+
+    /// <summary>Opens a followed Markdown Link's file in a new Tab. Parameter: the absolute path (INV-038).</summary>
+    public ICommand FollowLinkCommand { get; }
 
     /// <summary>Shows the Navigation Panel if hidden, or hides it if shown.</summary>
     public ICommand ToggleNavigationPanelCommand { get; }
@@ -318,6 +322,23 @@ public sealed class WorkspaceViewModel : ObservableObject
                 existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)));
             Raise(nameof(RecentFiles));
             await PersistStateAsync().ConfigureAwait(true);
+        }
+    }
+
+    private async Task FollowMarkdownLinkAsync(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            await OpenPathAsync(path).ConfigureAwait(true);
+        }
+        catch (IOException)
+        {
+            // A Link to a Markdown file that isn't there opens nothing.
         }
     }
 
