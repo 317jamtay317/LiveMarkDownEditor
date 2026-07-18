@@ -30,8 +30,8 @@ work that is still in review, noted inline.
 - [x] **Decide how canonical-Markdown churn is shown in a Conflict Difference.** Capture emits
   canonical Markdown (INV-005), so once the Visual Document is edited its blank lines can differ
   from the Watched File's, and those lines show as differences. It is truthful — that is what a
-  save would write — but noisier than a plain text comparison. **Decided: compare Canonical
-  Markdown on both sides** — each side is Round-Tripped before it is compared (INV-025), so only
+  save would write — but noisier than a plain text comparison. **Decided: compare Canonical**
+  **Markdown on both sides** — each side is Round-Tripped before it is compared (INV-025), so only
   differences of content are shown. The Conflict Difference is now a comparison of meaning rather
   than of bytes: a line shown as Unchanged may still differ on disk, and it no longer predicts a
   save's byte-level output. That trade is accepted, and recorded in INV-025.
@@ -39,8 +39,8 @@ work that is still in review, noted inline.
   INV-025. A Conflict is raised by comparing raw text, but the Conflict Difference now compares
   Canonical Markdown — so another writer merely restyling the Watched File (setext headings to ATX,
   say) raises a Conflict whose Difference shows every line Unchanged. Truthful (the bytes really did
-  change) but it asks the user to resolve a Conflict over nothing they can see. **Decided: suppress
-  it** — the self-write guard now compares Canonical Markdown rather than raw text, so an External
+  change) but it asks the user to resolve a Conflict over nothing they can see. **Decided: suppress**
+  **it** — the self-write guard now compares Canonical Markdown rather than raw text, so an External
   Change that changes no content raises no Conflict and triggers no live reload (INV-026, with
   INV-006/007 amended to govern a change *of content*). It also turned out to be reached far more
   often than "restyle-only" suggested: Capture rewrites the whole document canonically, so one
@@ -78,3 +78,5 @@ work that is still in review, noted inline.
   before any UI.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
   from INV-004's supported set. Each lands one tested construct at a time.
+- [ ] **Flow Charts. ** We should be able to build flowcharts using the editor and view the preview.
+- [ ] [ ] Videos. [ ] We should be able to add videos to mark down and play them in the Live Editor.
