@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor', FallbackValue='LiveMarkDownEditor'}"
         Icon="pack://application:,,,/Assets/app.ico"
-        Height="680" Width="1000"
+        Height="680" Width="1120"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackgroundBrush}"
         TextOptions.TextFormattingMode="Ideal">
@@ -47,6 +47,12 @@
                         AutomationProperties.Name="Open a Markdown file">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Open}" />
                 </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding Folder.OpenFolderCommand}"
+                        ToolTip="Open a folder — browse its Markdown files as a tree"
+                        AutomationProperties.Name="Open a folder">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.OpenFolder}" />
+                </Button>
 
                 <!-- Open Recent: the recently opened or saved files, newest first (INV-037). -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
@@ -71,24 +77,52 @@
                         AutomationProperties.Name="Save">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
                 </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="{Binding Export.ExportHtmlCommand}" CommandParameter="{Binding ActiveSession}"
-                        ToolTip="Export as HTML — write the rendered document to an .html file"
-                        AutomationProperties.Name="Export as HTML">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="{Binding Export.ExportPdfCommand}" CommandParameter="{Binding ActiveSession}"
-                        ToolTip="Export as PDF — write the document to a .pdf file"
-                        AutomationProperties.Name="Export as PDF">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportPdf}" />
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="controls:MarkdownEditingCommands.Print" CommandTarget="{Binding ElementName=Editor}"
-                        ToolTip="Print (Ctrl+P) — choose &quot;Microsoft Print to PDF&quot; to print to a PDF"
-                        AutomationProperties.Name="Print">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Print}" />
-                </Button>
+                <!-- Export Menu: the ways a finished document leaves the editor, under one Command Icon.
+                     The entries stay words, like the Heading and Table dropdowns; Print keeps its Ctrl+P
+                     gesture (bound on the window) and is not itself an Export (INV-034). -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Export or print the document"
+                              AutomationProperties.Name="Export">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
+                        </MenuItem.Header>
+                        <!-- The Command Bar's DataContext (the Workspace) does not flow into a templated
+                             MenuItem's Popup, so reach it by RelativeSource — the same form the Open
+                             Recent menu uses. Print below is a routed command and needs no DataContext. -->
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Export as HTML"
+                                  Command="{Binding DataContext.Export.ExportHtmlCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{Binding DataContext.ActiveSession, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
+                                    <TextBlock Text="Export as HTML…" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Export as PDF"
+                                  Command="{Binding DataContext.Export.ExportPdfCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{Binding DataContext.ActiveSession, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportPdf}" />
+                                    <TextBlock Text="Export as PDF…" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print"
+                                  Command="controls:MarkdownEditingCommands.Print"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Print}" />
+                                    <TextBlock Text="Print…  (Ctrl+P)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
@@ -151,29 +185,47 @@
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleCode}" />
                 </Button>
 
-                <!-- List toggles. The checklist icon matches the checkbox a Task Marker shows in
-                     the document. -->
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Bulleted list — turn the selected paragraphs into a list, or a bulleted list back into paragraphs"
-                        AutomationProperties.Name="Bulleted list"
-                        Command="controls:MarkdownEditingCommands.ToggleUnorderedList"
-                        CommandTarget="{Binding ElementName=Editor}">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Numbered list — turn the selected paragraphs into a list, or a numbered list back into paragraphs"
-                        AutomationProperties.Name="Numbered list"
-                        Command="controls:MarkdownEditingCommands.ToggleOrderedList"
-                        CommandTarget="{Binding ElementName=Editor}">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleOrderedList}" />
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Checklist — give the selected list items checkboxes, or remove them; click a checkbox to tick it"
-                        AutomationProperties.Name="Checklist"
-                        Command="controls:MarkdownEditingCommands.ToggleTaskList"
-                        CommandTarget="{Binding ElementName=Editor}">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
-                </Button>
+                <!-- List Picker: the three List Formatting Actions under one Command Icon. The entries
+                     stay words, like the Heading and Table dropdowns. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="List — turn the selected paragraphs into a list, or a list back into paragraphs"
+                              AutomationProperties.Name="List">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Bulleted list"
+                                  Command="controls:MarkdownEditingCommands.ToggleUnorderedList"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
+                                    <TextBlock Text="Bulleted list" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Numbered list"
+                                  Command="controls:MarkdownEditingCommands.ToggleOrderedList"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleOrderedList}" />
+                                    <TextBlock Text="Numbered list" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Checklist"
+                                  Command="controls:MarkdownEditingCommands.ToggleTaskList"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
+                                    <TextBlock Text="Checklist" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
 
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
                         ToolTip="Insert link (Ctrl+K) — turn the selection into a link"
@@ -237,14 +289,31 @@
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
-                <!-- Navigation Panel toggle: highlighted while the panel is shown. -->
-                <Button DockPanel.Dock="Left" Command="{Binding ToggleNavigationPanelCommand}"
+                <!-- Folder Panel toggle: highlighted while the file-tree panel is shown. -->
+                <Button DockPanel.Dock="Left" Command="{Binding Folder.ToggleFolderPanelCommand}"
+                        ToolTip="Toggle the folder panel"
+                        AutomationProperties.Name="Toggle the folder panel">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Folder.IsFolderPanelVisible}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleFolderPanel}" />
+                </Button>
+
+                <!-- Navigation Panel toggle: adds or removes the Outline tab in the Side Dock,
+                     highlighted while that tab is shown (INV-046). -->
+                <Button DockPanel.Dock="Left" Command="{Binding SideDock.ToggleNavigationPanelCommand}"
                         ToolTip="Toggle the navigation panel"
                         AutomationProperties.Name="Toggle the navigation panel">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsNavigationPanelVisible}" Value="True">
+                                <DataTrigger Binding="{Binding SideDock.IsNavigationTabVisible}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -357,33 +426,163 @@
              Navigation Panel) while a Tab is open, or the Empty-Workspace Placeholder when every Tab
              has been closed (INV-008). -->
         <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Side Dock: the outer-left, workspace-wide panel that hosts the Folder Panel and the
+                 Navigation Panel as tabs (INV-046), so the two need not each take a column. It is not
+                 gated on an Active Session — the Folder tab stays browsable even when every Tab has been
+                 closed (INV-043) — and is shown only while at least one of its tabs is (INV-046). -->
+            <Border Grid.Column="0" Width="260" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
+                    Visibility="{Binding SideDock.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <DockPanel>
+                    <!-- Tab strip: one header per shown panel; the Selected one is highlighted. -->
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal" Margin="6,6,6,0">
+                            <Button Command="{Binding SideDock.SelectFolderTabCommand}"
+                                    Visibility="{Binding SideDock.IsFolderTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    ToolTip="Folder — the open folder's Markdown files"
+                                    AutomationProperties.Name="Folder tab">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                                        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+                                        <Setter Property="Padding" Value="9,5" />
+                                        <Setter Property="Margin" Value="0,0,4,0" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Folder">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Width="15" Height="15" Stretch="Uniform" Fill="{x:Null}"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource Icon.Folder}" />
+                                    <TextBlock Text="Folder" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding SideDock.SelectNavigationTabCommand}"
+                                    Visibility="{Binding SideDock.IsNavigationTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    ToolTip="Outline — the document's headings"
+                                    AutomationProperties.Name="Outline tab">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
+                                        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+                                        <Setter Property="Padding" Value="9,5" />
+                                        <Setter Property="Margin" Value="0,0,4,0" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Navigation">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Width="15" Height="15" Stretch="Uniform" Fill="{x:Null}"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource Icon.ToggleNavigationPanel}" />
+                                    <TextBlock Text="Outline" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Content: the Selected tab's panel (only one is shown at a time). -->
+                    <Grid>
+                        <!-- Folder tab: the Folder Tree, or a prompt to open a folder. -->
+                        <DockPanel>
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Folder">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+                            <Grid DockPanel.Dock="Top">
+                                <TextBlock Text="{Binding Folder.Folder.Name, TargetNullValue='FOLDER'}"
+                                           Margin="14,10,10,6" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                                <Button HorizontalAlignment="Right" Margin="0,2,8,0" Style="{StaticResource IconButton}"
+                                        Command="{Binding Folder.RefreshCommand}"
+                                        Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        ToolTip="Refresh the folder" AutomationProperties.Name="Refresh the folder">
+                                    <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
+                                          Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
+                                          StrokeLineJoin="Round" Data="{StaticResource Icon.Refresh}" />
+                                </Button>
+                            </Grid>
+                            <Grid>
+                                <controls:FolderPanel Workspace="{Binding Folder.Folder}"
+                                                      ActivateCommand="{Binding Folder.ActivateEntryCommand}"
+                                                      AutomationProperties.AutomationId="FolderTree"
+                                                      Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Folder.HasFolder}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="No folder open" HorizontalAlignment="Center" Margin="0,0,0,8"
+                                               Foreground="{DynamicResource MutedTextBrush}" FontSize="12" />
+                                    <Button Content="Open folder" Style="{StaticResource CommandButton}"
+                                            HorizontalAlignment="Center" Command="{Binding Folder.OpenFolderCommand}" />
+                                </StackPanel>
+                            </Grid>
+                        </DockPanel>
+
+                        <!-- Outline tab: the Active Session's Outline, or a hint when no document is open. -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Navigation">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <controls:OutlinePanel Editor="{Binding ElementName=Editor}"
+                                                   AutomationProperties.AutomationId="OutlineList"
+                                                   Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <TextBlock Text="No document open" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       Margin="14" TextAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" FontSize="12"
+                                       Visibility="{Binding IsWorkspaceEmpty, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </Grid>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <!-- The editing area proper (editor, placeholder, Find Bar, Difference Overlay). -->
+            <Grid Grid.Column="1">
 
             <!-- The WYSIWYG editing surface, bound to the Active Session, with the Editor Gutter (line
-                 numbers + fold chevrons) alongside it, the Navigation Panel (the toggleable Outline) to
-                 its left, and the toggleable Source Panel (raw Markdown source) split to its right. -->
+                 numbers + fold chevrons) alongside it and the toggleable Source Panel (raw Markdown
+                 source) split to its right. The Outline (Navigation Panel) lives in the Side Dock to the
+                 left of this grid, not inside it. -->
             <Grid Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Navigation Panel: the Active Session's Outline. Hidden until toggled on (INV-012). -->
-                <Border Grid.Column="0" Width="250" Background="{DynamicResource SurfaceBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
-                        Visibility="{Binding IsNavigationPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="OUTLINE" Margin="14,12,14,6"
-                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
-                        <controls:OutlinePanel Editor="{Binding ElementName=Editor}"
-                                               AutomationProperties.AutomationId="OutlineList" />
-                    </DockPanel>
-                </Border>
-
-                <controls:EditorGutter Grid.Column="1" Editor="{Binding ElementName=Editor}" />
-                <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="2"
+                <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+                <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
@@ -393,7 +592,7 @@
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
-                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center"
+                <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Center"
                               VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                               ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
                               Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -402,7 +601,7 @@
                      the same canonical Markdown as the Visual Document so the two stay in sync
                      (INV-013). It is the one surface that shows Markdown syntax. Hidden until toggled
                      on (INV-014). -->
-                <Border Grid.Column="4" Background="{DynamicResource EditorBackgroundBrush}"
+                <Border Grid.Column="3" Background="{DynamicResource EditorBackgroundBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
                         Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DockPanel>
@@ -591,6 +790,7 @@
                     </ItemsControl>
                 </DockPanel>
             </Border>
+            </Grid>
         </Grid>
 
         <!-- Slim status bar: the Watched File path and an unsaved-changes hint. -->

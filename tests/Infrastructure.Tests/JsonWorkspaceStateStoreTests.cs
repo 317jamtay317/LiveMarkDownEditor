@@ -59,6 +59,31 @@ public sealed class JsonWorkspaceStateStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_ThenLoad_RoundTripsTheWorkspaceFolder_INV045()
+    {
+        var store = new JsonWorkspaceStateStore(_path);
+        var state = new WorkspaceState([@"C:\a.md"], [@"C:\a.md"], WorkspaceFolder: @"C:\vault");
+
+        await store.SaveAsync(state);
+
+        store.Load().WorkspaceFolder.ShouldBe(@"C:\vault");
+    }
+
+    [Fact]
+    public async Task Load_WhenStateHasNoWorkspaceFolderField_LoadsWithNoFolder_INV045()
+    {
+        // State written by an earlier version — before the Folder Workspace — must still load, with no
+        // Folder Workspace open rather than failing.
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(_path, """{ "OpenDocuments": ["C:\\a.md"], "RecentFiles": [] }""");
+
+        var loaded = new JsonWorkspaceStateStore(_path).Load();
+
+        loaded.OpenDocuments.ShouldBe([@"C:\a.md"]);
+        loaded.WorkspaceFolder.ShouldBeNull();
+    }
+
+    [Fact]
     public void Constructor_GivenABlankPath_Throws()
     {
         Should.Throw<ArgumentException>(() => new JsonWorkspaceStateStore("  "));

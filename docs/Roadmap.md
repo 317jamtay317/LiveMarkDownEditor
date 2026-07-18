@@ -17,7 +17,7 @@ work that is still in review, noted inline.
   Table but cannot shrink one, and per-column alignment already survives a Round-Trip without
   being reachable from the command bar. Must keep the Table rectangular. *(Builds on the Table*
   *Formatting Actions, in review.)*
-- [x] **Split **`MarkdownRichEditor`** up.** At ~995 lines it is roughly double the 500-line hard limit in
+- [x] **Split** `MarkdownRichEditor` **up.** At ~995 lines it is roughly double the 500-line hard limit in
   `CLAUDE.md`. It is really five features sharing a class — Project/Capture sync, Folding, the
   Outline, Find/Replace, and the adorner wiring. Find's scan has already moved out to
   `UI.Find.MatchScanner`, and `CodeFormatting` / `TableEditing` show the shape: a helper the
@@ -72,11 +72,8 @@ work that is still in review, noted inline.
   would make "another user or an AI just edited your file" something the user can *see*.
   *(The Conflict Difference, in review, supplies the comparison this needs.)*
 - [ ] **Syntax highlighting inside a Code Block.** The language tag already survives a Round-Trip.
-  Colouring is view-only, so it fits the read-only overlay pattern Code Shading established.
-- [ ] **Folder Workspace.** A file tree for opening a directory of Markdown Documents, turning the
-  editor into a lightweight knowledge base. The largest item here — it needs real domain work
-  before any UI.
+  Coloring is view-only, so it fits the read-only overlay pattern Code Shading established.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
   from INV-004's supported set. Each lands one tested construct at a time.
-- [ ] **Flow Charts. ** We should be able to build flowcharts using the editor and view the preview.
-- [ ] [ ] Videos. [ ] We should be able to add videos to mark down and play them in the Live Editor.
+- [ ] **Flow Charts**. We should be able to build flowcharts using the editor and view the preview.
+- [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
