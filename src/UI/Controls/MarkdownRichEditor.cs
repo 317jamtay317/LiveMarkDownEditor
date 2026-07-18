@@ -1,10 +1,15 @@
+using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
 using System.Windows.Threading;
+using Domain;
 using UI.Core;
 using UI.Find;
 using UI.Spelling;
@@ -64,6 +69,39 @@ public sealed class MarkdownRichEditor : RichTextBox
     public static readonly DependencyProperty LinkPromptProperty = DependencyProperty.Register(
         nameof(LinkPrompt),
         typeof(ILinkPrompt),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="DocumentPrinter"/> dependency property. Print sends the Visual
+    /// Document through it; the composition root supplies the real printer, and a test supplies a
+    /// fake. Left unset, Print does nothing (INV-034).
+    /// </summary>
+    public static readonly DependencyProperty DocumentPrinterProperty = DependencyProperty.Register(
+        nameof(DocumentPrinter),
+        typeof(IDocumentPrinter),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="Renderer"/> dependency property. A Copy renders the selection to
+    /// HTML through it for the clipboard's HTML flavor; the composition root supplies the real
+    /// renderer. Left unset, Copy adds no HTML flavor (the built-in rich text is unaffected) (INV-035).
+    /// </summary>
+    public static readonly DependencyProperty RendererProperty = DependencyProperty.Register(
+        nameof(Renderer),
+        typeof(IMarkdownRenderer),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="FollowLinkCommand"/> dependency property. Ctrl+Clicking a Link to a
+    /// Markdown file invokes it with the file's absolute path so the shell opens it in a new Tab; a
+    /// web Link is opened in the browser without it (INV-038).
+    /// </summary>
+    public static readonly DependencyProperty FollowLinkCommandProperty = DependencyProperty.Register(
+        nameof(FollowLinkCommand),
+        typeof(ICommand),
         typeof(MarkdownRichEditor),
         new PropertyMetadata(defaultValue: null));
 
@@ -132,8 +170,19 @@ public sealed class MarkdownRichEditor : RichTextBox
     // The blocks are retained (not discarded) so Capture can reproduce the full source (INV-011).
     private readonly Dictionary<Block, IReadOnlyList<Block>> _foldedBodies = new();
 
-    // Created lazily the first time the built-in dictionary is needed, and shared across sessions.
-    private static readonly Lazy<ISpellDictionary> SharedDictionary = new(() => new WindowsSpellDictionary());
+    // The User Dictionary of accepted words, shared across sessions and persisted to per-user storage.
+    private static readonly Lazy<IUserDictionary> SharedUserDictionary = new(CreateUserDictionary);
+
+    // Created lazily the first time the dictionary is needed, and shared across sessions. The
+    // operating system's speller, made aware of the User Dictionary so an accepted word is not a
+    // Misspelling (INV-040).
+    private static readonly Lazy<ISpellDictionary> SharedDictionary = new(() =>
+        new UserAwareSpellDictionary(new WindowsSpellDictionary(), SharedUserDictionary.Value));
+
+    private static IUserDictionary CreateUserDictionary() => new FileUserDictionary(System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "LiveMarkDownEditor",
+        "user-dictionary.txt"));
 
     private bool _isSynchronising;
     private string _lastCaptured = string.Empty;
@@ -154,6 +203,24 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
     {
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.Print, (_, _) => PrintVisualDocument()));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.CopyAsMarkdown,
+            (_, _) => CopySelectionAsMarkdown(),
+            (_, e) => e.CanExecute = !Selection.IsEmpty));
+
+        // A Copy also carries an HTML flavor, so a selection pastes formatted into web editors, not
+        // only into the RTF-native Word and Outlook the RichTextBox already serves (INV-035).
+        DataObject.AddCopyingHandler(this, OnCopying);
+
+        // Ctrl+Clicking a Link follows it: a web URL to the browser, a relative .md into a new Tab.
+        AddHandler(Hyperlink.RequestNavigateEvent, new RequestNavigateEventHandler(OnRequestNavigate));
+
+        // Smart Paste: a URL over a selection becomes a Link, a clipboard image is written beside the
+        // Watched File and inserted as an Image, and HTML converts to Markdown (INV-041).
+        DataObject.AddPastingHandler(this, OnPasting);
+
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleFold, (_, _) => ToggleFoldAtCaret()));
         CommandBindings.Add(new CommandBinding(
@@ -229,7 +296,11 @@ public sealed class MarkdownRichEditor : RichTextBox
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
-        SelectionChanged += (_, _) => CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+        SelectionChanged += (_, _) =>
+        {
+            UpdateCaretStatus();
+            CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
+        };
 
         // Right-clicking a Misspelling offers its Spelling Suggestions; the menu is built on demand so
         // it reflects the current Misspellings and the word actually under the pointer.
@@ -535,6 +606,73 @@ public sealed class MarkdownRichEditor : RichTextBox
     public string Capture() => _capturer.Capture(BuildLogicalBlocks());
 
     /// <summary>
+    /// Captures the Markdown source of the blocks the current selection spans. A partial selection
+    /// captures the whole blocks it touches (whole-block granularity); an empty selection captures
+    /// nothing. It reads the document and is not an edit (INV-035).
+    /// </summary>
+    /// <returns>The canonical Markdown source of the selected blocks; the empty string for no selection.</returns>
+    public string CaptureSelection()
+    {
+        if (Selection.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var start = Selection.Start;
+        var end = Selection.End;
+        var selectedBlocks = Document.Blocks.Where(block => Overlaps(block, start, end)).ToList();
+        return _capturer.Capture(selectedBlocks);
+    }
+
+    /// <summary>
+    /// Renders the current selection to the CF_HTML clipboard flavor, or <see langword="null"/> when
+    /// there is no selection or no <see cref="Renderer"/>. A Copy adds this so a selection pastes
+    /// formatted into web editors (INV-035).
+    /// </summary>
+    /// <returns>The CF_HTML string, or <see langword="null"/> when no HTML flavor should be added.</returns>
+    public string? SelectionAsCfHtml()
+    {
+        if (Renderer is null)
+        {
+            return null;
+        }
+
+        var markdown = CaptureSelection();
+        if (string.IsNullOrEmpty(markdown))
+        {
+            return null;
+        }
+
+        var html = Renderer.Render(new MarkdownDocument(markdown)).Html;
+        return CfHtml.Wrap(html);
+    }
+
+    // Adds the HTML flavor to a Copy (or Cut / drag) so the selection pastes formatted into web
+    // editors; the RichTextBox's own RTF and text flavors are left untouched.
+    private void OnCopying(object sender, DataObjectCopyingEventArgs e)
+    {
+        var cfHtml = SelectionAsCfHtml();
+        if (cfHtml is not null)
+        {
+            e.DataObject.SetData(DataFormats.Html, cfHtml);
+        }
+    }
+
+    // Copies the selection's Markdown source to the clipboard for Copy as Markdown.
+    private void CopySelectionAsMarkdown()
+    {
+        var markdown = CaptureSelection();
+        if (!string.IsNullOrEmpty(markdown))
+        {
+            Clipboard.SetText(markdown);
+        }
+    }
+
+    // Whether a top-level Block's content range overlaps the selection [start, end].
+    private static bool Overlaps(Block block, TextPointer start, TextPointer end) =>
+        block.ContentStart.CompareTo(end) < 0 && block.ContentEnd.CompareTo(start) > 0;
+
+    /// <summary>
     /// Applies the Toggle Code Formatting Action at the current selection: a selection within a
     /// single line becomes a Code Span, a selection spanning multiple lines (or a whole line)
     /// becomes a Code Block, and inside existing code the code formatting is removed. The edit
@@ -550,6 +688,240 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         get => (ILinkPrompt?)GetValue(LinkPromptProperty);
         set => SetValue(LinkPromptProperty, value);
+    }
+
+    /// <summary>
+    /// The printer Print sends the Visual Document to. Supplied by the composition root; when
+    /// <see langword="null"/>, Print does nothing (INV-034).
+    /// </summary>
+    public IDocumentPrinter? DocumentPrinter
+    {
+        get => (IDocumentPrinter?)GetValue(DocumentPrinterProperty);
+        set => SetValue(DocumentPrinterProperty, value);
+    }
+
+    /// <summary>
+    /// The renderer a Copy uses to render the selection to HTML for the clipboard's HTML flavor.
+    /// Supplied by the composition root; when <see langword="null"/>, Copy adds no HTML flavor and the
+    /// built-in rich text (RTF) is unaffected (INV-035).
+    /// </summary>
+    public IMarkdownRenderer? Renderer
+    {
+        get => (IMarkdownRenderer?)GetValue(RendererProperty);
+        set => SetValue(RendererProperty, value);
+    }
+
+    /// <summary>
+    /// The command invoked to open a followed Markdown Link in a new Tab, with the file's absolute
+    /// path as its parameter. Supplied by the composition root; when <see langword="null"/>, a
+    /// Markdown Link is not followed (a web Link still opens in the browser) (INV-038).
+    /// </summary>
+    public ICommand? FollowLinkCommand
+    {
+        get => (ICommand?)GetValue(FollowLinkCommandProperty);
+        set => SetValue(FollowLinkCommandProperty, value);
+    }
+
+    /// <summary>
+    /// The live document status shown in the Status Bar — word and character counts, reading time,
+    /// the caret's line and column, and the Current Section. Presentation-only (INV-039).
+    /// </summary>
+    public DocumentStatus Status { get; } = new();
+
+    /// <summary>
+    /// Follows a Link's destination: a web address opens in the default browser, a Markdown file opens
+    /// in a new Tab through <see cref="FollowLinkCommand"/>, and anything else is left alone. Following
+    /// reads the document and is not an edit (INV-038).
+    /// </summary>
+    /// <param name="uri">The Link's destination, as its <c>NavigateUri</c>.</param>
+    public void FollowLink(Uri uri)
+    {
+        var target = MarkdownLink.Classify(uri, BaseDirectory);
+        switch (target.Kind)
+        {
+            case LinkKind.Web:
+                LaunchBrowser(target.Value);
+                break;
+            case LinkKind.MarkdownFile when FollowLinkCommand?.CanExecute(target.Value) == true:
+                FollowLinkCommand.Execute(target.Value);
+                break;
+        }
+    }
+
+    private void OnRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        FollowLink(e.Uri);
+        e.Handled = true;
+    }
+
+    // Opens a web address in the default browser. A platform boundary — the shell picks the browser.
+    private static void LaunchBrowser(string url) =>
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+    // Smart Paste (INV-041): inspects the clipboard data and, when it recognises a special case,
+    // performs the paste itself and reports it handled so the default paste is cancelled.
+    private void OnPasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (SmartPaste(e.SourceDataObject ?? e.DataObject))
+        {
+            e.CancelCommand();
+        }
+    }
+
+    /// <summary>
+    /// Applies Smart Paste to the given clipboard data: a URL pasted over a selection becomes a Link,
+    /// an image is written beside the Watched File and inserted as an Image, and HTML converts to
+    /// Markdown and inserts as formatted content. Returns whether it handled the paste (INV-041).
+    /// </summary>
+    /// <param name="source">The clipboard data being pasted.</param>
+    /// <returns><see langword="true"/> if Smart Paste handled the paste; otherwise <see langword="false"/>.</returns>
+    public bool SmartPaste(IDataObject source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        // A URL pasted over a selection turns the selection into a Link.
+        if (!Selection.IsEmpty
+            && source.GetDataPresent(DataFormats.UnicodeText)
+            && source.GetData(DataFormats.UnicodeText) is string text
+            && IsWebUrl(text))
+        {
+            LinkFormatting.WrapSelectionAsLink(this, text.Trim());
+            return true;
+        }
+
+        // An image on the clipboard is written beside the Watched File and inserted as an Image.
+        if (source.GetDataPresent(DataFormats.Bitmap) && source.GetData(DataFormats.Bitmap) is BitmapSource image)
+        {
+            return TryPasteImage(image);
+        }
+
+        // HTML converts to Markdown and inserts as formatted content.
+        if (source.GetDataPresent(DataFormats.Html) && source.GetData(DataFormats.Html) is string cfHtml)
+        {
+            var markdown = HtmlToMarkdown.Convert(CfHtml.ExtractFragment(cfHtml));
+            if (markdown.Length > 0)
+            {
+                InsertProjectedMarkdown(markdown);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Writes a pasted image beside the Watched File and inserts it as an Image. An unsaved document has
+    // no folder to write beside, so the image is dropped rather than pasted un-representably.
+    private bool TryPasteImage(BitmapSource image)
+    {
+        if (string.IsNullOrEmpty(BaseDirectory))
+        {
+            return true;
+        }
+
+        try
+        {
+            var fileName = $"pasted-{Guid.NewGuid():N}.png";
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            using (var stream = File.Create(Path.Combine(BaseDirectory, fileName)))
+            {
+                encoder.Save(stream);
+            }
+
+            LinkFormatting.InsertImageSource(this, fileName, "pasted image", BaseDirectory);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // A failed write drops the image rather than corrupting the document.
+        }
+
+        return true;
+    }
+
+    // Projects the given Markdown to a document fragment and inserts it at the selection, so pasted
+    // HTML lands as formatted content the same as any projected Markdown. The projected blocks are
+    // MOVED into the document (not serialised), so their roles survive and Capture re-emits the
+    // Markdown — a XAML round-trip would drop the role Tags and paste plain text.
+    private void InsertProjectedMarkdown(string markdown)
+    {
+        var fragment = _projector.Project(markdown, BaseDirectory);
+        var fragmentBlocks = fragment.Blocks.ToList();
+        if (fragmentBlocks.Count == 0)
+        {
+            return;
+        }
+
+        BeginChange();
+        try
+        {
+            if (!Selection.IsEmpty)
+            {
+                Selection.Text = string.Empty;
+            }
+
+            var caretParagraph = Selection.Start.Paragraph;
+            var topLevelCaret = caretParagraph is not null && ReferenceEquals(caretParagraph.Parent, Document);
+            var insertAfter = topLevelCaret ? caretParagraph : Document.Blocks.LastBlock;
+
+            foreach (var block in fragmentBlocks)
+            {
+                fragment.Blocks.Remove(block);
+                if (insertAfter is null)
+                {
+                    Document.Blocks.Add(block);
+                }
+                else
+                {
+                    Document.Blocks.InsertAfter(insertAfter, block);
+                }
+
+                insertAfter = block;
+            }
+
+            // A caret in an empty placeholder paragraph leaves it behind; drop it so the paste does not
+            // sit beneath a stray blank line.
+            if (topLevelCaret && caretParagraph!.Inlines.Count == 0)
+            {
+                Document.Blocks.Remove(caretParagraph);
+            }
+
+            if (insertAfter is not null)
+            {
+                Selection.Select(insertAfter.ContentEnd, insertAfter.ContentEnd);
+            }
+        }
+        finally
+        {
+            EndChange();
+        }
+    }
+
+    private static bool IsWebUrl(string text)
+    {
+        var trimmed = text.Trim();
+        return trimmed.Length > 0
+            && !trimmed.Any(char.IsWhiteSpace)
+            && Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    /// <summary>
+    /// Prints the whole document. The Visual Document is re-projected from the current
+    /// <see cref="Markdown"/> source rather than taken from the live editing surface, so a Folded
+    /// Section's hidden Section Body prints too — Print means the whole document, never merely the
+    /// visible part (INV-034, the fold rule of INV-032 reached from printing) — and the surface the
+    /// user is editing is left undisturbed. Printing reads the document and writes no file the editor
+    /// owns, so it is not an edit. Does nothing when no <see cref="DocumentPrinter"/> is set.
+    /// </summary>
+    public void PrintVisualDocument()
+    {
+        if (DocumentPrinter is null)
+        {
+            return;
+        }
+
+        var document = _projector.Project(Markdown, BaseDirectory);
+        DocumentPrinter.Print(document, "LiveMarkDownEditor document");
     }
 
     /// <summary>
@@ -747,11 +1119,24 @@ public sealed class MarkdownRichEditor : RichTextBox
         if (misspelling is not null)
         {
             AddSuggestionItems(menu, misspelling);
+
+            var word = misspelling.Text;
+            var addToDictionary = new MenuItem { Header = "Add to Dictionary" };
+            addToDictionary.Click += (_, _) => AddToDictionary(word);
+            menu.Items.Add(addToDictionary);
+
             menu.Items.Add(new Separator());
         }
 
         AddClipboardItems(menu);
         ContextMenu = menu;
+    }
+
+    // Accepts a Misspelling into the User Dictionary and re-checks, so it stops being marked (INV-040).
+    private void AddToDictionary(string word)
+    {
+        SharedUserDictionary.Value.Add(word);
+        _spellCheckAdorner?.Refresh();
     }
 
     private void AddSuggestionItems(ContextMenu menu, TextRange misspelling)
@@ -776,6 +1161,12 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         menu.Items.Add(new MenuItem { Header = "Cut", Command = ApplicationCommands.Cut, CommandTarget = this });
         menu.Items.Add(new MenuItem { Header = "Copy", Command = ApplicationCommands.Copy, CommandTarget = this });
+        menu.Items.Add(new MenuItem
+        {
+            Header = "Copy as Markdown",
+            Command = MarkdownEditingCommands.CopyAsMarkdown,
+            CommandTarget = this,
+        });
         menu.Items.Add(new MenuItem { Header = "Paste", Command = ApplicationCommands.Paste, CommandTarget = this });
     }
 
@@ -1073,6 +1464,11 @@ public sealed class MarkdownRichEditor : RichTextBox
     protected override void OnTextChanged(TextChangedEventArgs e)
     {
         base.OnTextChanged(e);
+
+        // The Status Bar counts follow the visible document, whether the change was a user edit or a
+        // fresh projection (which returns below before Capturing).
+        UpdateStatistics();
+
         if (_isSynchronising)
         {
             return;
@@ -1098,6 +1494,28 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             RecomputeMatches();
         }
+    }
+
+    // Recomputes the word / character counts and reading time from the visible document text.
+    private void UpdateStatistics()
+    {
+        var statistics = TextStatistics.Compute(new TextRange(Document.ContentStart, Document.ContentEnd).Text);
+        Status.WordCount = statistics.WordCount;
+        Status.CharacterCount = statistics.CharacterCount;
+        Status.ReadingTime = statistics.ReadingTime;
+    }
+
+    // Updates the caret's line and column and the Current Section shown in the Status Bar.
+    private void UpdateCaretStatus()
+    {
+        var caret = CaretPosition;
+        caret.GetLineStartPosition(-int.MaxValue, out var linesMovedBack);
+        Status.CaretLine = 1 - linesMovedBack;
+
+        var lineStart = caret.GetLineStartPosition(0);
+        Status.CaretColumn = lineStart is null ? 1 : new TextRange(lineStart, caret).Text.Length + 1;
+
+        Status.CurrentSection = CurrentSection?.Text ?? string.Empty;
     }
 
     // The full logical block sequence: every visible block, with each Folded Section Body spliced

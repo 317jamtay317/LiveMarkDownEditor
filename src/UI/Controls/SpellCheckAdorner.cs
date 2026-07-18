@@ -91,6 +91,12 @@ public sealed class SpellCheckAdorner : Adorner
 
     private void OnScrolled(object? sender, EventArgs e) => InvalidateVisual();
 
+    /// <summary>
+    /// Re-checks the document and repaints. Used after the User Dictionary changes (Add to Dictionary):
+    /// the text has not changed, but what counts as a Misspelling has (INV-040).
+    /// </summary>
+    public void Refresh() => QueueRescan();
+
     private void QueueRescan()
     {
         _debounce.Stop();

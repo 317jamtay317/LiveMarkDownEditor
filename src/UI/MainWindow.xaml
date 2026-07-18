@@ -18,6 +18,8 @@
         <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
                     CommandParameter="{Binding ActiveSession}" />
+        <KeyBinding Modifiers="Ctrl" Key="P" Command="controls:MarkdownEditingCommands.Print"
+                    CommandTarget="{Binding ElementName=Editor}" />
         <KeyBinding Modifiers="Ctrl" Key="F" Command="controls:MarkdownEditingCommands.ShowFind"
                     CommandTarget="{Binding ElementName=Editor}" />
     </Window.InputBindings>
@@ -45,10 +47,47 @@
                         AutomationProperties.Name="Open a Markdown file">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Open}" />
                 </Button>
+
+                <!-- Open Recent: the recently opened or saved files, newest first (INV-037). -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Open a recent file" AutomationProperties.Name="Open recent"
+                              ItemsSource="{Binding RecentFiles}">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.OpenRecent}" />
+                        </MenuItem.Header>
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem" BasedOn="{StaticResource CommandMenuEntry}">
+                                <Setter Property="Header" Value="{Binding}" />
+                                <Setter Property="Command"
+                                        Value="{Binding DataContext.OpenRecentCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
                         Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)"
                         AutomationProperties.Name="Save">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding Export.ExportHtmlCommand}" CommandParameter="{Binding ActiveSession}"
+                        ToolTip="Export as HTML — write the rendered document to an .html file"
+                        AutomationProperties.Name="Export as HTML">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="{Binding Export.ExportPdfCommand}" CommandParameter="{Binding ActiveSession}"
+                        ToolTip="Export as PDF — write the document to a .pdf file"
+                        AutomationProperties.Name="Export as PDF">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportPdf}" />
+                </Button>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
+                        Command="controls:MarkdownEditingCommands.Print" CommandTarget="{Binding ElementName=Editor}"
+                        ToolTip="Print (Ctrl+P) — choose &quot;Microsoft Print to PDF&quot; to print to a PDF"
+                        AutomationProperties.Name="Print">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Print}" />
                 </Button>
 
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
@@ -348,6 +387,9 @@
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
+                                             DocumentPrinter="{Binding DocumentPrinter}"
+                                             Renderer="{Binding Renderer}"
+                                             FollowLinkCommand="{Binding FollowLinkCommand}"
                                              controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
@@ -558,6 +600,23 @@
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusText}" Text="Unsaved changes"
                            Margin="12,0,0,0"
                            Visibility="{Binding ActiveSession.HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- Document statistics and caret position, from the editor's live status (INV-039). -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.CurrentSection, ElementName=Editor}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.CaretLine, ElementName=Editor, StringFormat='Ln {0}'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="6,0,0,0"
+                               Text="{Binding Status.CaretColumn, ElementName=Editor, StringFormat='Col {0}'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.ReadingTimeText, ElementName=Editor}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="16,0,0,0"
+                               Text="{Binding Status.WordCount, ElementName=Editor, StringFormat='{}{0} words'}" />
+                    <TextBlock Style="{StaticResource StatusText}" Margin="6,0,0,0"
+                               Text="{Binding Status.CharacterCount, ElementName=Editor, StringFormat='{}{0} chars'}" />
+                </StackPanel>
+
                 <TextBlock Style="{StaticResource StatusText}"
                            Text="{Binding ActiveSession.FilePath, TargetNullValue='Unsaved document'}" />
             </DockPanel>

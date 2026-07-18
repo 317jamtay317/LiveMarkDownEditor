@@ -1,6 +1,7 @@
 using Application;
 using Domain;
 using Infrastructure.Markdown;
+using Infrastructure.Pdf;
 using Infrastructure.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,13 +13,21 @@ public static class InfrastructureRegistry
     extension(IServiceCollection services)
     {
         /// <summary>
-        /// Registers the Infrastructure layer: the Markdig-backed Markdown renderer and other
-        /// outward-facing adapters.
+        /// Registers the Infrastructure layer: the Markdig-backed Markdown renderer, the MigraDoc PDF
+        /// exporter, and other outward-facing adapters.
         /// </summary>
         public void AddInfrastructure()
         {
             services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
+            services.AddSingleton<IPdfExporter, MigraDocPdfExporter>();
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
+            services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
+            services.AddSingleton<IPdfExportStore, FilePdfExportStore>();
+            services.AddSingleton<IWorkspaceStateStore>(_ => new JsonWorkspaceStateStore(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "LiveMarkDownEditor",
+                    "workspace.json")));
 
             // Transient: each Editor Session (Tab) owns its own watcher so several Tabs can watch
             // different Watched Files at once.

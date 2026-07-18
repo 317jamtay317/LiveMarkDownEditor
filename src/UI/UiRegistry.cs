@@ -15,7 +15,7 @@ public static class UiRegistry
         /// <summary>
         /// Registers the UI layer: the snackbar service, the global exception handler, the file
         /// picker, the unsaved-edits prompt, the theme service, the Editor Session factory, the
-        /// Workspace and appearance ViewModels, and the application's windows.
+        /// Workspace, appearance and export ViewModels, and the application's windows.
         /// </summary>
         public void AddUi()
         {
@@ -25,6 +25,8 @@ public static class UiRegistry
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
             services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
+            services.AddSingleton<IDocumentPrinter, PrintDialogDocumentPrinter>();
+            services.AddSingleton<IJumpList, WpfJumpList>();
             services.AddSingleton<IThemeService, WpfThemeService>();
             services.AddSingleton<IMarkdownRoundTrip, Wysiwyg.FlowDocumentRoundTrip>();
 
@@ -34,6 +36,7 @@ public static class UiRegistry
                 provider => () => provider.GetRequiredService<EditorSessionViewModel>());
 
             services.AddSingleton<AppearanceViewModel>();
+            services.AddSingleton<ExportViewModel>();
             services.AddSingleton<WorkspaceViewModel>();
             services.AddSingleton<MainWindow>();
         }

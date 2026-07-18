@@ -543,6 +543,216 @@ and tested.
   the two presentations is shown (INV-018).
 - **Tested by:** `MarkdownRichEditorImageTests.*_INV031`.
 
+### INV-032 — Export as HTML writes the Rendered Output, and edits nothing
+- **Statement:** Export as HTML writes the Active Session's Rendered Output to the file the user
+  chooses. Five rules bound it:
+  - **Exporting is not an edit.** It never changes the Markdown Document, the Watched File, or the
+    Editor Session's unsaved-edits state. An export is a *read* of the document that happens to write
+    a different file: the Watched File is the only file an Editor Session ever writes to (INV-006),
+    and exporting must not quietly join it. A document with unsaved edits still has them afterwards.
+  - **Cancelling the save dialog writes nothing.** Asking the user where to put a file is not an
+    export — no file is created, and nothing changes (the Link Prompt rule of INV-030, applied to a
+    save dialog).
+  - **It exports the document as it stands, unsaved edits and all.** The Rendered Output is rendered
+    from the Editor Session's current source text, never re-read from the Watched File, so an export
+    can never quietly write a stale document while the user looks at a newer one.
+  - **Fold state cannot reach it.** Render is a function of the source text alone (INV-002) and
+    Folding never changes the source text (INV-011), so a Folded Section's Section Body exports
+    exactly as an Unfolded one does. "Export" means the whole Markdown Document, never merely the
+    visible part of it — the Replace All rule of INV-022, reached from the other direction.
+  - **Both Export Shapes carry the same Rendered Output.** A Standalone Page is an HTML Fragment plus
+    a fixed wrapper: the two never differ in the content they carry, only in what surrounds it. So
+    the choice of Export Shape is a choice of packaging and can never be a choice of document.
+- **Enforced by:** The pure static `HtmlExport.Compose` (Domain — no I/O, no state), which wraps a
+  Rendered Output for the chosen Export Shape and is the one place the Standalone Page's wrapper
+  lives; `ExportViewModel.ExportHtmlAsync`, which returns before writing when the `IFilePicker` port
+  yields no target, renders the Editor Session's own `Markdown` through `IMarkdownRenderer`, and
+  writes through the `IHtmlExportStore` port — never through `IDocumentStore`, so an export has no
+  route to the Watched File at all.
+- **Tested by:** `HtmlExportTests.*_INV032`, `ExportViewModelTests.*_INV032` — in particular
+  `ExportHtml_WhenTheSaveDialogIsCancelled_WritesNothing_INV032`,
+  `ExportHtml_WithUnsavedEdits_ExportsTheSessionsText_AndLeavesThemUnsaved_INV032`, and
+  `Compose_StandalonePage_CarriesTheSameRenderedOutputAsTheFragment_INV032`.
+
+### INV-033 — Export as PDF writes the document, and edits nothing
+- **Statement:** Export as PDF writes the Active Session's Markdown Document to the PDF file the user
+  chooses. Four rules bound it, the same discipline as Export as HTML (INV-032):
+  - **Exporting is not an edit.** It never changes the Markdown Document, the Watched File, or the
+    Editor Session's unsaved-edits state. An export is a *read* of the document that happens to write
+    a different file: the Watched File is the only file an Editor Session ever writes to (INV-006),
+    and exporting must not quietly join it.
+  - **Cancelling the save dialog writes nothing.** Asking the user where to put a file is not an
+    export — no file is created, and nothing changes.
+  - **It exports the document as it stands, unsaved edits and all.** The PDF is produced from the
+    Editor Session's current source text, never re-read from the Watched File, so an export can never
+    quietly write a stale document while the user looks at a newer one.
+  - **Fold state cannot reach it.** The export is re-laid-out from the whole source text (INV-011:
+    Folding never changes it), so a Folded Section's Section Body exports exactly as an Unfolded one
+    does. "Export" means the whole Markdown Document, never merely the visible part.
+- **Consequence (accepted):** Because a PDF cannot embed the Visual Document, an Export as PDF is
+  **re-laid-out** from the Markdown rather than captured from the on-screen document, so it need not
+  match the Visual Document line for line. (Print, INV-034, is the full-fidelity path.)
+- **Enforced by:** `ExportViewModel.ExportPdfAsync`, which returns before writing when the
+  `IFilePicker` port yields no path, exports the Editor Session's own `Markdown` through the
+  `IPdfExporter` port, and writes through the `IPdfExportStore` port — never through `IDocumentStore`,
+  so an export has no route to the Watched File at all. The `MigraDocPdfExporter` adapter re-lays-out
+  the Markdown (parsed through the shared `GfmPipeline`) into a PDF.
+- **Tested by:** `ExportViewModelTests.*_INV033` — in particular
+  `ExportPdf_WhenTheSaveDialogIsCancelled_WritesNothing_INV033`,
+  `ExportPdf_WithUnsavedEdits_ExportsTheSessionsText_INV033`, and
+  `ExportPdf_NeverWritesTheWatchedFile_INV033`; and `MigraDocPdfExporterTests.*` for the re-layout.
+
+### INV-034 — Printing is not an edit
+- **Statement:** Print sends the Active Session's Visual Document to a printer and changes nothing: not
+  the Markdown Document, the Watched File, or the Editor Session's unsaved-edits state. Two rules bound
+  it:
+  - **Printing is not an edit.** It reads the document and produces no file the editor owns — the
+    printout (and any PDF made through the print dialog's "Microsoft Print to PDF") leaves every
+    document exactly as it was.
+  - **It prints the whole document.** The document printed is re-projected from the current Markdown
+    source, not taken from the live editing surface, so a Folded Section's hidden Section Body prints
+    too (INV-011: Folding never changes the source) and the surface the user is editing is left
+    undisturbed. Print means the whole document, never merely the visible part — the fold rule of
+    INV-032/INV-033 reached from printing.
+- **Enforced by:** `MarkdownRichEditor.PrintVisualDocument`, which re-projects `Markdown` through the
+  same `MarkdownToFlowDocumentProjector` the editing surface uses (yielding a self-contained
+  `FlowDocument` that references none of the live document's state) and hands it to the
+  `IDocumentPrinter` port — doing nothing when no printer is set. The port keeps the WPF print dialog
+  out of the editor, so the rules above are testable headlessly against a fake.
+- **Tested by:** `MarkdownRichEditorPrintTests.*_INV034` — in particular
+  `Print_PrintsTheWholeDocument_IncludingFoldedSections_INV034` and
+  `Print_DoesNotChangeTheMarkdownDocument_INV034`.
+
+### INV-035 — Copying is not an edit, and carries the selection in rich flavors
+- **Statement:** Copy places the current selection on the clipboard. Four rules bound it:
+  - **Copying is not an edit.** It reads the document and never changes the Markdown Document, the
+    Visual Document, or the Watched File. (Cut is a separate, real edit; the flavors Copy adds do not
+    make Copy one.)
+  - **A normal Copy carries rich text.** The selection is placed as RTF — the editing surface's own
+    serialization, which Word and Outlook paste formatted — and as HTML, so it also pastes formatted
+    into web editors that read the clipboard's HTML flavor rather than its RTF.
+  - **Copy as Markdown carries the selection's Markdown source.** A separate command places the
+    canonical Markdown of the selection on the clipboard, for a Markdown-aware target.
+  - **The HTML and Markdown flavors are Captured from the blocks the selection spans.** They are
+    produced by the same Capture (and Render) seams the editor already uses, so a copied Link,
+    Heading, or List is the same as a saved one (INV-018). A partial selection copies the whole blocks
+    it touches (whole-block granularity), and a selection cannot include what a Fold has hidden — the
+    counterpart of Print's whole-document rule (INV-034), reached from the other direction.
+- **Enforced by:** `MarkdownRichEditor.CaptureSelection` (the top-level Blocks the selection overlaps,
+  Captured through the same `FlowDocumentToMarkdownCapturer` a save uses), `SelectionAsCfHtml` (which
+  Renders that Markdown through the `IMarkdownRenderer` port and wraps it with the pure `CfHtml`), the
+  `DataObject.Copying` handler that adds the HTML flavor to a Copy, and `CopyAsMarkdown`. RTF is the
+  `RichTextBox`'s own selection serialization, left untouched.
+- **Tested by:** `CfHtmlTests.*` (the clipboard wrapper's byte offsets) and
+  `MarkdownRichEditorCopyTests.*_INV035` — in particular
+  `CaptureSelection_WithAPartialSelection_CapturesTheWholeBlock_INV035`,
+  `SelectionAsCfHtml_RendersTheSelectionToTheHtmlFlavor_INV035`, and
+  `Copy_SerialisesTheSelectionAsRichText_INV035`.
+
+### INV-036 — Recent Files are distinct, newest-first, and capped
+- **Statement:** The Recent Files list holds Watched File paths newest first, with no duplicates
+  (compared case-insensitively) and no blank entries, and never more than a fixed capacity — adding
+  beyond it drops the oldest. Adding a path already present promotes it to the front rather than
+  duplicating it. It is a value object: adding returns a new list and never mutates the original.
+- **Enforced by:** The immutable `RecentFiles` value object (Domain), whose `Add` rebuilds the list
+  with the new path at the front, the prior copy of it removed, trimmed to `Capacity`.
+- **Tested by:** `RecentFilesTests.*` — in particular
+  `Add_AnExistingPath_MovesItToTheFront_WithoutDuplicating`,
+  `Add_TrimsToCapacity_DroppingTheOldest`, and `Add_DoesNotMutateTheOriginal`.
+
+### INV-037 — The Workspace restores its saved documents, and never persists unsaved ones
+- **Statement:** The Workspace persists and restores across runs. Four rules bound it:
+  - **Only saved documents are persisted.** The Workspace State records the open Tabs' Watched File
+    paths and the Recent Files — never a Tab that has no Watched File, and never any unsaved edits.
+    Restoring reopens the documents, not a snapshot of unsaved work.
+  - **Restore reopens the saved Tabs by path, skipping any that have gone.** A path that no longer
+    loads is simply not reopened; it never blocks the rest of the restore or the app from starting.
+  - **An empty or unreadable state restores nothing, leaving the one empty Tab.** A first run, or a
+    corrupt state file, starts with the single empty Tab (INV-008) rather than failing.
+  - **Recent Files track opens and saves.** Opening or saving a Watched File records it in the Recent
+    Files (INV-036), which are persisted, shown in the Open Recent menu, and mirrored to the Windows
+    Jump List. Restoring is not itself an open, so it loads the persisted Recent Files without
+    reordering them.
+- **Enforced by:** `WorkspaceViewModel.RestoreAsync` / `PersistStateAsync` (which record only Tabs
+  with a Watched File and reopen through the same `OpenPathAsync`, tolerating a load that fails), the
+  Application `WorkspaceState` snapshot and `IWorkspaceStateStore` port, and the
+  `JsonWorkspaceStateStore` adapter that treats a missing or corrupt file as `WorkspaceState.Empty`.
+  `Program` restores at startup, persists on exit, and mirrors the Recent Files to the `IJumpList`.
+- **Tested by:** `WorkspaceViewModelTests.*_INV037` (restore reopens saved Tabs, skips files that
+  have gone, keeps the empty Tab when there is nothing to restore, and tracks Recent Files) and
+  `JsonWorkspaceStateStoreTests.*` (round-trip and corruption tolerance).
+
+### INV-038 — Following a Link is not an edit
+- **Statement:** Ctrl+Clicking a Link follows its destination and changes nothing: not the Markdown
+  Document, the Visual Document, or the Watched File. Where it leads is bounded:
+  - **A web address opens in the default browser** (http, https, or mailto).
+  - **A relative Markdown file opens in a new Tab**, its path resolved against the Base Directory
+    (INV-031's resolution rule, reached from following rather than showing). An unsaved document has
+    no Base Directory, so a relative Link resolves to nothing and is left alone.
+  - **Anything else is left alone** — a relative link to a non-Markdown file, or a bare fragment,
+    opens nothing rather than guessing.
+- **Enforced by:** The pure `MarkdownLink.Classify`, which resolves a Link's `NavigateUri` to a web
+  target, a Markdown-file target, or nothing; `MarkdownRichEditor.FollowLink`, which opens a web
+  target in the browser and routes a Markdown-file target to the `FollowLinkCommand`; and
+  `WorkspaceViewModel.FollowLinkCommand`, which opens that file in a Tab through the same
+  `OpenPathAsync` as any other open, tolerating a file that is not there. The Link carries a real
+  `NavigateUri` (INV-030), so WPF raises the follow on Ctrl+Click.
+- **Tested by:** `MarkdownLinkTests.*` (classification) and
+  `MarkdownRichEditorFollowLinkTests.*_INV038` (a Markdown Link opens a Tab; following is not an edit;
+  a non-Markdown target does nothing).
+
+### INV-039 — The Status Bar reflects the document, and never changes it
+- **Statement:** The Status Bar shows the Active Session's Document Statistics — word count, character
+  count, and estimated reading time — together with the caret's line and column and the Current
+  Section. It is presentation-only: computing or showing it never changes the Markdown Document, the
+  Visual Document, or the Watched File (the view-only guarantee of the Outline, INV-012, applied to the
+  Status Bar). The Document Statistics are a deterministic function of the text — the same text always
+  yields the same counts and reading time.
+- **Enforced by:** The pure static `TextStatistics.Compute` (Domain), and `MarkdownRichEditor.Status`
+  (a `DocumentStatus` the editor recomputes from the visible document text on every change and from the
+  caret on every selection change) — a read of the document that makes no edit.
+- **Tested by:** `TextStatisticsTests.*` (the counts, the reading time, and determinism) and
+  `MarkdownRichEditorStatusTests.*_INV039` (the Status reflects and follows the document).
+
+### INV-040 — An accepted word is never a Misspelling, permanently
+- **Statement:** A word the user has accepted through Add to Dictionary is never marked a Misspelling,
+  whatever the operating system's speller thinks, and the acceptance is permanent: the User Dictionary
+  is persisted, so the word stays accepted across runs. Accepting a word is not an edit — it changes
+  what counts as a Misspelling, never the Markdown Document — and Spell Check re-checks so the word's
+  squiggle clears at once. Words are compared case-insensitively.
+- **Enforced by:** The `UserAwareSpellDictionary` decorator, which reports a word not misspelled when
+  the `IUserDictionary` contains it and otherwise defers to the inner speller; the `FileUserDictionary`
+  adapter, which loads the accepted words from a per-user file and appends each newly accepted one; and
+  `MarkdownRichEditor.AddToDictionary`, which accepts the Misspelling's word and calls the spell-check
+  adorner's `Refresh` (a re-check, not an edit). Spelling Suggestions still come from the inner speller
+  unchanged.
+- **Tested by:** `UserAwareSpellDictionaryTests.*_INV040` (an accepted word is not a Misspelling; an
+  unaccepted one is judged by the speller) and `FileUserDictionaryTests.*` (accepted words are held,
+  case-insensitive, and persisted across instances).
+
+### INV-041 — Smart Paste adapts to the clipboard, and only handles what it recognises
+- **Statement:** A paste into the editing surface adapts to the clipboard's content. Three cases are
+  handled specially, and anything else pastes as it normally would:
+  - **A URL pasted over a selection becomes a Link.** The selected text is kept as the Link's text and
+    the pasted URL as its destination — the common "select a phrase, paste a URL" gesture — composed
+    through the same seam Insert Link uses (INV-030), so it Captures as `[text](url)` (INV-018). Over
+    no selection a URL pastes as ordinary text.
+  - **An image on the clipboard is written beside the Watched File and inserted as an Image.** The
+    picture is saved as a file in the Base Directory and referenced by its relative name, so the
+    Markdown Document stays portable (INV-031) and Captures as `![alt](file)`. An unsaved document has
+    no folder to write beside, so a pasted image is dropped rather than inserted un-representably.
+  - **HTML is converted to Markdown and pasted as formatted content.** HTML copied from a web page is
+    converted to Markdown and projected into the Visual Document, so it lands formatted the same as any
+    projected Markdown rather than as raw markup or plain text.
+- **Enforced by:** `MarkdownRichEditor.SmartPaste` (hooked through `DataObject.Pasting`), which
+  classifies the clipboard data and either handles it — through `LinkFormatting.WrapSelectionAsLink`,
+  an image written and inserted through `LinkFormatting.InsertImageSource`, or `HtmlToMarkdown.Convert`
+  (over `CfHtml.ExtractFragment`) projected in at the selection — or reports it unhandled so the
+  default paste proceeds.
+- **Tested by:** `MarkdownRichEditorSmartPasteTests.*_INV041` (a URL over a selection becomes a Link;
+  HTML pastes as Markdown; plain text is left to the default paste), `HtmlToMarkdownTests.*`, and
+  `CfHtmlTests.ExtractFragment_*`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

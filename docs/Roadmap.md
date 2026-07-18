@@ -49,20 +49,20 @@ work that is still in review, noted inline.
 
 ## Quality of life
 
-- [ ] **Export the Rendered Output as HTML.** Render already produces it for interoperability;
+- [x] **Export the Rendered Output as HTML.** Render already produces it for interoperability;
   nothing in the UI reaches it.
-- [ ] **Print / export as PDF.** A Visual Document is a `FlowDocument`, which WPF prints natively.
-- [ ] **Copy as rich text**, so a selection pastes formatted into Word or Outlook.
-- [ ] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
+- [x] **Print / export as PDF.** A Visual Document is a `FlowDocument`, which WPF prints natively.
+- [x] **Copy as rich text**, so a selection pastes formatted into Word or Outlook.
+- [x] **Restore the Workspace at startup, and a recent-files list.** Reopen the previous session's
   Tabs, offer an MRU list, and register a Windows Jump List. *(Pairs with the Startup Document*
   *and file-association work, in review.)*
-- [ ] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is
+- [x] **Smart paste.** A URL pasted over a selection becomes a Link; an image on the clipboard is
   written beside the Watched File and inserted as an Image; HTML converts to Markdown.
-- [ ] **Status bar** — word and character count, reading time, caret line and column, and the
+- [x] **Status bar** — word and character count, reading time, caret line and column, and the
   Current Section.
-- [ ] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
+- [x] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
   accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
-- [ ] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
+- [x] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
 
 ## Bigger swings
 
