@@ -22,6 +22,7 @@ public static class UiRegistry
             services.AddSingleton<ISnackbarService, SnackbarService>();
             services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
             services.AddSingleton<IFilePicker, Win32FilePicker>();
+            services.AddSingleton<IFolderPicker, Win32FolderPicker>();
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
             services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
@@ -37,6 +38,8 @@ public static class UiRegistry
 
             services.AddSingleton<AppearanceViewModel>();
             services.AddSingleton<ExportViewModel>();
+            services.AddSingleton<FolderWorkspaceViewModel>();
+            services.AddSingleton<SideDockViewModel>();
             services.AddSingleton<WorkspaceViewModel>();
             services.AddSingleton<MainWindow>();
         }

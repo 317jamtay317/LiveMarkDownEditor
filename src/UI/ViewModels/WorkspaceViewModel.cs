@@ -27,7 +27,6 @@ public sealed class WorkspaceViewModel : ObservableObject
     private EditorSessionViewModel? _activeSession;
     private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
     private bool _isRestoring;
-    private bool _isNavigationPanelVisible;
     private bool _isSourcePanelVisible;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
@@ -39,7 +38,9 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
-    /// <param name="stateStore">Persists and restores the Workspace across runs — open Tabs and Recent Files (INV-037).</param>
+    /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
+    /// <param name="sideDock">The Side Dock — the tabbed left panel hosting the Folder and Navigation panels (INV-046).</param>
+    /// <param name="stateStore">Persists and restores the Workspace across runs — open Tabs, Recent Files, and the Folder Workspace (INV-037, INV-045).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
@@ -49,6 +50,8 @@ public sealed class WorkspaceViewModel : ObservableObject
         IMarkdownRenderer renderer,
         AppearanceViewModel appearance,
         ExportViewModel export,
+        FolderWorkspaceViewModel folder,
+        SideDockViewModel sideDock,
         IWorkspaceStateStore stateStore)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
@@ -60,6 +63,13 @@ public sealed class WorkspaceViewModel : ObservableObject
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
+        Folder = folder ?? throw new ArgumentNullException(nameof(folder));
+        SideDock = sideDock ?? throw new ArgumentNullException(nameof(sideDock));
+
+        // The Folder Workspace opens a File in a Tab through the same dedupe-and-load path the picker
+        // uses (INV-009/043), and persists alongside the open Tabs and Recent Files (INV-045).
+        Folder.OpenFile = OpenPathAsync;
+        Folder.PersistState = PersistStateAsync;
 
         Sessions = new ReadOnlyObservableCollection<EditorSessionViewModel>(_sessions);
 
@@ -69,7 +79,6 @@ public sealed class WorkspaceViewModel : ObservableObject
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
         OpenRecentCommand = new AsyncRelayCommand<string>(OpenRecentAsync);
         FollowLinkCommand = new AsyncRelayCommand<string>(FollowMarkdownLinkAsync);
-        ToggleNavigationPanelCommand = new RelayCommand(ToggleNavigationPanel);
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
 
         New();
@@ -114,6 +123,20 @@ public sealed class WorkspaceViewModel : ObservableObject
     public ExportViewModel Export { get; }
 
     /// <summary>
+    /// The Folder Workspace shell — the toggleable Folder Panel for opening a folder and browsing its
+    /// Markdown Documents as a tree (INV-042/043/044/045). Workspace-wide: unlike the Navigation Panel
+    /// it is independent of the Active Session.
+    /// </summary>
+    public FolderWorkspaceViewModel Folder { get; }
+
+    /// <summary>
+    /// The Side Dock — the tabbed left panel that hosts the Folder Panel and the Navigation Panel as
+    /// tabs, so the two do not each take a column of their own (INV-046). It owns the Navigation Panel's
+    /// visibility toggle.
+    /// </summary>
+    public SideDockViewModel SideDock { get; }
+
+    /// <summary>
     /// The Recent Files — recently opened or saved Watched File paths, newest first — shown in the
     /// Open Recent menu and mirrored to the Windows Jump List. Persisted across runs (INV-037).
     /// </summary>
@@ -139,16 +162,6 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// owns Copy but is composed in XAML rather than by the container — as with <see cref="LinkPrompt"/>.
     /// </summary>
     public IMarkdownRenderer Renderer { get; }
-
-    /// <summary>
-    /// Whether the Navigation Panel — the left-edge Outline of the Active Session — is shown. Hidden
-    /// until the user toggles it on. Presentation-only: toggling it never changes any document (INV-012).
-    /// </summary>
-    public bool IsNavigationPanelVisible
-    {
-        get => _isNavigationPanelVisible;
-        private set => Set(ref _isNavigationPanelVisible, value);
-    }
 
     /// <summary>
     /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown
@@ -178,9 +191,6 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Opens a followed Markdown Link's file in a new Tab. Parameter: the absolute path (INV-038).</summary>
     public ICommand FollowLinkCommand { get; }
-
-    /// <summary>Shows the Navigation Panel if hidden, or hides it if shown.</summary>
-    public ICommand ToggleNavigationPanelCommand { get; }
 
     /// <summary>Shows the Source Panel if hidden, or hides it if shown.</summary>
     public ICommand ToggleSourcePanelCommand { get; }
@@ -254,6 +264,9 @@ public sealed class WorkspaceViewModel : ObservableObject
         _recent = Domain.RecentFiles.From(state.RecentFiles);
         Raise(nameof(RecentFiles));
 
+        // Reopen the Folder Workspace that was open last run, skipping a root that has gone (INV-045).
+        await Folder.RestoreAsync(state.WorkspaceFolder).ConfigureAwait(true);
+
         // The empty Tab the constructor seeds is a placeholder; replace it if we restore real Tabs.
         var placeholder = _sessions.Count == 1 && _sessions[0].FilePath is null && !_sessions[0].HasUnsavedEdits
             ? _sessions[0]
@@ -296,7 +309,7 @@ public sealed class WorkspaceViewModel : ObservableObject
             .Select(session => session.FilePath!)
             .ToList();
 
-        return _stateStore.SaveAsync(new WorkspaceState(openDocuments, _recent.Paths));
+        return _stateStore.SaveAsync(new WorkspaceState(openDocuments, _recent.Paths, Folder.Folder?.RootPath));
     }
 
     /// <summary>
@@ -383,8 +396,6 @@ public sealed class WorkspaceViewModel : ObservableObject
         RemoveSession(session);
         await PersistStateAsync().ConfigureAwait(true);
     }
-
-    private void ToggleNavigationPanel() => IsNavigationPanelVisible = !IsNavigationPanelVisible;
 
     private void ToggleSourcePanel() => IsSourcePanelVisible = !IsSourcePanelVisible;
 

@@ -14,7 +14,7 @@ public static class InfrastructureRegistry
     {
         /// <summary>
         /// Registers the Infrastructure layer: the Markdig-backed Markdown renderer, the MigraDoc PDF
-        /// exporter, and other outward-facing adapters.
+        /// exporter, the Folder Workspace reader and watcher, and other outward-facing adapters.
         /// </summary>
         public void AddInfrastructure()
         {
@@ -23,6 +23,7 @@ public static class InfrastructureRegistry
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
             services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
             services.AddSingleton<IPdfExportStore, FilePdfExportStore>();
+            services.AddSingleton<IMarkdownFolderReader, FileSystemMarkdownFolderReader>();
             services.AddSingleton<IWorkspaceStateStore>(_ => new JsonWorkspaceStateStore(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -32,6 +33,9 @@ public static class InfrastructureRegistry
             // Transient: each Editor Session (Tab) owns its own watcher so several Tabs can watch
             // different Watched Files at once.
             services.AddTransient<IDocumentWatcher, FileSystemDocumentWatcher>();
+
+            // Transient: a Folder Workspace owns its own recursive watcher for the open root.
+            services.AddTransient<IFolderWatcher, FileSystemFolderWatcher>();
         }
     }
 }

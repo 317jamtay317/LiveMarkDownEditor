@@ -146,7 +146,8 @@ and tested.
 - **Enforced by:** `MarkdownRichEditor.Outline` reading the full logical block sequence (so Folded
   headings are still listed) and `MarkdownRichEditor.Navigate` only Unfolding, selecting, and
   scrolling — never mutating the logical document. The `OutlinePanel` and its visibility toggle
-  (`WorkspaceViewModel.IsNavigationPanelVisible`) only read the editor's Outline and drive Navigate;
+  (`SideDockViewModel.IsNavigationTabVisible`, which docks the Navigation Panel as a tab — INV-046)
+  only read the editor's Outline and drive Navigate;
   Collapse/Expand is computed by the pure `OutlineView` and applied to panel-only view state, never
   touching the editor.
 - **Tested by:** `MarkdownRichEditorTests.Navigate_DoesNotChangeCapturedMarkdown_INV012`,
@@ -752,6 +753,96 @@ and tested.
 - **Tested by:** `MarkdownRichEditorSmartPasteTests.*_INV041` (a URL over a selection becomes a Link;
   HTML pastes as Markdown; plain text is left to the default paste), `HtmlToMarkdownTests.*`, and
   `CfHtmlTests.ExtractFragment_*`.
+
+### INV-042 — A Folder Workspace is the pruned, ordered, Markdown-only tree of its root
+- **Statement:** A Folder Workspace presents its root folder as a Folder Tree that is a pure,
+  deterministic function of the root and the set of file paths beneath it (the Folder-Workspace
+  counterpart of INV-002/INV-003). Four rules bound it:
+  - **Markdown files only.** A file becomes a **File** exactly when its name ends in `.md` or
+    `.markdown` (compared case-insensitively); every other file is omitted.
+  - **Empty branches are pruned.** A **Folder** appears only if at least one Markdown Document exists
+    beneath it, directly or transitively. A folder — or a chain of folders — containing no Markdown is
+    not shown; a deep chain leading to a single Markdown file is kept whole.
+  - **Deterministic ordering.** Within every folder, and at the root, the child **Folder**s precede
+    the **File**s, and each group is ordered case-insensitively by name. Shuffling the input paths
+    yields an identical Folder Tree.
+  - **Portable, canonical paths.** Each Folder Entry carries its root-relative path, and
+    `AbsolutePathOf` resolves one to a canonical absolute path — so a file opened from the Folder Tree
+    is the same path string as the same file opened through the picker, which is what lets INV-009
+    dedupe them (it compares absolute paths case-insensitively).
+- **Enforced by:** The pure `FolderWorkspace.From` (Domain — no I/O), which builds the nested
+  `FolderEntry` tree from `/`-separated relative paths, prunes Markdown-empty branches, and orders
+  folders-before-files / case-insensitively; the shared `MarkdownFile.IsMarkdown` rule; and
+  `FolderWorkspace.AbsolutePathOf`. Enumerating the files on disk is Infrastructure's job
+  (`FileSystemMarkdownFolderReader`), so the Domain stays pure.
+- **Tested by:** `FolderWorkspaceTests.*_INV042` (extension filter, transitive pruning, folders-before-
+  files ordering, determinism under shuffling, and the `AbsolutePathOf` path round-trip).
+
+### INV-043 — Browsing a Folder Workspace is view-only; activating a File opens, never edits
+- **Statement:** Opening a Folder Workspace, showing or hiding the Folder Panel, and Expanding or
+  Collapsing a Folder never change any Markdown Document, any Editor Session, or the filesystem — the
+  Folder-Workspace counterpart of INV-012/INV-014, extended to the filesystem because a Folder
+  Workspace, unlike the Outline, is a view onto disk. Activating a **File** opens its Markdown Document
+  in a Tab through the same path the file picker uses, so a file already open in the Workspace
+  activates its existing Tab rather than duplicating it (INV-009), and opening it is not an edit.
+  Activating a **Folder** does nothing but its own Expand/Collapse.
+- **Enforced by:** `FolderWorkspaceViewModel` — its `OpenFolderCommand`, `ToggleFolderPanelCommand`,
+  and `IsFolderPanelVisible` drive only presentation state, and its `ActivateEntryCommand` resolves a
+  File to its absolute path and routes it to `WorkspaceViewModel.OpenPathAsync` (the same
+  dedupe-and-load path the picker uses, tolerating a file that has gone) — and the `FolderPanel`
+  Control, which reads the Folder Tree and raises activation without mutating any document.
+- **Tested by:** `FolderWorkspaceViewModelTests.*_INV043` (opening a folder builds the tree; activating
+  a File opens it through the callback with its canonical path; toggling the panel and browsing the
+  tree change no document).
+
+### INV-044 — A Folder Workspace tracks its root live
+- **Statement:** While a Folder Workspace is open, a Markdown Document added, removed, or renamed
+  anywhere under its root updates the Folder Tree to match — re-enumerated and rebuilt by the same
+  deterministic projection (INV-042) — without changing any Markdown Document or Editor Session. It is
+  the Folder-Workspace counterpart of INV-007's live reload, but view-only: the tree follows the disk,
+  nothing is edited. A burst of filesystem events (an editor or tool often emits several for one
+  change) is debounced into a single rebuild.
+- **Enforced by:** `FolderWorkspaceViewModel` subscribing to `IFolderWatcher.Changed`, marshalling to
+  the UI thread through `IUiDispatcher`, and re-running its reader-and-rebuild (its `RefreshCommand`);
+  the `FileSystemFolderWatcher` adapter — a recursive `FileSystemWatcher` with a debounce, mirroring
+  `FileSystemDocumentWatcher`.
+- **Tested by:** `FolderWorkspaceViewModelTests.*_INV044` (a `Changed` from a fake watcher re-reads the
+  folder and the Folder Tree reflects the new file set, changing no document).
+
+### INV-045 — The open Folder Workspace is restored across runs
+- **Statement:** The open Folder Workspace's root path is persisted in the Workspace State and reopened
+  at startup, alongside the open Tabs and Recent Files (INV-037). Three rules bound it:
+  - **Only the root is persisted, and the tree is re-enumerated.** The Folder Tree is never persisted —
+    the disk is the source of truth — so Restore re-reads the root to rebuild the current tree.
+  - **A root that has gone is skipped.** A persisted root folder that no longer exists, or cannot be
+    read, leaves no Folder Workspace open, exactly as a vanished Tab is skipped (INV-037); it never
+    blocks startup.
+  - **No Folder Workspace persists nothing.** With no Folder Workspace open the Workspace State records
+    no root, and an absent root restores none.
+- **Enforced by:** `WorkspaceState` carrying the open Folder Workspace's root path;
+  `WorkspaceViewModel.PersistStateAsync` / `RestoreAsync` recording and reopening it through
+  `FolderWorkspaceViewModel`, tolerating a root that fails to read; the same `IWorkspaceStateStore` /
+  `JsonWorkspaceStateStore` as INV-037 (a missing field loads as no folder).
+- **Tested by:** `WorkspaceViewModelTests.*_INV045` and `FolderWorkspaceViewModelTests.*_INV045` (a
+  persisted root reopens on Restore; a root that has gone is skipped) and `JsonWorkspaceStateStoreTests.*`
+  (the root round-trips; old state without the field loads as no folder).
+
+### INV-046 — The Side Dock shows exactly the navigation panels toggled on, one at a time
+- **Statement:** The Side Dock hosts the Folder Panel and the Navigation Panel as tabs. It is shown
+  while at least one of the two is toggled on and hidden when neither is; when shown it presents
+  exactly one — the **Selected** tab — at a time. Toggling a panel on shows its tab and selects it;
+  toggling the Selected panel off selects the other panel if it is still shown, and otherwise leaves
+  the Side Dock hidden. Docking a panel, selecting a tab, and showing or hiding the Side Dock are
+  presentation-only — none changes any Markdown Document, any Editor Session, or any Fold, Outline, or
+  Folder-Tree state (the Side-Dock counterpart of INV-012/INV-014/INV-043).
+- **Enforced by:** `SideDockViewModel`, which owns the Navigation Panel's tab visibility
+  (`IsNavigationTabVisible` and `ToggleNavigationPanelCommand`) and the `SelectedTab`, observes the
+  Folder Panel's visibility on the `FolderWorkspaceViewModel` it coordinates with (so opening a Folder
+  Workspace shows and selects its tab), and derives `IsVisible` as "at least one tab is shown". It
+  holds no document and drives only presentation state, so coordinating the two panels edits nothing.
+- **Tested by:** `SideDockViewModelTests.*_INV046` (toggling a panel on shows and selects its tab;
+  toggling the Selected panel off falls back to the other or hides the dock; the dock is hidden when
+  neither panel is on; and coordinating the tabs opens or edits no document).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

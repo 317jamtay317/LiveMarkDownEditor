@@ -2,8 +2,9 @@
 
 The **Navigation Panel**: the presentation-only panel along the left edge of the Workspace that lists
 the Active Session's **Outline** — every **Section Heading** as a clickable **Outline Entry**,
-indented by heading level. It is hidden until the user toggles it on
-(`WorkspaceViewModel.IsNavigationPanelVisible`).
+indented by heading level. It is presented as a tab of the [Side Dock](../UbiquitousLanguage.md)
+(alongside the Folder Panel, so the two share one column) and is hidden until the user toggles it on
+(`SideDockViewModel.IsNavigationTabVisible`, INV-046).
 
 - **Class:** `UI.Controls.OutlinePanel` (derives from `System.Windows.Controls.ListBox`)
 - **Default style:** `src/UI/Controls/OutlinePanel.xaml` (merged in `App.xaml`)
@@ -45,9 +46,9 @@ gutter):
 ## Usage
 
 ```xml
-<Border Visibility="{Binding IsNavigationPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-    <controls:OutlinePanel Editor="{Binding ElementName=Editor}" />
-</Border>
+<!-- Hosted in the Side Dock's Outline tab, shown while that tab is the Selected one. -->
+<controls:OutlinePanel Editor="{Binding ElementName=Editor}" />
+...
 <controls:MarkdownRichEditor x:Name="Editor"
                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
 ```

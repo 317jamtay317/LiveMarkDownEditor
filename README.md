@@ -9,6 +9,18 @@ person or tool.
 
 ## Features
 
+### Folder workspace — a lightweight knowledge base
+
+- **Open a folder** and browse its Markdown files as a tree; double-click a file to open it in a tab.
+- The tree **updates live** as files are added, renamed, or removed on disk — by you or any tool —
+  the same live behaviour that keeps an open document in sync.
+- Only Markdown files show and folders with none are hidden, so a repository or vault stays tidy;
+  your open folder **reopens** the next time you launch.
+
+![Folder workspace in light theme](docs/images/folder-workspace.png)
+
+![Folder workspace in dark theme](docs/images/folder-workspace-dark.png)
+
 ### Write
 
 - **WYSIWYG editing** — bold, italics, strikethrough, headings, links, images, inline code

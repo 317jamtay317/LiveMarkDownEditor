@@ -25,6 +25,9 @@ public sealed class WorkspaceViewModelTests
     private readonly FakeThemeService _theme = new();
     private readonly FakeMarkdownRoundTrip _roundTrip = new();
     private readonly FakeWorkspaceStateStore _stateStore = new();
+    private readonly StubFolderPicker _folderPicker = new();
+    private readonly FakeMarkdownFolderReader _folderReader = new();
+    private readonly FakeFolderWatcher _folderWatcher = new();
     private readonly List<FakeDocumentWatcher> _watchers = [];
 
     private WorkspaceViewModel CreateWorkspace()
@@ -35,6 +38,7 @@ public sealed class WorkspaceViewModelTests
             _watchers.Add(watcher);
             return new EditorSessionViewModel(_store, watcher, _dispatcher, _roundTrip);
         };
+        var folder = new FolderWorkspaceViewModel(_folderPicker, _folderReader, _folderWatcher, _dispatcher);
         return new WorkspaceViewModel(
             factory,
             _picker,
@@ -49,6 +53,8 @@ public sealed class WorkspaceViewModelTests
                 new FakeHtmlExportStore(),
                 new FakePdfExporter(),
                 new FakePdfExportStore()),
+            folder,
+            new SideDockViewModel(folder),
             _stateStore);
     }
 
@@ -61,27 +67,6 @@ public sealed class WorkspaceViewModelTests
         workspace.ActiveSession.ShouldBe(workspace.Sessions[0]);
         workspace.ActiveSession!.Markdown.ShouldBe("");
         workspace.ActiveSession.FilePath.ShouldBeNull();
-    }
-
-    [Fact]
-    public void Constructor_StartsWithNavigationPanelHidden()
-    {
-        var workspace = CreateWorkspace();
-
-        // The Navigation Panel is hidden until the user toggles it on.
-        workspace.IsNavigationPanelVisible.ShouldBeFalse();
-    }
-
-    [Fact]
-    public void ToggleNavigationPanel_TogglesItsVisibility()
-    {
-        var workspace = CreateWorkspace();
-
-        workspace.ToggleNavigationPanelCommand.Execute(null);
-        workspace.IsNavigationPanelVisible.ShouldBeTrue();
-
-        workspace.ToggleNavigationPanelCommand.Execute(null);
-        workspace.IsNavigationPanelVisible.ShouldBeFalse();
     }
 
     [Fact]
@@ -420,5 +405,42 @@ public sealed class WorkspaceViewModelTests
 
         // The empty Tab has no Watched File, so only the opened file is persisted.
         _stateStore.SavedState!.OpenDocuments.ShouldBe([Path]);
+    }
+
+    [Fact]
+    public async Task OpenFolder_PersistsTheFolderRootToTheStateStore_INV045()
+    {
+        _folderPicker.FolderResult = @"C:\vault";
+        _folderReader.Result = ["a.md"];
+        var workspace = CreateWorkspace();
+
+        await workspace.Folder.OpenFolderAsync();
+
+        _stateStore.SavedState!.WorkspaceFolder.ShouldBe(@"C:\vault");
+    }
+
+    [Fact]
+    public async Task RestoreAsync_ReopensThePersistedFolder_INV045()
+    {
+        _stateStore.StateToLoad = new WorkspaceState([], [], WorkspaceFolder: @"C:\vault");
+        _folderReader.Result = ["a.md"];
+        var workspace = CreateWorkspace();
+
+        await workspace.RestoreAsync();
+
+        workspace.Folder.Folder.ShouldNotBeNull();
+        workspace.Folder.Folder!.RootPath.ShouldBe(@"C:\vault");
+    }
+
+    [Fact]
+    public async Task RestoreAsync_WhenThePersistedFolderHasGone_OpensNoFolder_INV045()
+    {
+        _stateStore.StateToLoad = new WorkspaceState([], [], WorkspaceFolder: @"C:\gone");
+        _folderReader.MissingRoots.Add(@"C:\gone");
+        var workspace = CreateWorkspace();
+
+        await workspace.RestoreAsync();
+
+        workspace.Folder.Folder.ShouldBeNull();
     }
 }
