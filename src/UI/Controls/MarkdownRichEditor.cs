@@ -73,6 +73,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         new PropertyMetadata(defaultValue: null));
 
     /// <summary>
+    /// Identifies the <see cref="FlowchartBuilder"/> dependency property. Open Flowchart Builder asks
+    /// through it for the diagram to insert; the composition root supplies the real builder, and a test
+    /// supplies a stub. Left unset, opening the builder does nothing (INV-053).
+    /// </summary>
+    public static readonly DependencyProperty FlowchartBuilderProperty = DependencyProperty.Register(
+        nameof(FlowchartBuilder),
+        typeof(IFlowchartBuilder),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
     /// Identifies the <see cref="DocumentPrinter"/> dependency property. Print sends the Visual
     /// Document through it; the composition root supplies the real printer, and a test supplies a
     /// fake. Left unset, Print does nothing (INV-034).
@@ -162,6 +173,15 @@ public sealed class MarkdownRichEditor : RichTextBox
 
     /// <summary>Identifies the read-only <see cref="MatchSummary"/> dependency property.</summary>
     public static readonly DependencyProperty MatchSummaryProperty = MatchSummaryPropertyKey.DependencyProperty;
+
+    private static readonly DependencyPropertyKey CurrentDiagramSourcePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(CurrentDiagramSource),
+        typeof(string),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>Identifies the read-only <see cref="CurrentDiagramSource"/> dependency property.</summary>
+    public static readonly DependencyProperty CurrentDiagramSourceProperty = CurrentDiagramSourcePropertyKey.DependencyProperty;
 
     private readonly MarkdownToFlowDocumentProjector _projector = new();
     private readonly FlowDocumentToMarkdownCapturer _capturer = new();
@@ -293,12 +313,15 @@ public sealed class MarkdownRichEditor : RichTextBox
             MarkdownEditingCommands.Replace, (_, _) => ReplaceCurrentMatch(), CanFindMove));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ReplaceAll, (_, _) => ReplaceAllMatches(), CanReplaceAll));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.OpenFlowchartBuilder, (_, _) => OpenFlowchartBuilderAtCaret()));
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
         SelectionChanged += (_, _) =>
         {
             UpdateCaretStatus();
+            UpdateDiagramSource();
             CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
         };
 
@@ -385,6 +408,13 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// "No results" when the query matches nothing, or "{ordinal} of {count}" otherwise.
     /// </summary>
     public string MatchSummary => (string)GetValue(MatchSummaryProperty);
+
+    /// <summary>
+    /// The source of the Mermaid Diagram the caret is currently within, or <see langword="null"/>
+    /// when the caret is not inside one. The Preview Panel binds its Diagram Preview here; it is
+    /// recomputed as the caret moves and on every edit, and reading it is view-only (INV-047).
+    /// </summary>
+    public string? CurrentDiagramSource => (string?)GetValue(CurrentDiagramSourceProperty);
 
     /// <summary>
     /// The Outline: every Section Heading of the Visual Document in document order, each an Outline
@@ -691,6 +721,16 @@ public sealed class MarkdownRichEditor : RichTextBox
     }
 
     /// <summary>
+    /// The Flowchart Builder that Open Flowchart Builder asks for a diagram to insert. Left
+    /// <see langword="null"/>, opening the builder makes no edit (INV-053).
+    /// </summary>
+    public IFlowchartBuilder? FlowchartBuilder
+    {
+        get => (IFlowchartBuilder?)GetValue(FlowchartBuilderProperty);
+        set => SetValue(FlowchartBuilderProperty, value);
+    }
+
+    /// <summary>
     /// The printer Print sends the Visual Document to. Supplied by the composition root; when
     /// <see langword="null"/>, Print does nothing (INV-034).
     /// </summary>
@@ -939,6 +979,29 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <see cref="Markdown"/> like any other edit (INV-018).
     /// </summary>
     public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt, BaseDirectory);
+
+    /// <summary>
+    /// Opens the Flowchart Builder on the Mermaid Diagram at the caret — or a new diagram when the
+    /// caret is not within one — and writes the diagram it returns back into the document. Cancelling
+    /// makes no edit, as does a <see langword="null"/> <see cref="FlowchartBuilder"/> (INV-053).
+    /// </summary>
+    public void OpenFlowchartBuilderAtCaret()
+    {
+        var source = FlowchartBuilder?.Build(MermaidDiagram.SourceAt(CaretPosition));
+        if (source is not null)
+        {
+            InsertOrReplaceDiagramAtCaret(source);
+        }
+    }
+
+    /// <summary>
+    /// Writes <paramref name="mermaidSource"/> into the document as a Mermaid Diagram — replacing the
+    /// Mermaid Diagram at the caret, or inserting a new Code Block at the caret — Capturing canonical
+    /// Markdown like any other edit (INV-053/INV-018).
+    /// </summary>
+    /// <param name="mermaidSource">The Mermaid source to write.</param>
+    public void InsertOrReplaceDiagramAtCaret(string mermaidSource) =>
+        DiagramBlockEditing.InsertOrReplaceDiagramAtCaret(this, mermaidSource);
 
     /// <summary>
     /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
@@ -1488,6 +1551,9 @@ public sealed class MarkdownRichEditor : RichTextBox
         // An edit may have added, removed, or retitled a Section Heading.
         InvalidateOutline();
 
+        // An edit inside a Mermaid Diagram changes its source; refresh the Diagram Preview (INV-047).
+        UpdateDiagramSource();
+
         // The edited text may have gained or lost Matches; keep the highlights current. A Replace All
         // batch is the exception — it is iterating the Match ranges, and Recomputes once at the end.
         if (IsFindActive && !_isReplacing)
@@ -1517,6 +1583,11 @@ public sealed class MarkdownRichEditor : RichTextBox
 
         Status.CurrentSection = CurrentSection?.Text ?? string.Empty;
     }
+
+    // Updates the Diagram Preview seam — the Mermaid Diagram the caret is within, or null when the
+    // caret is not inside one. Pure and view-only: it only reads the caret's Code Block (INV-047).
+    private void UpdateDiagramSource() =>
+        SetValue(CurrentDiagramSourcePropertyKey, MermaidDiagram.SourceAt(CaretPosition));
 
     // The full logical block sequence: every visible block, with each Folded Section Body spliced
     // back in at its Section Heading (recursively, so nested Folds are preserved).

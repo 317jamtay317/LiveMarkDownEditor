@@ -1,0 +1,102 @@
+<Window x:Class="UI.Views.FlowchartBuilderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:UI.Controls"
+        Title="Flowchart builder"
+        controls:DialogCloser.DialogResult="{Binding DialogResult}"
+        Width="1000" Height="680" MinWidth="740" MinHeight="480"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextBrush}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Delete" Command="{Binding DeleteSelectedCommand}" />
+    </Window.InputBindings>
+
+    <!-- The Flowchart Builder: a drag-and-drop canvas of Diagram Nodes and Edges beside a live Diagram
+         Preview. Insert writes the diagram back as canonical Mermaid; Cancel makes no edit (INV-053). -->
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar: add / delete, and the direction, shape, and edge pickers. -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,10">
+            <Button Content="Add node" Command="{Binding AddNodeCommand}"
+                    Style="{StaticResource DialogButton}" Margin="0,0,8,0"
+                    AutomationProperties.Name="Add node" />
+            <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"
+                    Style="{StaticResource DialogButton}" Margin="0,0,16,0"
+                    AutomationProperties.Name="Delete selected" />
+
+            <TextBlock Text="Direction" VerticalAlignment="Center" Margin="0,0,6,0"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <ComboBox Width="110" Margin="0,0,16,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}"
+                      AutomationProperties.Name="Flow direction" />
+
+            <TextBlock Text="Shape" VerticalAlignment="Center" Margin="0,0,6,0"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <ComboBox Width="110" Margin="0,0,16,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding NodeShapes}" SelectedItem="{Binding SelectedNodeShape}"
+                      IsEnabled="{Binding HasSelectedNode}"
+                      AutomationProperties.Name="Node shape" />
+
+            <TextBlock Text="Edge" VerticalAlignment="Center" Margin="0,0,6,0"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <ComboBox Width="90" Margin="0,0,8,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding EdgeKinds}" SelectedItem="{Binding SelectedEdgeKind}"
+                      IsEnabled="{Binding HasSelectedEdge}"
+                      AutomationProperties.Name="Edge kind" />
+            <TextBox Width="130" VerticalAlignment="Center" Padding="4,3"
+                     controls:Watermark.Text="Edge label"
+                     Text="{Binding SelectedEdgeLabel, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding HasSelectedEdge}"
+                     AutomationProperties.Name="Edge label" />
+        </WrapPanel>
+
+        <!-- Canvas beside the live Diagram Preview. -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="360" MinWidth="240" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <controls:FlowchartCanvas Builder="{Binding}"
+                                          AutomationProperties.AutomationId="FlowchartCanvas" />
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Background="{DynamicResource BorderBrush}" />
+
+            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Background="{DynamicResource EditorBackgroundBrush}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="PREVIEW" Margin="12,10,12,4"
+                               Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                    <controls:MermaidPreview AutomationProperties.AutomationId="BuilderPreview"
+                                             DiagramSource="{Binding MermaidSource}" IsDark="{Binding IsDark}" />
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- A short hint, and the commit buttons. -->
+        <DockPanel Grid.Row="2" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}"
+                        Style="{StaticResource DialogButton}" Margin="0,0,8,0"
+                        AutomationProperties.Name="Cancel" />
+                <Button Content="Insert" Command="{Binding InsertCommand}"
+                        Style="{StaticResource PrimaryDialogButton}"
+                        AutomationProperties.Name="Insert diagram" />
+            </StackPanel>
+            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" FontSize="12"
+                       Text="Drag a node to move it · drag from a node's dot to connect · double-click to rename" />
+        </DockPanel>
+    </Grid>
+</Window>

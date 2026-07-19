@@ -75,5 +75,10 @@ work that is still in review, noted inline.
   Coloring is view-only, so it fits the read-only overlay pattern Code Shading established.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
   from INV-004's supported set. Each lands one tested construct at a time.
-- [ ] **Flow Charts**. We should be able to build flowcharts using the editor and view the preview.
+- [ ] **More diagram kinds in the Flowchart Builder.** The Mermaid preview and the graphical
+  Flowchart Builder now cover flowcharts end-to-end — author diagrams as text or on a drag-and-drop
+  node/arrow canvas, preview them live, and export them (INV-047–053). The same `DiagramGraph` model
+  and canvas could extend to the other node/arrow Mermaid kinds — state, ER, class — each a new
+  parse/emit strategy and shape set (a new `DiagramKind`). Non-graph kinds (sequence, gantt, pie) are
+  not node/arrow graphs and stay text-authored with the live preview.
 - [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.

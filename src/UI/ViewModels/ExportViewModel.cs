@@ -29,25 +29,29 @@ public sealed class ExportViewModel : ObservableObject
     private readonly IHtmlExportStore _exportStore;
     private readonly IPdfExporter _pdfExporter;
     private readonly IPdfExportStore _pdfExportStore;
+    private readonly IMermaidScriptSource _mermaidScript;
 
     /// <summary>Creates the export actions.</summary>
     /// <param name="filePicker">Asks the user where to export and in which Export Shape.</param>
     /// <param name="renderer">Renders the Markdown Document to its Rendered Output (INV-002).</param>
     /// <param name="exportStore">Writes the composed HTML to the chosen path.</param>
-    /// <param name="pdfExporter">Exports the Markdown Document as PDF bytes (INV-033).</param>
+    /// <param name="pdfExporter">Exports the Markdown Document as PDF bytes (INV-033, INV-050).</param>
     /// <param name="pdfExportStore">Writes the exported PDF bytes to the chosen path.</param>
+    /// <param name="mermaidScript">Supplies the bundled Mermaid library a Standalone Page embeds (INV-049).</param>
     public ExportViewModel(
         IFilePicker filePicker,
         IMarkdownRenderer renderer,
         IHtmlExportStore exportStore,
         IPdfExporter pdfExporter,
-        IPdfExportStore pdfExportStore)
+        IPdfExportStore pdfExportStore,
+        IMermaidScriptSource mermaidScript)
     {
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _exportStore = exportStore ?? throw new ArgumentNullException(nameof(exportStore));
         _pdfExporter = pdfExporter ?? throw new ArgumentNullException(nameof(pdfExporter));
         _pdfExportStore = pdfExportStore ?? throw new ArgumentNullException(nameof(pdfExportStore));
+        _mermaidScript = mermaidScript ?? throw new ArgumentNullException(nameof(mermaidScript));
 
         ExportHtmlCommand = new AsyncRelayCommand<EditorSessionViewModel>(ExportHtmlAsync);
         ExportPdfCommand = new AsyncRelayCommand<EditorSessionViewModel>(ExportPdfAsync);
@@ -86,7 +90,7 @@ public sealed class ExportViewModel : ObservableObject
         // Rendered from the session's own text, not re-read from the Watched File: an export shows
         // what the user is looking at, unsaved edits and all.
         var output = _renderer.Render(new MarkdownDocument(session.Markdown));
-        var html = HtmlExport.Compose(output, target.Shape, TitleFor(target.Path));
+        var html = HtmlExport.Compose(output, target.Shape, TitleFor(target.Path), _mermaidScript.Read());
 
         await _exportStore.SaveAsync(target.Path, html).ConfigureAwait(true);
     }
@@ -114,7 +118,7 @@ public sealed class ExportViewModel : ObservableObject
 
         // Exported from the session's own text, not re-read from the Watched File: an export shows
         // what the user is looking at, unsaved edits and all.
-        var bytes = _pdfExporter.Export(new MarkdownDocument(session.Markdown));
+        var bytes = await _pdfExporter.ExportAsync(new MarkdownDocument(session.Markdown)).ConfigureAwait(true);
 
         await _pdfExportStore.SaveAsync(path, bytes).ConfigureAwait(true);
     }

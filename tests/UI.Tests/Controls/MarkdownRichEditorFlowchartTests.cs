@@ -1,0 +1,125 @@
+using System.Linq;
+using Shouldly;
+using UI.Controls;
+using UI.Tests.TestDoubles;
+using UI.Tests.Wysiwyg;
+using Xunit;
+
+namespace UI.Tests.Controls;
+
+/// <summary>
+/// Tests for the Flowchart Builder write-back seam on the <see cref="MarkdownRichEditor"/> (INV-053):
+/// Insert replaces the Mermaid Diagram at the caret or inserts a new Code Block, Capturing canonical
+/// Markdown; opening the builder asks it with the diagram at the caret; and Cancel makes no edit.
+/// </summary>
+public sealed class MarkdownRichEditorFlowchartTests
+{
+    private const string NewDiagram = "flowchart LR\n    n1[\"New\"]";
+
+    [Fact]
+    public void InsertOrReplace_WithNoDiagramAtCaret_InsertsANewBlock_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "Some prose." };
+            var block = editor.Document.Blocks.FirstBlock!;
+            editor.Selection.Select(block.ContentStart, block.ContentStart);
+
+            editor.InsertOrReplaceDiagramAtCaret(NewDiagram);
+
+            editor.Markdown.ShouldContain("Some prose.");
+            editor.Markdown.ShouldContain("```mermaid");
+            editor.Markdown.ShouldContain("flowchart LR");
+            editor.Markdown.ShouldContain("n1[\"New\"]");
+        });
+    }
+
+    [Fact]
+    public void InsertOrReplace_WhenOpenedOnADiagram_ReplacesThatDiagram_AndCapturesCanonicalMarkdown_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "```mermaid\nflowchart TD\n    oldNode\n```" };
+            var block = editor.Document.Blocks.FirstBlock!;
+            editor.Selection.Select(block.ContentStart, block.ContentStart);
+
+            editor.InsertOrReplaceDiagramAtCaret(NewDiagram);
+
+            editor.Markdown.ShouldContain("n1[\"New\"]");
+            editor.Markdown.ShouldNotContain("oldNode"); // the old diagram was replaced, not appended
+            editor.Markdown.Split("```mermaid").Length.ShouldBe(2); // exactly one mermaid block remains
+        });
+    }
+
+    [Fact]
+    public void InsertedDiagram_RoundTripsAsAMermaidCodeBlock_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "Intro." };
+            var block = editor.Document.Blocks.FirstBlock!;
+            editor.Selection.Select(block.ContentStart, block.ContentStart);
+            editor.InsertOrReplaceDiagramAtCaret(NewDiagram);
+
+            // Move the caret into the freshly inserted diagram: its Diagram Preview source is that diagram.
+            var mermaidBlock = editor.Document.Blocks.ToList()[1];
+            editor.Selection.Select(mermaidBlock.ContentStart, mermaidBlock.ContentStart);
+
+            editor.CurrentDiagramSource.ShouldBe(NewDiagram);
+        });
+    }
+
+    [Fact]
+    public void OpenFlowchartBuilder_AsksTheBuilderWithTheDiagramAtCaret_AndInsertsItsResult_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var builder = new StubFlowchartBuilder(NewDiagram);
+            var editor = new MarkdownRichEditor
+            {
+                Markdown = "```mermaid\nflowchart TD\n    oldNode\n```",
+                FlowchartBuilder = builder,
+            };
+            var block = editor.Document.Blocks.FirstBlock!;
+            editor.Selection.Select(block.ContentStart, block.ContentStart);
+
+            editor.OpenFlowchartBuilderAtCaret();
+
+            builder.ReceivedExistingSource.ShouldBe("flowchart TD\n    oldNode");
+            editor.Markdown.ShouldContain("n1[\"New\"]");
+            editor.Markdown.ShouldNotContain("oldNode");
+        });
+    }
+
+    [Fact]
+    public void OpenFlowchartBuilder_WhenCancelled_MakesNoEdit_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var builder = new StubFlowchartBuilder(result: null);
+            var editor = new MarkdownRichEditor { Markdown = "Just prose.", FlowchartBuilder = builder };
+            var block = editor.Document.Blocks.FirstBlock!;
+            editor.Selection.Select(block.ContentStart, block.ContentStart);
+            var before = editor.Markdown;
+
+            editor.OpenFlowchartBuilderAtCaret();
+
+            builder.TimesAsked.ShouldBe(1);
+            editor.Markdown.ShouldBe(before);
+        });
+    }
+
+    [Fact]
+    public void OpenFlowchartBuilder_WithNoBuilderSet_MakesNoEdit_INV053()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "Just prose." };
+            var before = editor.Markdown;
+
+            editor.OpenFlowchartBuilderAtCaret();
+
+            editor.Markdown.ShouldBe(before);
+        });
+    }
+}

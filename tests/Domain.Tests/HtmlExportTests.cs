@@ -95,4 +95,45 @@ public sealed class HtmlExportTests
         HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title")
             .ShouldBe(HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title"));
     }
+
+    private static readonly RenderedOutput WithDiagram =
+        new("<pre><code class=\"language-mermaid\">graph TD\nA--&gt;B</code></pre>\n");
+
+    [Fact]
+    public void Compose_StandalonePage_WithAMermaidDiagram_EmbedsTheScript_INV049()
+    {
+        var page = HtmlExport.Compose(WithDiagram, ExportShape.StandalonePage, "Title", "MERMAID_LIB_CODE");
+
+        // The bundled script is embedded so the mermaid block renders in a browser...
+        page.ShouldContain("MERMAID_LIB_CODE");
+        // ...and the Rendered Output itself is still carried verbatim (INV-032 unbroken).
+        page.ShouldContain(WithDiagram.Html);
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_WithoutAMermaidDiagram_EmbedsNoScript_INV049()
+    {
+        // A document with no Mermaid Diagram never pays for the script.
+        HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title", "MERMAID_LIB_CODE")
+            .ShouldNotContain("MERMAID_LIB_CODE");
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_WithADiagram_ButNoScriptSupplied_EmbedsNoScript_INV049()
+    {
+        // Render stays pure: with no script supplied, the page carries the mermaid code block unrendered.
+        var page = HtmlExport.Compose(WithDiagram, ExportShape.StandalonePage, "Title", mermaidScript: null);
+
+        page.ShouldContain(WithDiagram.Html);
+        page.ShouldContain("language-mermaid");
+    }
+
+    [Fact]
+    public void Compose_HtmlFragment_WithAMermaidDiagram_IsTheRenderedOutputAlone_INV049()
+    {
+        // The Fragment carries no wrapper and therefore no script — the same Rendered Output either
+        // Export Shape carries (INV-032); the script lives only in the Standalone Page's wrapper.
+        HtmlExport.Compose(WithDiagram, ExportShape.HtmlFragment, "Title", "MERMAID_LIB_CODE")
+            .ShouldBe(WithDiagram.Html);
+    }
 }

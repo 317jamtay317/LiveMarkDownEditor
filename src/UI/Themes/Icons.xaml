@@ -101,6 +101,13 @@
     <Geometry x:Key="Icon.ToggleNavigationPanel">M3 4 H21 V20 H3 Z M9 4 V20</Geometry>
     <Geometry x:Key="Icon.ToggleSourcePanel">M3 4 H21 V20 H3 Z M15 4 V20</Geometry>
 
+    <!-- Preview Panel toggle: a small flowchart — two nodes and a connector — for the Diagram Preview. -->
+    <Geometry x:Key="Icon.TogglePreviewPanel">M4 5 H10 V9 H4 Z M14 15 H20 V19 H14 Z M10 7 H12 V17 H14</Geometry>
+
+    <!-- Flowchart Builder: two nodes joined by an elbow connector with an arrowhead — the graphical
+         node/arrow builder (INV-053). -->
+    <Geometry x:Key="Icon.Flowchart">M3 4 H9 V8 H3 Z M15 16 H21 V20 H15 Z M6 8 V13 H18 V16 M16.5 14 L18 16 L19.5 14</Geometry>
+
     <!-- Folder Workspace. Open Folder is a folder with a plus (open a whole folder as a workspace);
          the Folder Panel toggle is a left pane showing a file list, distinct from the Navigation
          Panel's plain divider. The node glyphs — a folder and a lined document — mark tree entries. -->

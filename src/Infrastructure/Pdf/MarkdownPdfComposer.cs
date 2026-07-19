@@ -1,3 +1,4 @@
+using Infrastructure.Markdown;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -30,10 +31,18 @@ internal sealed class MarkdownPdfComposer
 
     private readonly Document _document = new();
     private readonly Section _section;
+    private readonly IReadOnlyDictionary<string, PreparedDiagram> _diagrams;
 
     /// <summary>Creates a composer with the document styles the exported PDF uses.</summary>
-    public MarkdownPdfComposer()
+    /// <param name="diagrams">
+    /// The rendered Mermaid Diagram images, keyed by the diagram's source, to place where each
+    /// diagram's Code Block is (INV-050). A `mermaid` Code Block with no entry here falls back to its
+    /// source text as an ordinary Code Block. Defaults to none.
+    /// </param>
+    public MarkdownPdfComposer(IReadOnlyDictionary<string, PreparedDiagram>? diagrams = null)
     {
+        _diagrams = diagrams ?? new Dictionary<string, PreparedDiagram>();
+
         // "Normal" is a MigraDoc built-in style; it is always present.
         var normal = _document.Styles["Normal"]!;
         normal.Font.Name = BodyFont;
@@ -156,6 +165,15 @@ internal sealed class MarkdownPdfComposer
 
     private void WriteCodeBlock(CodeBlock code, double indentCm)
     {
+        // A Mermaid Diagram we have a rendered image for shows the picture, not its source text
+        // (INV-050); a `mermaid` block with no image falls through and writes the code as usual.
+        if (code is FencedCodeBlock fenced && MermaidBlocks.IsMermaid(fenced.Info)
+            && _diagrams.TryGetValue(MermaidBlocks.SourceOf(code), out var diagram))
+        {
+            WriteDiagramImage(diagram);
+            return;
+        }
+
         var paragraph = NewParagraph(indentCm + 0.2, quoted: false);
         paragraph.Format.Font.Name = CodeFont;
         paragraph.Format.Font.Size = 9.5;
@@ -172,6 +190,16 @@ internal sealed class MarkdownPdfComposer
 
             paragraph.AddText(code.Lines.Lines[i].Slice.ToString());
         }
+    }
+
+    // Places a rendered Mermaid Diagram image, scaled to fit the page width while keeping its aspect
+    // ratio. A diagram narrower than the usable width keeps its natural size (INV-050).
+    private void WriteDiagramImage(PreparedDiagram diagram)
+    {
+        var image = _section.AddImage(diagram.ImagePath);
+        image.LockAspectRatio = true;
+        var naturalCm = diagram.PixelWidth / 96.0 * 2.54;
+        image.Width = Unit.FromCentimeter(naturalCm > 0 ? Math.Min(UsableWidthCm, naturalCm) : UsableWidthCm);
     }
 
     private void WriteThematicBreak()

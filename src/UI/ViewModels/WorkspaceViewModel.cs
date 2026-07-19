@@ -28,6 +28,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
     private bool _isRestoring;
     private bool _isSourcePanelVisible;
+    private bool _isPreviewPanelVisible;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -36,6 +37,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
     /// <param name="documentPrinter">Sends the Visual Document to a printer for Print (INV-034).</param>
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
+    /// <param name="flowchartBuilder">Opens the Flowchart Builder for Open Flowchart Builder (INV-053).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
     /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
@@ -48,6 +50,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         ILinkPrompt linkPrompt,
         IDocumentPrinter documentPrinter,
         IMarkdownRenderer renderer,
+        IFlowchartBuilder flowchartBuilder,
         AppearanceViewModel appearance,
         ExportViewModel export,
         FolderWorkspaceViewModel folder,
@@ -61,6 +64,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+        FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
         Folder = folder ?? throw new ArgumentNullException(nameof(folder));
@@ -80,6 +84,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         OpenRecentCommand = new AsyncRelayCommand<string>(OpenRecentAsync);
         FollowLinkCommand = new AsyncRelayCommand<string>(FollowMarkdownLinkAsync);
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
+        TogglePreviewPanelCommand = new RelayCommand(TogglePreviewPanel);
 
         New();
     }
@@ -164,6 +169,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     public IMarkdownRenderer Renderer { get; }
 
     /// <summary>
+    /// The Flowchart Builder that Open Flowchart Builder opens (INV-053). Exposed so the View can hand
+    /// it to the <c>MarkdownRichEditor</c>, which owns the action but is composed in XAML rather than by
+    /// the container — the same reason <see cref="LinkPrompt"/> is exposed.
+    /// </summary>
+    public IFlowchartBuilder FlowchartBuilder { get; }
+
+    /// <summary>
     /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown
     /// alongside the Visual Document — is visible. Hidden until the user toggles it on.
     /// Presentation-only: toggling it never changes any Markdown Document (INV-014).
@@ -172,6 +184,17 @@ public sealed class WorkspaceViewModel : ObservableObject
     {
         get => _isSourcePanelVisible;
         private set => Set(ref _isSourcePanelVisible, value);
+    }
+
+    /// <summary>
+    /// Whether the Preview Panel — the live Diagram Preview of the Mermaid Diagram at the caret, shown
+    /// beside the Visual Document — is visible. Hidden until the user toggles it on. Presentation-only:
+    /// toggling it never changes any Markdown Document (INV-048).
+    /// </summary>
+    public bool IsPreviewPanelVisible
+    {
+        get => _isPreviewPanelVisible;
+        private set => Set(ref _isPreviewPanelVisible, value);
     }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
@@ -194,6 +217,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Shows the Source Panel if hidden, or hides it if shown.</summary>
     public ICommand ToggleSourcePanelCommand { get; }
+
+    /// <summary>Shows the Preview Panel if hidden, or hides it if shown.</summary>
+    public ICommand TogglePreviewPanelCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -398,6 +424,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     }
 
     private void ToggleSourcePanel() => IsSourcePanelVisible = !IsSourcePanelVisible;
+
+    private void TogglePreviewPanel() => IsPreviewPanelVisible = !IsPreviewPanelVisible;
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);

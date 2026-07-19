@@ -18,11 +18,11 @@ public sealed class FakePdfExporter : IPdfExporter
     public static byte[] BytesFor(string sourceText) => Encoding.UTF8.GetBytes($"PDF:{sourceText}");
 
     /// <inheritdoc />
-    public byte[] Export(MarkdownDocument document)
+    public Task<byte[]> ExportAsync(MarkdownDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
         Exported.Add(document.Source.Text);
-        return BytesFor(document.Source.Text);
+        return Task.FromResult(BytesFor(document.Source.Text));
     }
 }
