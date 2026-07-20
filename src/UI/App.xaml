@@ -12,6 +12,7 @@
                 <ResourceDictionary Source="Themes/Icons.xaml" />
                 <ResourceDictionary Source="Themes/Controls.xaml" />
                 <ResourceDictionary Source="Themes/Scrollbars.xaml" />
+                <ResourceDictionary Source="Controls/CommandTip.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />
                 <ResourceDictionary Source="Controls/EditorGutter.xaml" />
                 <ResourceDictionary Source="Controls/SourceGutter.xaml" />

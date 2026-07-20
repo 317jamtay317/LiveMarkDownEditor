@@ -40,33 +40,53 @@
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" ClipToBounds="True">
             <controls:CommandBarPanel Margin="8,6">
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="{Binding NewCommand}" ToolTip="New document (Ctrl+N)"
+                        Command="{Binding NewCommand}"
                         AutomationProperties.Name="New document">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="New document"
+                                             Detail="Start a new, empty document in a new tab." Gesture="Ctrl+N" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.New}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="{Binding OpenCommand}" ToolTip="Open a Markdown file (Ctrl+O)"
+                        Command="{Binding OpenCommand}"
                         AutomationProperties.Name="Open a Markdown file">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Open"
+                                             Detail="Open a Markdown file from your computer in a new tab." Gesture="Ctrl+O" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Open}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
                         Command="{Binding Folder.OpenFolderCommand}"
-                        ToolTip="Open a folder — browse its Markdown files as a tree"
                         AutomationProperties.Name="Open a folder">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Open folder"
+                                             Detail="Browse a folder's Markdown files as a tree in the side panel." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.OpenFolder}" />
                 </Button>
 
                 <!-- Open Recent: the recently opened or saved files, newest first (INV-037). -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="Open a recent file" AutomationProperties.Name="Open recent"
+                              AutomationProperties.Name="Open recent"
                               ItemsSource="{Binding RecentFiles}">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Open recent"
+                                                 Detail="Reopen a file you recently opened or saved." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.OpenRecent}" />
                         </MenuItem.Header>
                         <MenuItem.ItemContainerStyle>
                             <Style TargetType="MenuItem" BasedOn="{StaticResource CommandMenuEntry}">
                                 <Setter Property="Header" Value="{Binding}" />
+                                <!-- The full path on hover — themed by the implicit ToolTip style, and
+                                     shown even when disabled via the CommandMenuEntry base. A dynamic
+                                     list can't carry a shared CommandTip instance per item, so this
+                                     one leaf uses a plain (path) tooltip rather than a heading/detail. -->
+                                <Setter Property="ToolTip" Value="{Binding}" />
                                 <Setter Property="Command"
                                         Value="{Binding DataContext.OpenRecentCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
                                 <Setter Property="CommandParameter" Value="{Binding}" />
@@ -75,8 +95,12 @@
                     </MenuItem>
                 </Menu>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
-                        Command="{Binding SaveCommand}" ToolTip="Save (Ctrl+S)"
+                        Command="{Binding SaveCommand}"
                         AutomationProperties.Name="Save">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Save"
+                                             Detail="Save this document to its file." Gesture="Ctrl+S" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
                 </Button>
                 <!-- Export Menu: the ways a finished document leaves the editor, under one Command Icon.
@@ -84,8 +108,11 @@
                      gesture (bound on the window) and is not itself an Export (INV-034). -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="Export or print the document"
                               AutomationProperties.Name="Export">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Export"
+                                                 Detail="Export the document as HTML or PDF, or send it to a printer." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
                         </MenuItem.Header>
@@ -95,6 +122,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Export as HTML"
                                   Command="{Binding DataContext.Export.ExportHtmlCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   CommandParameter="{Binding DataContext.ActiveSession, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Export as HTML"
+                                                     Detail="Save the document as an HTML file — a standalone page or a fragment." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportHtml}" />
@@ -105,6 +136,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Export as PDF"
                                   Command="{Binding DataContext.Export.ExportPdfCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   CommandParameter="{Binding DataContext.ActiveSession, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Export as PDF"
+                                                     Detail="Save the document as a PDF file, re-laid-out from the Markdown." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExportPdf}" />
@@ -116,6 +151,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print"
                                   Command="controls:MarkdownEditingCommands.Print"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Print"
+                                                     Detail="Send the document to a printer, or to Microsoft Print to PDF." Gesture="Ctrl+P" />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Print}" />
@@ -132,58 +171,110 @@
                      near-identical glyphs would separate the levels far less than the words do. -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="Heading level — make the block at the caret a heading, or a paragraph again"
                               AutomationProperties.Name="Heading level">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Heading level"
+                                                 Detail="Make the current line a heading (1–6), or a normal paragraph again." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.SetHeadingLevel}" />
                         </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 1"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="1" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="1" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 1"
+                                                     Detail="Make the current line a top-level heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 2"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="2" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="2" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 2"
+                                                     Detail="Make the current line a level-2 heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 3"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="3" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="3" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 3"
+                                                     Detail="Make the current line a level-3 heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 4"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="4" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="4" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 4"
+                                                     Detail="Make the current line a level-4 heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 5"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="5" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="5" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 5"
+                                                     Detail="Make the current line a level-5 heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 6"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="6" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="6" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 6"
+                                                     Detail="Make the current line a level-6 heading." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <Separator />
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Paragraph"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="0" CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandParameter="0" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Paragraph"
+                                                     Detail="Turn the heading at the cursor back into normal text." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
 
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Bold (Ctrl+B)" AutomationProperties.Name="Bold"
+                        AutomationProperties.Name="Bold"
                         Command="EditingCommands.ToggleBold" CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Bold"
+                                             Detail="Make the selected text bold, or turn bold text back to normal." Gesture="Ctrl+B" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBold}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Italic (Ctrl+I)" AutomationProperties.Name="Italic"
+                        AutomationProperties.Name="Italic"
                         Command="EditingCommands.ToggleItalic" CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Italic"
+                                             Detail="Italicize the selected text, or turn italic text back to normal." Gesture="Ctrl+I" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleItalic}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Strikethrough — strike the selection through, or restore struck-through text"
                         AutomationProperties.Name="Strikethrough"
                         Command="controls:MarkdownEditingCommands.ToggleStrikethrough"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Strikethrough"
+                                             Detail="Draw a line through the selected text, or remove it." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleStrikethrough}" />
                 </Button>
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Code — selection becomes a code span (one line) or code block (whole/multiple lines); click inside code to remove it"
                         AutomationProperties.Name="Code"
                         Command="controls:MarkdownEditingCommands.ToggleCode"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Code"
+                                             Detail="Format the selection as code — inline on one line, a block across several. Click inside code to remove it." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleCode}" />
                 </Button>
 
@@ -191,14 +282,21 @@
                      stay words, like the Heading and Table dropdowns. -->
                 <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="List — turn the selected paragraphs into a list, or a list back into paragraphs"
                               AutomationProperties.Name="List">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="List"
+                                                 Detail="Turn the selected lines into a bulleted, numbered, or checklist — or back into paragraphs." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
                         </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Bulleted list"
                                   Command="controls:MarkdownEditingCommands.ToggleUnorderedList"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Bulleted list"
+                                                     Detail="Turn the selected lines into a bulleted list, or back into paragraphs." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleUnorderedList}" />
@@ -209,6 +307,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Numbered list"
                                   Command="controls:MarkdownEditingCommands.ToggleOrderedList"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Numbered list"
+                                                     Detail="Turn the selected lines into a numbered list, or back into paragraphs." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleOrderedList}" />
@@ -219,6 +321,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Checklist"
                                   Command="controls:MarkdownEditingCommands.ToggleTaskList"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Checklist"
+                                                     Detail="Turn the selected lines into a checklist with tickable boxes." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleTaskList}" />
@@ -234,52 +340,83 @@
                      OverflowGroup="Insert" (INV-054). CollapseOrder 1 collapses it after the View group. -->
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
-                        ToolTip="Insert link (Ctrl+K) — turn the selection into a link"
                         AutomationProperties.Name="Insert link"
                         Command="controls:MarkdownEditingCommands.InsertLink"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Insert link"
+                                             Detail="Turn the selection into a link, or insert a new one." Gesture="Ctrl+K" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
                 </Button>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
-                        ToolTip="Insert image" AutomationProperties.Name="Insert image"
+                        AutomationProperties.Name="Insert image"
                         Command="controls:MarkdownEditingCommands.InsertImage"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Insert image"
+                                             Detail="Insert an image from a file or web address." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
                 </Button>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
-                        ToolTip="Block quote — quote the blocks the selection touches, or unquote them"
                         AutomationProperties.Name="Block quote"
                         Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Block quote"
+                                             Detail="Quote the selected paragraphs, or unquote them." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
                 </Button>
                 <Menu Style="{StaticResource CommandMenu}"
                       controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="Insert a table, or grow the table at the caret"
                               AutomationProperties.Name="Table">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Table"
+                                                 Detail="Insert a table, or add a row or column to the table at the cursor." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Table}" />
                         </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Table"
                                   Command="controls:MarkdownEditingCommands.InsertTable"
-                                  CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add table"
+                                                     Detail="Insert a new three-column table at the cursor." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Row"
                                   Command="controls:MarkdownEditingCommands.AddTableRow"
-                                  CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add row"
+                                                     Detail="Add a row below the cursor's row in the current table." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Add Column"
                                   Command="controls:MarkdownEditingCommands.AddTableColumn"
-                                  CommandTarget="{Binding ElementName=Editor}" />
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add column"
+                                                     Detail="Add a column to the right of the cursor's column." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
-                        ToolTip="Flowchart builder — build a Mermaid flowchart graphically (Ctrl+Shift+D)"
                         AutomationProperties.Name="Flowchart builder"
                         Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Flowchart builder"
+                                             Detail="Build a Mermaid flowchart on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
                 </Button>
 
@@ -289,14 +426,21 @@
                       controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.IsOverflow="True"
                       controls:CommandBarPanel.CollapseOrder="1">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="Insert — a link, image, table, flowchart, or block quote"
                               AutomationProperties.Name="Insert">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Insert"
+                                                 Detail="Insert a link, image, table, flowchart, or block quote." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Insert}" />
                         </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Insert link"
                                   Command="controls:MarkdownEditingCommands.InsertLink"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Insert link"
+                                                     Detail="Turn the selection into a link, or insert a new one." Gesture="Ctrl+K" />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
@@ -307,6 +451,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Insert image"
                                   Command="controls:MarkdownEditingCommands.InsertImage"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Insert image"
+                                                     Detail="Insert an image from a file or web address." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
@@ -317,6 +465,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Block quote"
                                   Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Block quote"
+                                                     Detail="Quote the selected paragraphs, or unquote them." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
@@ -328,6 +480,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Table"
                                   Command="controls:MarkdownEditingCommands.InsertTable"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add table"
+                                                     Detail="Insert a new three-column table at the cursor." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Table}" />
@@ -338,6 +494,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Row"
                                   Command="controls:MarkdownEditingCommands.AddTableRow"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add row"
+                                                     Detail="Add a row below the cursor's row in the current table." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <TextBlock Text="Add row" Margin="32,0,0,0" VerticalAlignment="Center" />
                             </MenuItem.Header>
@@ -345,6 +505,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Column"
                                   Command="controls:MarkdownEditingCommands.AddTableColumn"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Add column"
+                                                     Detail="Add a column to the right of the cursor's column." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <TextBlock Text="Add column" Margin="32,0,0,0" VerticalAlignment="Center" />
                             </MenuItem.Header>
@@ -353,6 +517,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Flowchart builder"
                                   Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Flowchart builder"
+                                                     Detail="Build a Mermaid flowchart on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
@@ -370,8 +538,11 @@
                      they collapse to the View dropdown below (INV-054). CollapseOrder 0 collapses first. -->
                 <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
                         Command="{Binding Folder.ToggleFolderPanelCommand}"
-                        ToolTip="Toggle the folder panel"
                         AutomationProperties.Name="Toggle the folder panel">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Folder panel"
+                                             Detail="Show or hide the folder browser." />
+                    </Button.ToolTip>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
@@ -385,8 +556,11 @@
                 </Button>
                 <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
                         Command="{Binding SideDock.ToggleNavigationPanelCommand}"
-                        ToolTip="Toggle the navigation panel"
                         AutomationProperties.Name="Toggle the navigation panel">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Navigation panel"
+                                             Detail="Show or hide the document's outline (its headings)." />
+                    </Button.ToolTip>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
@@ -400,8 +574,11 @@
                 </Button>
                 <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
                         Command="{Binding ToggleSourcePanelCommand}"
-                        ToolTip="Toggle the raw Markdown source panel"
                         AutomationProperties.Name="Toggle the raw Markdown source panel">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Source panel"
+                                             Detail="Show or hide the raw Markdown source beside the editor." />
+                    </Button.ToolTip>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
@@ -415,8 +592,11 @@
                 </Button>
                 <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
                         Command="{Binding TogglePreviewPanelCommand}"
-                        ToolTip="Toggle the diagram preview panel"
                         AutomationProperties.Name="Toggle the diagram preview panel">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Diagram preview"
+                                             Detail="Show or hide the live preview of the selected diagram." />
+                    </Button.ToolTip>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
@@ -432,17 +612,24 @@
                            controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0" />
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
-                        ToolTip="Collapse all sections" AutomationProperties.Name="Collapse all sections"
+                        AutomationProperties.Name="Collapse all sections"
                         Command="controls:MarkdownEditingCommands.CollapseAllFolds"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Collapse all sections"
+                                             Detail="Fold every section so only its heading shows." />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
                 </Button>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
-                        ToolTip="Expand all sections (Ctrl+Shift+M)"
                         AutomationProperties.Name="Expand all sections"
                         Command="controls:MarkdownEditingCommands.ExpandAllFolds"
                         CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Expand all sections"
+                                             Detail="Unfold every folded section." Gesture="Ctrl+Shift+M" />
+                    </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
                 </Button>
 
@@ -452,14 +639,21 @@
                       controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.IsOverflow="True"
                       controls:CommandBarPanel.CollapseOrder="0">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
-                              ToolTip="View — show or hide the panels, and fold all sections"
                               AutomationProperties.Name="View">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="View"
+                                                 Detail="Show or hide the panels, and fold or unfold all sections." />
+                        </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.View}" />
                         </MenuItem.Header>
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the folder panel"
                                   IsChecked="{Binding DataContext.Folder.IsFolderPanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.Folder.ToggleFolderPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Folder panel"
+                                                     Detail="Show or hide the folder browser." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleFolderPanel}" />
@@ -470,6 +664,10 @@
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the navigation panel"
                                   IsChecked="{Binding DataContext.SideDock.IsNavigationTabVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.SideDock.ToggleNavigationPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Navigation panel"
+                                                     Detail="Show or hide the document's outline (its headings)." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleNavigationPanel}" />
@@ -480,6 +678,10 @@
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the raw Markdown source panel"
                                   IsChecked="{Binding DataContext.IsSourcePanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.ToggleSourcePanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Source panel"
+                                                     Detail="Show or hide the raw Markdown source beside the editor." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleSourcePanel}" />
@@ -490,6 +692,10 @@
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the diagram preview panel"
                                   IsChecked="{Binding DataContext.IsPreviewPanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.TogglePreviewPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Diagram preview"
+                                                     Detail="Show or hide the live preview of the selected diagram." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
@@ -501,6 +707,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Collapse all sections"
                                   Command="controls:MarkdownEditingCommands.CollapseAllFolds"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Collapse all sections"
+                                                     Detail="Fold every section so only its heading shows." />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
@@ -511,6 +721,10 @@
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Expand all sections"
                                   Command="controls:MarkdownEditingCommands.ExpandAllFolds"
                                   CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Expand all sections"
+                                                     Detail="Unfold every folded section." Gesture="Ctrl+Shift+M" />
+                            </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
@@ -524,8 +738,11 @@
                 <!-- Theme toggle: shows the theme you'd switch to. -->
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconCommandButton}"
                         Command="{Binding Appearance.ToggleThemeCommand}"
-                        ToolTip="Toggle light / dark theme"
                         AutomationProperties.Name="Toggle light or dark theme">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Theme"
+                                             Detail="Switch between the light and dark theme." />
+                    </Button.ToolTip>
                     <Path>
                         <Path.Style>
                             <Style TargetType="Path" BasedOn="{StaticResource CommandIcon}">
@@ -547,8 +764,12 @@
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="+"
-                        FontSize="18" Margin="4,4,8,4" Command="{Binding NewCommand}"
-                        ToolTip="New document (Ctrl+N)" />
+                        FontSize="18" Margin="4,4,8,4" Command="{Binding NewCommand}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="New document"
+                                             Detail="Start a new, empty document in a new tab." Gesture="Ctrl+N" />
+                    </Button.ToolTip>
+                </Button>
                 <ListBox Style="{StaticResource TabStrip}" ItemContainerStyle="{StaticResource TabItem}"
                          ItemsSource="{Binding Sessions}"
                          SelectedItem="{Binding ActiveSession, Mode=TwoWay}">
@@ -560,9 +781,13 @@
                                          Visibility="{Binding HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                 <Button Style="{StaticResource TabCloseButton}" Content="&#x2715;"
-                                        ToolTip="Close (Ctrl+W)"
                                         Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                        CommandParameter="{Binding}" />
+                                        CommandParameter="{Binding}">
+                                    <Button.ToolTip>
+                                        <controls:CommandTip Heading="Close tab"
+                                                             Detail="Close this document. You'll be asked before losing any unsaved edits." Gesture="Ctrl+W" />
+                                    </Button.ToolTip>
+                                </Button>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -580,8 +805,11 @@
                     <!-- View Difference: informational, so it precedes the two resolving choices. It
                          toggles the Difference Overlay and resolves nothing itself (INV-021). The
                          Content is set through the Style so the DataTrigger can swap it. -->
-                    <Button Command="{Binding ActiveSession.ViewDifferenceCommand}" Margin="4,0"
-                            ToolTip="Compare your unsaved edits with the file on disk">
+                    <Button Command="{Binding ActiveSession.ViewDifferenceCommand}" Margin="4,0">
+                        <Button.ToolTip>
+                            <controls:CommandTip Heading="View difference"
+                                                 Detail="Compare your unsaved edits with the version on disk." />
+                        </Button.ToolTip>
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
                                 <Setter Property="Content" Value="View difference" />
@@ -595,9 +823,19 @@
                         </Button.Style>
                     </Button>
                     <Button Content="Keep my edits" Style="{StaticResource CommandButton}"
-                            Command="{Binding ActiveSession.KeepMyEditsCommand}" Margin="4,0" />
+                            Command="{Binding ActiveSession.KeepMyEditsCommand}" Margin="4,0">
+                        <Button.ToolTip>
+                            <controls:CommandTip Heading="Keep my edits"
+                                                 Detail="Keep your unsaved edits and ignore the change made on disk." />
+                        </Button.ToolTip>
+                    </Button>
                     <Button Content="Reload from disk" Style="{StaticResource CommandButton}"
-                            Command="{Binding ActiveSession.ReloadFromDiskCommand}" Margin="4,0" />
+                            Command="{Binding ActiveSession.ReloadFromDiskCommand}" Margin="4,0">
+                        <Button.ToolTip>
+                            <controls:CommandTip Heading="Reload from disk"
+                                                 Detail="Discard your unsaved edits and load the file's version from disk." />
+                        </Button.ToolTip>
+                    </Button>
                 </StackPanel>
                 <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
                            Foreground="{DynamicResource ConflictTextBrush}"
@@ -627,8 +865,11 @@
                         <StackPanel Orientation="Horizontal" Margin="6,6,6,0">
                             <Button Command="{Binding SideDock.SelectFolderTabCommand}"
                                     Visibility="{Binding SideDock.IsFolderTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                    ToolTip="Folder — the open folder's Markdown files"
                                     AutomationProperties.Name="Folder tab">
+                                <Button.ToolTip>
+                                    <controls:CommandTip Heading="Folder"
+                                                         Detail="Show the open folder's Markdown files." />
+                                </Button.ToolTip>
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
                                         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
@@ -651,8 +892,11 @@
                             </Button>
                             <Button Command="{Binding SideDock.SelectNavigationTabCommand}"
                                     Visibility="{Binding SideDock.IsNavigationTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                    ToolTip="Outline — the document's headings"
                                     AutomationProperties.Name="Outline tab">
+                                <Button.ToolTip>
+                                    <controls:CommandTip Heading="Outline"
+                                                         Detail="Show the list of the document's headings." />
+                                </Button.ToolTip>
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource CommandButton}">
                                         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
@@ -697,7 +941,11 @@
                                 <Button HorizontalAlignment="Right" Margin="0,2,8,0" Style="{StaticResource IconButton}"
                                         Command="{Binding Folder.RefreshCommand}"
                                         Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        ToolTip="Refresh the folder" AutomationProperties.Name="Refresh the folder">
+                                        AutomationProperties.Name="Refresh the folder">
+                                    <Button.ToolTip>
+                                        <controls:CommandTip Heading="Refresh"
+                                                             Detail="Rescan the open folder for added, removed, or renamed files." />
+                                    </Button.ToolTip>
                                     <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
                                           Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
                                           StrokeLineJoin="Round" Data="{StaticResource Icon.Refresh}" />
@@ -893,17 +1141,29 @@
                         <Rectangle Style="{StaticResource CommandSeparator}" />
 
                         <Button Style="{StaticResource IconButton}" Content="&#x2191;" FontSize="13"
-                                ToolTip="Previous match (Shift+Enter)"
                                 Command="controls:MarkdownEditingCommands.FindPrevious"
-                                CommandTarget="{Binding ElementName=Editor}" />
+                                CommandTarget="{Binding ElementName=Editor}">
+                            <Button.ToolTip>
+                                <controls:CommandTip Heading="Previous match"
+                                                     Detail="Select the previous match." Gesture="Shift+Enter" />
+                            </Button.ToolTip>
+                        </Button>
                         <Button Style="{StaticResource IconButton}" Content="&#x2193;" FontSize="13"
-                                ToolTip="Next match (Enter)"
                                 Command="controls:MarkdownEditingCommands.FindNext"
-                                CommandTarget="{Binding ElementName=Editor}" />
+                                CommandTarget="{Binding ElementName=Editor}">
+                            <Button.ToolTip>
+                                <controls:CommandTip Heading="Next match"
+                                                     Detail="Select the next match." Gesture="Enter" />
+                            </Button.ToolTip>
+                        </Button>
                         <Button Style="{StaticResource IconButton}" Content="&#x2715;" FontSize="12"
-                                ToolTip="Close (Esc)"
                                 Command="controls:MarkdownEditingCommands.HideFind"
-                                CommandTarget="{Binding ElementName=Editor}" />
+                                CommandTarget="{Binding ElementName=Editor}">
+                            <Button.ToolTip>
+                                <controls:CommandTip Heading="Close"
+                                                     Detail="Close the find bar." Gesture="Esc" />
+                            </Button.ToolTip>
+                        </Button>
                     </StackPanel>
 
                     <!-- Replace Row: shown only when the Find Bar was opened for Replace (Ctrl+H),
@@ -923,13 +1183,21 @@
                             </TextBox>
 
                             <Button Style="{StaticResource FindBarButton}" Content="Replace" Margin="8,0,0,0"
-                                    ToolTip="Replace the current match (Enter)"
                                     Command="controls:MarkdownEditingCommands.Replace"
-                                    CommandTarget="{Binding ElementName=Editor}" />
+                                    CommandTarget="{Binding ElementName=Editor}">
+                                <Button.ToolTip>
+                                    <controls:CommandTip Heading="Replace"
+                                                         Detail="Replace the current match and move to the next." Gesture="Enter" />
+                                </Button.ToolTip>
+                            </Button>
                             <Button Style="{StaticResource FindBarButton}" Content="Replace all"
-                                    ToolTip="Replace every match, including any inside collapsed sections"
                                     Command="controls:MarkdownEditingCommands.ReplaceAll"
-                                    CommandTarget="{Binding ElementName=Editor}" />
+                                    CommandTarget="{Binding ElementName=Editor}">
+                                <Button.ToolTip>
+                                    <controls:CommandTip Heading="Replace all"
+                                                         Detail="Replace every match, including any inside collapsed sections." />
+                                </Button.ToolTip>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
