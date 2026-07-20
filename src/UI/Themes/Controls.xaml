@@ -9,6 +9,9 @@
     <!-- A flat text button for the command bar (New / Open / Save). -->
     <Style x:Key="CommandButton" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <!-- Show the Command Tip even while the command is disabled: a greyed-out action is exactly
+             when the user most wants to know what it is and why it is unavailable. -->
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Margin" Value="1,0" />
@@ -131,6 +134,7 @@
     <!-- The dropdown's top-level item: CommandButton look plus a chevron, submenu below. -->
     <Style x:Key="CommandMenuItem" TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="False" />
@@ -177,6 +181,7 @@
     <!-- One entry within a command-bar dropdown. Disabled entries fade, matching CommandButton. -->
     <Style x:Key="CommandMenuEntry" TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
@@ -326,6 +331,47 @@
                             <Setter Property="Opacity" Value="0.5" />
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The default look for a tooltip. WPF's stock ToolTip is a pale, system-drawn popup that ignores
+         the palette — in the dark theme it reads as a glaring near-white box, exactly like the stock
+         TextBox and ComboBox above. This implicit style paints it from the palette instead, so a bare
+         string tooltip (the Editor Gutter's Fold Toggle, the Flowchart Builder's connector handle) is
+         themed with everything else. The Command Bar's richer tooltips are Command Tips, which carry
+         their own template (Controls/CommandTip.xaml); this styles the plain-string ones. -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="MaxWidth" Value="300" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <!-- Wrap a long hint rather than clip it at MaxWidth. -->
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" Opacity="0.22" BlurRadius="14" ShadowDepth="2" />
+                        </Border.Effect>
+                        <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+                    </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -567,6 +613,7 @@
 
     <!-- The small "×" that closes a Tab; turns red on hover. -->
     <Style x:Key="TabCloseButton" TargetType="Button">
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
         <Setter Property="Width" Value="18" />
         <Setter Property="Height" Value="18" />
         <Setter Property="Margin" Value="8,0,0,0" />

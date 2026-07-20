@@ -1,7 +1,14 @@
 <Application x:Class="UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:UI.Controls">
+             xmlns:controls="clr-namespace:UI.Controls"
+             ShutdownMode="OnMainWindowClose">
+    <!-- Quit when the editor window closes, not when the last window does. The Mermaid image renderer
+         (WebView2MermaidImageRenderer) keeps a hidden, off-screen host Window alive for the life of the
+         app to render diagrams; under the default OnLastWindowClose that helper window would keep the
+         process running after the user closed the editor. OnMainWindowClose ties the app's lifetime to
+         the one window the user actually sees — Program runs the app with Run(window), which makes that
+         window the MainWindow. -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -12,6 +19,7 @@
                 <ResourceDictionary Source="Themes/Icons.xaml" />
                 <ResourceDictionary Source="Themes/Controls.xaml" />
                 <ResourceDictionary Source="Themes/Scrollbars.xaml" />
+                <ResourceDictionary Source="Controls/CommandTip.xaml" />
                 <ResourceDictionary Source="Controls/MarkdownRichEditor.xaml" />
                 <ResourceDictionary Source="Controls/EditorGutter.xaml" />
                 <ResourceDictionary Source="Controls/SourceGutter.xaml" />
