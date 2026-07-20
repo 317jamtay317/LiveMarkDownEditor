@@ -160,6 +160,26 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands));
 
     /// <summary>
+    /// The Remove Row Formatting Action: deletes the caret's row from its Table (INV-019). Available
+    /// only while the caret is inside a Table and not in its header row — a pipe table is nothing
+    /// without its header.
+    /// </summary>
+    public static RoutedUICommand RemoveTableRow { get; } = new(
+        "Remove row",
+        nameof(RemoveTableRow),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Remove Column Formatting Action: deletes the caret's column from its Table, shrinking
+    /// every row and dropping that column's alignment (INV-019). Available only while the caret is
+    /// inside a Table with more than one column.
+    /// </summary>
+    public static RoutedUICommand RemoveTableColumn { get; } = new(
+        "Remove column",
+        nameof(RemoveTableColumn),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
     /// The Toggle Unordered List Formatting Action: the selected paragraphs become an Unordered List,
     /// an Unordered List becomes plain paragraphs again, and an Ordered List is converted rather than
     /// removed (INV-023).

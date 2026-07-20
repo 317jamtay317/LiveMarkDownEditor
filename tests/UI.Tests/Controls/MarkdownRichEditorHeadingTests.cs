@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Shouldly;
 using UI.Controls;
 using UI.Tests.Wysiwyg;
@@ -150,6 +151,52 @@ public sealed class MarkdownRichEditorHeadingTests
             MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: level, target: editor);
 
             editor.Markdown.ShouldBe("## Introduction");
+        });
+    }
+
+    [Theory]
+    [InlineData(Key.D0, 0)]
+    [InlineData(Key.D1, 1)]
+    [InlineData(Key.D2, 2)]
+    [InlineData(Key.D3, 3)]
+    [InlineData(Key.D4, 4)]
+    [InlineData(Key.D5, 5)]
+    [InlineData(Key.D6, 6)]
+    public void SetHeadingLevel_IsBoundToACtrlDigitGesture_INV027(Key key, int level)
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor();
+
+            var binding = editor.InputBindings
+                .OfType<KeyBinding>()
+                .SingleOrDefault(b => b.Key == key && b.Modifiers == ModifierKeys.Control);
+
+            binding.ShouldNotBeNull();
+            binding.Command.ShouldBeSameAs(MarkdownEditingCommands.SetHeadingLevel);
+
+            // A RoutedUICommand's own KeyGesture carries no parameter, so the level has to ride on
+            // the KeyBinding — without it the gesture would name no level and releveled nothing.
+            binding.CommandParameter.ShouldBe(level);
+        });
+    }
+
+    [Fact]
+    public void CtrlZero_TurnsAHeadingBackIntoAParagraph_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "## Introduction" };
+            VisualDocumentText.PlaceCaretIn(editor, "Introduction");
+
+            // Paragraph is a Heading's only exit, so its gesture must reach it as directly as the
+            // levels' gestures reach them.
+            var binding = editor.InputBindings
+                .OfType<KeyBinding>()
+                .Single(b => b.Key == Key.D0 && b.Modifiers == ModifierKeys.Control);
+            ((RoutedCommand)binding.Command).Execute(binding.CommandParameter, editor);
+
+            editor.Markdown.ShouldBe("Introduction");
         });
     }
 

@@ -302,6 +302,14 @@ public sealed class MarkdownRichEditor : RichTextBox
             (_, _) => AddTableColumnAtCaret(),
             (_, e) => e.CanExecute = IsCaretInTable));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.RemoveTableRow,
+            (_, _) => RemoveTableRowAtCaret(),
+            (_, e) => e.CanExecute = TableEditing.CanRemoveRow(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.RemoveTableColumn,
+            (_, _) => RemoveTableColumnAtCaret(),
+            (_, e) => e.CanExecute = TableEditing.CanRemoveColumn(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleUnorderedList, (_, _) => ToggleUnorderedListAtSelection()));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleOrderedList, (_, _) => ToggleOrderedListAtSelection()));
@@ -337,6 +345,8 @@ public sealed class MarkdownRichEditor : RichTextBox
             MarkdownEditingCommands.ReplaceAll, (_, _) => ReplaceAllMatches(), CanReplaceAll));
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.OpenFlowchartBuilder, (_, _) => OpenFlowchartBuilderAtCaret()));
+
+        RegisterHeadingLevelGestures();
 
         // Moving the caret can change which Section the user is editing within; the Navigation Panel
         // listens to keep the Current Section's Outline Entry highlighted.
@@ -1074,6 +1084,22 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <param name="level">The Heading Level to set, or the Paragraph level to clear the Heading.</param>
     public void SetHeadingLevelAtCaret(int level) => HeadingFormatting.SetLevel(this, level);
 
+    // Ctrl+1..Ctrl+6 set a Heading Level and Ctrl+0 clears it back to a paragraph. Set Heading Level
+    // takes the level as a command parameter, and a RoutedUICommand's own KeyGesture carries none —
+    // so the gestures ride on KeyBindings, which do. Paragraph is a Heading's only exit (the action
+    // never toggles), so it is bound as directly as the levels it undoes (INV-027).
+    private void RegisterHeadingLevelGestures()
+    {
+        var keys = new[] { Key.D0, Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6 };
+        for (var level = 0; level < keys.Length; level++)
+        {
+            InputBindings.Add(new KeyBinding(MarkdownEditingCommands.SetHeadingLevel, keys[level], ModifierKeys.Control)
+            {
+                CommandParameter = level,
+            });
+        }
+    }
+
     // The Heading Level Picker's XAML passes its CommandParameter as a string ("2"), while a test or
     // caller passes an int — so the parameter is resolved to a level before the action runs. An
     // unreadable parameter names no level, and so relevels nothing.
@@ -1107,6 +1133,19 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// caret's column, extending every row (INV-019). No-op while the caret is not inside a Table.
     /// </summary>
     public void AddTableColumnAtCaret() => TableEditing.AddColumn(this);
+
+    /// <summary>
+    /// Applies the Remove Row Formatting Action: deletes the caret's row from its Table (INV-019).
+    /// No-op while the caret is not inside a Table, or is in its header row.
+    /// </summary>
+    public void RemoveTableRowAtCaret() => TableEditing.RemoveRow(this);
+
+    /// <summary>
+    /// Applies the Remove Column Formatting Action: deletes the caret's column from its Table,
+    /// shrinking every row and dropping that column's alignment (INV-019). No-op while the caret is
+    /// not inside a Table, or the Table has only one column.
+    /// </summary>
+    public void RemoveTableColumnAtCaret() => TableEditing.RemoveColumn(this);
 
     /// <summary>
     /// Applies the Toggle Unordered List Formatting Action at the current selection: the selected

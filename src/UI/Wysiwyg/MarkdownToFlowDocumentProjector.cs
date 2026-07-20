@@ -58,6 +58,15 @@ public sealed class MarkdownToFlowDocumentProjector
             }
         }
 
+        // A document ending in a Block Island — a Table or a Mermaid Diagram — leaves the caret
+        // nowhere to type below it, so it gets the same trailing line an inserted one does
+        // (INV-055). Capture drops that empty paragraph again, so this costs the source nothing and
+        // the projection stays a pure function of the text (INV-003).
+        if (document.Blocks.LastBlock is Table or BlockUIContainer)
+        {
+            VisualDocumentTraversal.EnsureParagraphAfter(document, document.Blocks.LastBlock);
+        }
+
         return document;
     }
 

@@ -16,9 +16,9 @@
     <ROW Property="ProductCode" Value="1033:{2721C391-BDD1-4393-AEB8-64A190065170} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Mark Down Editor"/>
-    <ROW Property="ProductVersion" Value="1.0.0" Options="32"/>
+    <ROW Property="ProductVersion" Value="1.1.1" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
-    <ROW Property="UpgradeCode" Value="{736270AE-C706-4210-A0EE-19B5EAE386FD}"/>
+    <ROW Property="UpgradeCode" Value="{2CABF2D6-A1F3-4328-83EB-5E055027B2B1}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
     <ROW Property="WindowsType9XDisplay" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
     <ROW Property="WindowsTypeNT40" MultiBuildValue="DefaultBuild:Windows NT 4.0" ValueLocId="-"/>
@@ -32,20 +32,107 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
     <ROW Directory="APPDIR" Directory_Parent="TARGETDIR" DefaultDir="APPDIR:." IsPseudoRoot="1" DirectoryOptions="3"/>
+    <ROW Directory="Assets_Dir" Directory_Parent="APPDIR" DefaultDir="Assets" DirectoryOptions="3"/>
+    <ROW Directory="AutoLaunchProtocolsComponent_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="AUTOLA~1|AutoLaunchProtocolsComponent" DirectoryOptions="3"/>
+    <ROW Directory="AutofillAiModelCache_Dir" Directory_Parent="Default_Dir" DefaultDir="AUTOFI~1|AutofillAiModelCache" DirectoryOptions="3"/>
+    <ROW Directory="AutofillStrikeDatabase_Dir" Directory_Parent="Default_Dir" DefaultDir="AUTOFI~2|AutofillStrikeDatabase" DirectoryOptions="3"/>
+    <ROW Directory="AvailabilityDB_Dir" Directory_Parent="FeatureEngagementTracker_Dir" DefaultDir="AVAILA~1|AvailabilityDB" DirectoryOptions="3"/>
+    <ROW Directory="BudgetDatabase_Dir" Directory_Parent="Default_Dir" DefaultDir="BUDGET~1|BudgetDatabase" DirectoryOptions="3"/>
+    <ROW Directory="Cache_Data_Dir" Directory_Parent="Cache_Dir" DefaultDir="CACHE_~1|Cache_Data" DirectoryOptions="3"/>
+    <ROW Directory="Cache_Dir" Directory_Parent="Default_Dir" DefaultDir="Cache" DirectoryOptions="3"/>
+    <ROW Directory="CertificateRevocation_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="CERTIF~1|CertificateRevocation" DirectoryOptions="3"/>
+    <ROW Directory="ClientCertificates_Dir" Directory_Parent="Default_Dir" DefaultDir="CLIENT~1|ClientCertificates" DirectoryOptions="3"/>
+    <ROW Directory="CodeCache_Dir" Directory_Parent="Default_Dir" DefaultDir="CODECA~1|Code Cache" DirectoryOptions="3"/>
+    <ROW Directory="Crashpad_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="Crashpad" DirectoryOptions="3"/>
+    <ROW Directory="DawnGraphiteCache_1_Dir" Directory_Parent="GPUPersistentCache_Dir" DefaultDir="DAWNGR~1|DawnGraphiteCache" DirectoryOptions="3"/>
+    <ROW Directory="DawnGraphiteCache_Dir" Directory_Parent="Default_Dir" DefaultDir="DAWNGR~1|DawnGraphiteCache" DirectoryOptions="3"/>
+    <ROW Directory="DawnWebGPUCache_Dir" Directory_Parent="Default_Dir" DefaultDir="DAWNWE~1|DawnWebGPUCache" DirectoryOptions="3"/>
+    <ROW Directory="Default_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="Default" DirectoryOptions="3"/>
     <ROW Directory="DesktopFolder" Directory_Parent="TARGETDIR" DefaultDir="DESKTO~1|DesktopFolder" IsPseudoRoot="1"/>
+    <ROW Directory="EBWebView_Dir" Directory_Parent="UI.exe.WebView2_Dir" DefaultDir="EBWEBV~1|EBWebView" DirectoryOptions="3"/>
+    <ROW Directory="EdgeJourneys_Dir" Directory_Parent="Default_Dir" DefaultDir="EDGEJO~1|EdgeJourneys" DirectoryOptions="3"/>
+    <ROW Directory="EdgeSessions_Dir" Directory_Parent="Default_Dir" DefaultDir="EDGESE~1|EdgeSessions" DirectoryOptions="3"/>
+    <ROW Directory="EventDB_Dir" Directory_Parent="FeatureEngagementTracker_Dir" DefaultDir="EventDB" DirectoryOptions="3"/>
+    <ROW Directory="ExtensionRules_Dir" Directory_Parent="Default_Dir" DefaultDir="EXTENS~1|Extension Rules" DirectoryOptions="3"/>
+    <ROW Directory="ExtensionScripts_Dir" Directory_Parent="Default_Dir" DefaultDir="EXTENS~2|Extension Scripts" DirectoryOptions="3"/>
+    <ROW Directory="ExtensionState_Dir" Directory_Parent="Default_Dir" DefaultDir="EXTENS~3|Extension State" DirectoryOptions="3"/>
+    <ROW Directory="FeatureEngagementTracker_Dir" Directory_Parent="Default_Dir" DefaultDir="FEATUR~1|Feature Engagement Tracker" DirectoryOptions="3"/>
+    <ROW Directory="GPUCache_Dir" Directory_Parent="Default_Dir" DefaultDir="GPUCache" DirectoryOptions="3"/>
+    <ROW Directory="GPUPersistentCache_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="GPUPER~1|GPUPersistentCache" DirectoryOptions="3"/>
+    <ROW Directory="GrShaderCache_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="GRSHAD~1|GrShaderCache" DirectoryOptions="3"/>
+    <ROW Directory="IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3A_Dir" Directory_Parent="DawnGraphiteCache_1_Dir" DefaultDir="IJOGKR~1|IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3AK" DirectoryOptions="3"/>
+    <ROW Directory="LevelDB_Dir" Directory_Parent="SyncData_Dir" DefaultDir="LevelDB" DirectoryOptions="3"/>
+    <ROW Directory="LocalStorage_Dir" Directory_Parent="Default_Dir" DefaultDir="LOCALS~1|Local Storage" DirectoryOptions="3"/>
+    <ROW Directory="MEIPreload_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="MEIPRE~1|MEIPreload" DirectoryOptions="3"/>
+    <ROW Directory="Mermaid_Dir" Directory_Parent="Assets_Dir" DefaultDir="Mermaid" DirectoryOptions="3"/>
+    <ROW Directory="Network_Dir" Directory_Parent="Default_Dir" DefaultDir="Network" DirectoryOptions="3"/>
+    <ROW Directory="No_Vary_Search_Dir" Directory_Parent="Cache_Dir" DefaultDir="NO_VAR~1|No_Vary_Search" DirectoryOptions="3"/>
+    <ROW Directory="OriginTrials_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="ORIGIN~1|OriginTrials" DirectoryOptions="3"/>
+    <ROW Directory="PKIMetadata_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="PKIMET~1|PKIMetadata" DirectoryOptions="3"/>
+    <ROW Directory="PersistentOriginTrials_Dir" Directory_Parent="Default_Dir" DefaultDir="PERSIS~1|PersistentOriginTrials" DirectoryOptions="3"/>
+    <ROW Directory="RemoteData_Dir" Directory_Parent="SmartScreen_Dir" DefaultDir="REMOTE~1|RemoteData" DirectoryOptions="3"/>
     <ROW Directory="SHORTCUTDIR" Directory_Parent="TARGETDIR" DefaultDir="SHORTC~1|SHORTCUTDIR" IsPseudoRoot="1"/>
+    <ROW Directory="SafeBrowsingNetwork_Dir" Directory_Parent="Default_Dir" DefaultDir="SAFEBR~1|Safe Browsing Network" DirectoryOptions="3"/>
+    <ROW Directory="SessionStorage_Dir" Directory_Parent="Default_Dir" DefaultDir="SESSIO~1|Session Storage" DirectoryOptions="3"/>
+    <ROW Directory="Sessions_Dir" Directory_Parent="Default_Dir" DefaultDir="Sessions" DirectoryOptions="3"/>
+    <ROW Directory="ShaderCache_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="SHADER~1|ShaderCache" DirectoryOptions="3"/>
+    <ROW Directory="SharedDictionary_Dir" Directory_Parent="Default_Dir" DefaultDir="SHARED~1|Shared Dictionary" DirectoryOptions="3"/>
+    <ROW Directory="SiteCharacteristicsDatabase_Dir" Directory_Parent="Default_Dir" DefaultDir="SITECH~1|Site Characteristics Database" DirectoryOptions="3"/>
+    <ROW Directory="SmartScreen_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="SMARTS~1|SmartScreen" DirectoryOptions="3"/>
+    <ROW Directory="SpeechRecognition_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="SPEECH~1|Speech Recognition" DirectoryOptions="3"/>
+    <ROW Directory="SubresourceFilter_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="SUBRES~1|Subresource Filter" DirectoryOptions="3"/>
+    <ROW Directory="SyncData_Dir" Directory_Parent="Default_Dir" DefaultDir="SYNCDA~1|Sync Data" DirectoryOptions="3"/>
     <ROW Directory="TARGETDIR" DefaultDir="SourceDir"/>
+    <ROW Directory="TrustProtectionLists_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="TRUSTP~1|Trust Protection Lists" DirectoryOptions="3"/>
+    <ROW Directory="TrustTokenKeyCommitments_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="TRUSTT~1|TrustTokenKeyCommitments" DirectoryOptions="3"/>
+    <ROW Directory="UI.exe.WebView2_Dir" Directory_Parent="APPDIR" DefaultDir="UIEXE~1.WEB|UI.exe.WebView2" DirectoryOptions="3"/>
+    <ROW Directory="UnindexedRules_Dir" Directory_Parent="SubresourceFilter_Dir" DefaultDir="UNINDE~1|Unindexed Rules" DirectoryOptions="3"/>
+    <ROW Directory="WidevineCdm_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="WIDEVI~1|WidevineCdm" DirectoryOptions="3"/>
+    <ROW Directory="__1_Dir" Directory_Parent="CertificateRevocation_Dir" DefaultDir="649820~1.4|6498.2025.9.4" DirectoryOptions="3"/>
+    <ROW Directory="__2_Dir" Directory_Parent="hyphendata_Dir" DefaultDir="120060~1.0|120.0.6050.0" DirectoryOptions="3"/>
+    <ROW Directory="__3_Dir" Directory_Parent="OriginTrials_Dir" DefaultDir="001~1.7|0.0.1.7" DirectoryOptions="3"/>
+    <ROW Directory="__4_Dir" Directory_Parent="PKIMetadata_Dir" DefaultDir="4600~1.0|46.0.0.0" DirectoryOptions="3"/>
+    <ROW Directory="__5_Dir" Directory_Parent="SpeechRecognition_Dir" DefaultDir="1150~1.1|1.15.0.1" DirectoryOptions="3"/>
+    <ROW Directory="__6_Dir" Directory_Parent="TrustTokenKeyCommitments_Dir" DefaultDir="202632~1.1|2026.3.23.1" DirectoryOptions="3"/>
+    <ROW Directory="__Dir" Directory_Parent="AutoLaunchProtocolsComponent_Dir" DefaultDir="100~1.10|1.0.0.10" DirectoryOptions="3"/>
+    <ROW Directory="_metadata_1_Dir" Directory_Parent="__6_Dir" DefaultDir="_METAD~1|_metadata" DirectoryOptions="3"/>
+    <ROW Directory="_metadata_Dir" Directory_Parent="__2_Dir" DefaultDir="_METAD~1|_metadata" DirectoryOptions="3"/>
+    <ROW Directory="attachments_Dir" Directory_Parent="Crashpad_Dir" DefaultDir="ATTACH~1|attachments" DirectoryOptions="3"/>
+    <ROW Directory="blob_storage_Dir" Directory_Parent="Default_Dir" DefaultDir="BLOB_S~1|blob_storage" DirectoryOptions="3"/>
+    <ROW Directory="cache_Dir" Directory_Parent="SharedDictionary_Dir" DefaultDir="cache" DirectoryOptions="3"/>
+    <ROW Directory="commerce_subscription_db_Dir" Directory_Parent="Default_Dir" DefaultDir="COMMER~1|commerce_subscription_db" DirectoryOptions="3"/>
+    <ROW Directory="component_crx_cache_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="COMPON~1|component_crx_cache" DirectoryOptions="3"/>
     <ROW Directory="cs_Dir" Directory_Parent="APPDIR" DefaultDir="cs" DirectoryOptions="3"/>
+    <ROW Directory="d27fd29ce4068a1770cbf538b934e_Dir" Directory_Parent="blob_storage_Dir" DefaultDir="881D27~1|881d27fd-29ce-4068-a177-0cbf538b934e" DirectoryOptions="3"/>
     <ROW Directory="de_Dir" Directory_Parent="APPDIR" DefaultDir="de" DirectoryOptions="3"/>
+    <ROW Directory="discount_infos_db_Dir" Directory_Parent="Default_Dir" DefaultDir="DISCOU~2|discount_infos_db" DirectoryOptions="3"/>
+    <ROW Directory="discounts_db_Dir" Directory_Parent="Default_Dir" DefaultDir="DISCOU~1|discounts_db" DirectoryOptions="3"/>
     <ROW Directory="es_Dir" Directory_Parent="APPDIR" DefaultDir="es" DirectoryOptions="3"/>
+    <ROW Directory="extensions_crx_cache_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="EXTENS~1|extensions_crx_cache" DirectoryOptions="3"/>
     <ROW Directory="fr_Dir" Directory_Parent="APPDIR" DefaultDir="fr" DirectoryOptions="3"/>
+    <ROW Directory="hyphendata_Dir" Directory_Parent="EBWebView_Dir" DefaultDir="HYPHEN~1|hyphen-data" DirectoryOptions="3"/>
+    <ROW Directory="indexdir_1_Dir" Directory_Parent="wasm_Dir" DefaultDir="INDEX-~1|index-dir" DirectoryOptions="3"/>
+    <ROW Directory="indexdir_2_Dir" Directory_Parent="cache_Dir" DefaultDir="INDEX-~1|index-dir" DirectoryOptions="3"/>
+    <ROW Directory="indexdir_Dir" Directory_Parent="js_Dir" DefaultDir="INDEX-~1|index-dir" DirectoryOptions="3"/>
     <ROW Directory="it_Dir" Directory_Parent="APPDIR" DefaultDir="it" DirectoryOptions="3"/>
     <ROW Directory="ja_Dir" Directory_Parent="APPDIR" DefaultDir="ja" DirectoryOptions="3"/>
+    <ROW Directory="js_Dir" Directory_Parent="CodeCache_Dir" DefaultDir="js" DirectoryOptions="3"/>
     <ROW Directory="ko_Dir" Directory_Parent="APPDIR" DefaultDir="ko" DirectoryOptions="3"/>
+    <ROW Directory="leveldb_Dir" Directory_Parent="LocalStorage_Dir" DefaultDir="leveldb" DirectoryOptions="3"/>
+    <ROW Directory="local_Dir" Directory_Parent="SmartScreen_Dir" DefaultDir="local" DirectoryOptions="3"/>
+    <ROW Directory="metadata_Dir" Directory_Parent="shared_proto_db_Dir" DefaultDir="metadata" DirectoryOptions="3"/>
+    <ROW Directory="native_Dir" Directory_Parent="winx64_Dir" DefaultDir="native" DirectoryOptions="3"/>
+    <ROW Directory="optimization_guide_hint_cache_s_Dir" Directory_Parent="Default_Dir" DefaultDir="OPTIMI~1|optimization_guide_hint_cache_store" DirectoryOptions="3"/>
+    <ROW Directory="parcel_tracking_db_Dir" Directory_Parent="Default_Dir" DefaultDir="PARCEL~1|parcel_tracking_db" DirectoryOptions="3"/>
     <ROW Directory="pl_Dir" Directory_Parent="APPDIR" DefaultDir="pl" DirectoryOptions="3"/>
     <ROW Directory="ptBR_Dir" Directory_Parent="APPDIR" DefaultDir="pt-BR" DirectoryOptions="3"/>
+    <ROW Directory="reports_Dir" Directory_Parent="Crashpad_Dir" DefaultDir="reports" DirectoryOptions="3"/>
     <ROW Directory="ru_Dir" Directory_Parent="APPDIR" DefaultDir="ru" DirectoryOptions="3"/>
+    <ROW Directory="runtimes_Dir" Directory_Parent="APPDIR" DefaultDir="runtimes" DirectoryOptions="3"/>
+    <ROW Directory="shared_proto_db_Dir" Directory_Parent="Default_Dir" DefaultDir="SHARED~2|shared_proto_db" DirectoryOptions="3"/>
     <ROW Directory="tr_Dir" Directory_Parent="APPDIR" DefaultDir="tr" DirectoryOptions="3"/>
+    <ROW Directory="wasm_Dir" Directory_Parent="CodeCache_Dir" DefaultDir="wasm" DirectoryOptions="3"/>
+    <ROW Directory="winx64_Dir" Directory_Parent="runtimes_Dir" DefaultDir="win-x64" DirectoryOptions="3"/>
     <ROW Directory="zhHans_Dir" Directory_Parent="APPDIR" DefaultDir="zh-Hans" DirectoryOptions="3"/>
     <ROW Directory="zhHant_Dir" Directory_Parent="APPDIR" DefaultDir="zh-Hant" DirectoryOptions="3"/>
   </COMPONENT>
@@ -57,6 +144,7 @@
     <ROW Component="AI_ExePath" ComponentId="{A2E41A72-31B6-4961-A37C-83A124E7A8F4}" Directory_="APPDIR" Attributes="4" KeyPath="AI_ExePath"/>
     <ROW Component="APPDIR" ComponentId="{94079534-CF7B-40AA-A5A8-7CAE775680DB}" Directory_="APPDIR" Attributes="0"/>
     <ROW Component="Accessibility.dll" ComponentId="{0E401499-64C7-4002-82E8-6AE5B7B53D78}" Directory_="APPDIR" Attributes="0" KeyPath="Accessibility.dll"/>
+    <ROW Component="AngleSharp.dll" ComponentId="{A3DA518F-390A-4D19-A85B-4AA0F1A4324D}" Directory_="APPDIR" Attributes="0" KeyPath="AngleSharp.dll"/>
     <ROW Component="Application.dll" ComponentId="{059949CE-B8C6-47B3-ABBE-B9A2CA896689}" Directory_="APPDIR" Attributes="0" KeyPath="Application.dll"/>
     <ROW Component="Avalonia.Base.dll" ComponentId="{3013F088-C10C-43C8-8028-5F3901FD7E28}" Directory_="APPDIR" Attributes="0" KeyPath="Avalonia.Base.dll"/>
     <ROW Component="Avalonia.Controls.dll" ComponentId="{95C2C7C9-0290-4F40-85CD-1A6ED848D03D}" Directory_="APPDIR" Attributes="0" KeyPath="Avalonia.Controls.dll"/>
@@ -70,13 +158,32 @@
     <ROW Component="Avalonia.Remote.Protocol.dll" ComponentId="{3D5B59F1-AE01-4F2B-9973-B9C3E70BA871}" Directory_="APPDIR" Attributes="0" KeyPath="Avalonia.Remote.Protocol.dll"/>
     <ROW Component="Avalonia.Vulkan.dll" ComponentId="{AA6FF8A2-08B5-4AB1-A9F7-2F071CEEADE7}" Directory_="APPDIR" Attributes="0" KeyPath="Avalonia.Vulkan.dll"/>
     <ROW Component="Avalonia.dll" ComponentId="{55CC3B5A-4750-44E6-83A7-27DF09E1E378}" Directory_="APPDIR" Attributes="0" KeyPath="Avalonia.dll"/>
+    <ROW Component="BookmarkMergedSurfaceOrdering" ComponentId="{28826D5F-7A79-4358-8A66-0C2BED5BE0E0}" Directory_="Default_Dir" Attributes="0" KeyPath="BookmarkMergedSurfaceOrdering" Type="0"/>
+    <ROW Component="BrowserMetricsspare.pma" ComponentId="{EDD30279-C85B-4CB2-9075-0A857067642F}" Directory_="EBWebView_Dir" Attributes="0" KeyPath="BrowserMetricsspare.pma" Type="0"/>
+    <ROW Component="Cache_Data" ComponentId="{89C5E9E7-D6F1-4D15-A8B2-66217AA051BA}" Directory_="Cache_Data_Dir" Attributes="0"/>
+    <ROW Component="Cookies" ComponentId="{79A94559-3389-40C7-BCC4-9E3AFADAF573}" Directory_="Network_Dir" Attributes="0" KeyPath="Cookies" Type="0"/>
     <ROW Component="D3DCompiler_47_cor3.dll" ComponentId="{754AD22B-7E42-43B1-9F7E-7673C9A1F3E1}" Directory_="APPDIR" Attributes="256" KeyPath="D3DCompiler_47_cor3.dll"/>
     <ROW Component="DirectWriteForwarder.dll" ComponentId="{5E96B836-961E-4511-A139-65D1768D1FE9}" Directory_="APPDIR" Attributes="256" KeyPath="DirectWriteForwarder.dll"/>
     <ROW Component="Domain.dll" ComponentId="{540A6EE8-7450-4431-AF13-77A04D8613F4}" Directory_="APPDIR" Attributes="0" KeyPath="Domain.dll"/>
+    <ROW Component="EdgeJourneys.db" ComponentId="{C251843B-C595-4DDA-B301-38A6CF665128}" Directory_="EdgeJourneys_Dir" Attributes="0" KeyPath="EdgeJourneys.db" Type="0"/>
     <ROW Component="Infrastructure.dll" ComponentId="{9F9B2FE1-AB7F-4F03-B8DA-EC6944A7E89D}" Directory_="APPDIR" Attributes="0" KeyPath="Infrastructure.dll"/>
+    <ROW Component="LOCK" ComponentId="{F24D509A-30E4-49E3-A33B-5C8F150036CD}" Directory_="AutofillAiModelCache_Dir" Attributes="0" KeyPath="LOCK" Type="0"/>
+    <ROW Component="LOCK_1" ComponentId="{3A8A9DBF-A796-476E-BFD2-F4AA3C8098D6}" Directory_="AutofillStrikeDatabase_Dir" Attributes="0" KeyPath="LOCK_1" Type="0"/>
+    <ROW Component="LOCK_10" ComponentId="{970B8024-2931-4B49-8E19-A52D0A1E9ED3}" Directory_="parcel_tracking_db_Dir" Attributes="0" KeyPath="LOCK_15" Type="0"/>
+    <ROW Component="LOCK_11" ComponentId="{AB292D5F-7D61-4DE0-9610-418D21ECEE85}" Directory_="PersistentOriginTrials_Dir" Attributes="0" KeyPath="LOCK_16" Type="0"/>
+    <ROW Component="LOCK_2" ComponentId="{15DAF8F3-75A1-49F3-9FE6-4CC3E4F07084}" Directory_="BudgetDatabase_Dir" Attributes="0" KeyPath="LOCK_2" Type="0"/>
+    <ROW Component="LOCK_3" ComponentId="{DA145712-F41D-48EA-BC7D-C5CA64FA0627}" Directory_="ClientCertificates_Dir" Attributes="0" KeyPath="LOCK_3" Type="0"/>
+    <ROW Component="LOCK_4" ComponentId="{E415DAE8-638D-4501-8927-253224DE73E1}" Directory_="commerce_subscription_db_Dir" Attributes="0" KeyPath="LOCK_4" Type="0"/>
+    <ROW Component="LOCK_5" ComponentId="{ACCDA4E5-1B53-47F4-BFA0-82955FB455F1}" Directory_="discounts_db_Dir" Attributes="0" KeyPath="LOCK_5" Type="0"/>
+    <ROW Component="LOCK_6" ComponentId="{92D3DD0A-E45F-4E3C-999D-0566A16C1D93}" Directory_="discount_infos_db_Dir" Attributes="0" KeyPath="LOCK_6" Type="0"/>
+    <ROW Component="LOCK_7" ComponentId="{140F92DF-AE73-4CA9-8879-85ACEB901446}" Directory_="AvailabilityDB_Dir" Attributes="0" KeyPath="LOCK_10" Type="0"/>
+    <ROW Component="LOCK_8" ComponentId="{7DEEC78C-7CFD-4160-AA8C-A44B7BFAA22B}" Directory_="EventDB_Dir" Attributes="0" KeyPath="LOCK_11" Type="0"/>
+    <ROW Component="LOCK_9" ComponentId="{5B407390-0576-4B9D-A830-978FCB57D157}" Directory_="optimization_guide_hint_cache_s_Dir" Attributes="0" KeyPath="LOCK_14" Type="0"/>
+    <ROW Component="MEIPreload" ComponentId="{89DED107-B313-4D0D-9045-7FEDD88994D0}" Directory_="MEIPreload_Dir" Attributes="0"/>
     <ROW Component="Markdig.dll" ComponentId="{EB394680-D9A8-46A2-921A-9D5473027E0C}" Directory_="APPDIR" Attributes="0" KeyPath="Markdig.dll"/>
     <ROW Component="MicroCom.Runtime.dll" ComponentId="{AC4DFB30-9194-4AE0-A712-E8612FC7DB79}" Directory_="APPDIR" Attributes="0" KeyPath="MicroCom.Runtime.dll"/>
     <ROW Component="Microsoft.CSharp.dll" ComponentId="{FFCD8B1F-DC23-4FDD-A019-ED2C468974E0}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.CSharp.dll"/>
+    <ROW Component="Microsoft.CognitiveServices.Speech.core.dll" ComponentId="{F8428757-F897-4F13-AD29-E2EA0D3DB144}" Directory_="__5_Dir" Attributes="256" KeyPath="Microsoft.CognitiveServices.Speech.core.dll"/>
     <ROW Component="Microsoft.DiaSymReader.Native.amd64.dll" ComponentId="{FF867A4D-49F2-4388-AD15-88AAED6D8E01}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.DiaSymReader.Native.amd64.dll"/>
     <ROW Component="Microsoft.Extensions.Configuration.Abstractions.dll" ComponentId="{74AFBE3C-39B3-4D0F-A2DF-96C8C77CF589}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Extensions.Configuration.Abstractions.dll"/>
     <ROW Component="Microsoft.Extensions.Configuration.Binder.dll" ComponentId="{292C027B-DDB1-4BB2-A496-D0892CBFF16B}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Extensions.Configuration.Binder.dll"/>
@@ -108,10 +215,27 @@
     <ROW Component="Microsoft.Extensions.Primitives.dll" ComponentId="{1230CFF8-8D9B-4EBE-8765-7DA35918E03F}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Extensions.Primitives.dll"/>
     <ROW Component="Microsoft.VisualBasic.Core.dll" ComponentId="{08CD866A-4DC5-4BEF-86F4-5825EA16C36C}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.VisualBasic.Core.dll"/>
     <ROW Component="Microsoft.VisualBasic.dll" ComponentId="{584E2EB7-BD0B-427F-A740-C05A7F64D2E7}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.VisualBasic.dll"/>
+    <ROW Component="Microsoft.Web.WebView2.Core.dll" ComponentId="{C1BBFFBA-CB00-4305-A069-3ABD8B5F0D4E}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Web.WebView2.Core.dll"/>
+    <ROW Component="Microsoft.Web.WebView2.WinForms.dll" ComponentId="{C225CAEB-303B-406A-8916-F9C58CEFB97D}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Web.WebView2.WinForms.dll"/>
+    <ROW Component="Microsoft.Web.WebView2.Wpf.dll" ComponentId="{E8A2CC69-6B19-4A25-ACFE-F1B03C26D210}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Web.WebView2.Wpf.dll"/>
     <ROW Component="Microsoft.Win32.Primitives.dll" ComponentId="{73CB8E86-9273-4D2F-AC3B-48DA2B164DA6}" Directory_="APPDIR" Attributes="0" KeyPath="Microsoft.Win32.Primitives.dll"/>
     <ROW Component="Microsoft.Win32.Registry.AccessControl.dll" ComponentId="{8DE1B0D5-B268-477B-898D-CADCF9D1F6FE}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.Win32.Registry.AccessControl.dll"/>
     <ROW Component="Microsoft.Win32.Registry.dll" ComponentId="{8EABE26A-5A47-4CB0-817D-27701021A5B1}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.Win32.Registry.dll"/>
     <ROW Component="Microsoft.Win32.SystemEvents.dll" ComponentId="{4DAFB18D-0FE5-4E64-BFAE-F268DBA72636}" Directory_="APPDIR" Attributes="256" KeyPath="Microsoft.Win32.SystemEvents.dll"/>
+    <ROW Component="MigraDoc.DocumentObjectModel.dll" ComponentId="{D2405482-B504-41B9-9C6A-93E4214FE98E}" Directory_="APPDIR" Attributes="0" KeyPath="MigraDoc.DocumentObjectModel.dll"/>
+    <ROW Component="MigraDoc.Rendering.dll" ComponentId="{33B514D1-20DF-4B4D-B089-B5AEADE25F3E}" Directory_="APPDIR" Attributes="0" KeyPath="MigraDoc.Rendering.dll"/>
+    <ROW Component="MigraDoc.RtfRendering.dll" ComponentId="{C3DD7E28-730E-4E88-8AC7-BF7F2CF8B49A}" Directory_="APPDIR" Attributes="0" KeyPath="MigraDoc.RtfRendering.dll"/>
+    <ROW Component="NetworkDataMigrated" ComponentId="{61C85118-00E3-4D8E-B758-FACCDE0D0F2C}" Directory_="SafeBrowsingNetwork_Dir" Attributes="0" KeyPath="NetworkDataMigrated_1" Type="0"/>
+    <ROW Component="No_Vary_Search" ComponentId="{3F2F5987-2BAD-41E6-AB85-771347365530}" Directory_="No_Vary_Search_Dir" Attributes="0"/>
+    <ROW Component="PdfSharp.BarCodes.dll" ComponentId="{A0FCB037-34CB-4F82-A064-C4C28BE7F8EE}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.BarCodes.dll"/>
+    <ROW Component="PdfSharp.Charting.dll" ComponentId="{F3752810-9997-4167-B6FB-1613F432A267}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.Charting.dll"/>
+    <ROW Component="PdfSharp.Cryptography.dll" ComponentId="{D5C52E89-5BB0-4EC7-BD6F-8C857029EB03}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.Cryptography.dll"/>
+    <ROW Component="PdfSharp.Quality.dll" ComponentId="{50881079-E919-44BB-ACC6-D9B4E09B7955}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.Quality.dll"/>
+    <ROW Component="PdfSharp.Shared.dll" ComponentId="{28C683B0-0707-41EC-9DE9-A0213458228A}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.Shared.dll"/>
+    <ROW Component="PdfSharp.Snippets.dll" ComponentId="{C473D594-6CA6-4FDD-82E1-A01DF47CDE16}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.Snippets.dll"/>
+    <ROW Component="PdfSharp.System.dll" ComponentId="{A45D3A18-F454-4D81-8E24-FEC0B56B47D7}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.System.dll"/>
+    <ROW Component="PdfSharp.WPFonts.dll" ComponentId="{50DF8764-32D0-45CD-A675-EF0E3111975F}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.WPFonts.dll"/>
+    <ROW Component="PdfSharp.dll" ComponentId="{73E0DAEA-D5CB-46D8-B645-9967028CC6C4}" Directory_="APPDIR" Attributes="0" KeyPath="PdfSharp.dll"/>
     <ROW Component="PenImc_cor3.dll" ComponentId="{C8D8EA8E-2617-4B86-8A55-51F29A808F2B}" Directory_="APPDIR" Attributes="256" KeyPath="PenImc_cor3.dll"/>
     <ROW Component="PresentationCore.dll" ComponentId="{2A3841BB-7930-4500-ACD4-365C8D136B38}" Directory_="APPDIR" Attributes="256" KeyPath="PresentationCore.dll"/>
     <ROW Component="PresentationCore.resources.dll" ComponentId="{DFAAA15C-C02D-4B86-91F1-12444641C546}" Directory_="cs_Dir" Attributes="0" KeyPath="PresentationCore.resources.dll"/>
@@ -183,6 +307,7 @@
     <ROW Component="ReachFramework.resources.dll_7" ComponentId="{710C9A42-635D-46E4-AB6F-89F44B25A237}" Directory_="pl_Dir" Attributes="0" KeyPath="ReachFramework.resources.dll_7"/>
     <ROW Component="ReachFramework.resources.dll_8" ComponentId="{C8F7EDFD-EA58-47F0-82DE-46677F62134E}" Directory_="ptBR_Dir" Attributes="0" KeyPath="ReachFramework.resources.dll_8"/>
     <ROW Component="ReachFramework.resources.dll_9" ComponentId="{8227788B-27A3-45F5-9FAB-3306D75DE2ED}" Directory_="ru_Dir" Attributes="0" KeyPath="ReachFramework.resources.dll_9"/>
+    <ROW Component="ReverseMarkdown.dll" ComponentId="{58B7A440-D14B-420C-89C6-FF2317DFD545}" Directory_="APPDIR" Attributes="0" KeyPath="ReverseMarkdown.dll"/>
     <ROW Component="SHORTCUTDIR" ComponentId="{7F98920A-7871-4FAC-8CBB-A8B39CC63F20}" Directory_="SHORTCUTDIR" Attributes="0"/>
     <ROW Component="Serilog.Extensions.Hosting.dll" ComponentId="{776512C8-B816-43DA-8D23-70B5857FD660}" Directory_="APPDIR" Attributes="0" KeyPath="Serilog.Extensions.Hosting.dll"/>
     <ROW Component="Serilog.Extensions.Logging.dll" ComponentId="{4D412D82-6303-44F7-B731-AECAC000C574}" Directory_="APPDIR" Attributes="0" KeyPath="Serilog.Extensions.Logging.dll"/>
@@ -190,6 +315,8 @@
     <ROW Component="Serilog.Sinks.Debug.dll" ComponentId="{EC9D2ADD-A341-4692-B6B4-91C0123C9285}" Directory_="APPDIR" Attributes="0" KeyPath="Serilog.Sinks.Debug.dll"/>
     <ROW Component="Serilog.Sinks.File.dll" ComponentId="{B6C8F8FB-B398-4E37-A1E6-60E34E398448}" Directory_="APPDIR" Attributes="0" KeyPath="Serilog.Sinks.File.dll"/>
     <ROW Component="Serilog.dll" ComponentId="{8B57F990-D526-4143-A719-66BB4796610E}" Directory_="APPDIR" Attributes="0" KeyPath="Serilog.dll"/>
+    <ROW Component="SessionRestoreLog" ComponentId="{06AFBBC9-1D0B-4B38-BFF3-8984FC30CE54}" Directory_="EdgeSessions_Dir" Attributes="0" KeyPath="SessionRestoreLog" Type="0"/>
+    <ROW Component="Sessions" ComponentId="{712FB197-8867-4DD3-B371-0C6607ECC710}" Directory_="Sessions_Dir" Attributes="0"/>
     <ROW Component="System.AppContext.dll" ComponentId="{A2C42EB6-CCDA-489B-935D-F945279CC875}" Directory_="APPDIR" Attributes="0" KeyPath="System.AppContext.dll"/>
     <ROW Component="System.Buffers.dll" ComponentId="{47680A95-7E8A-4DEE-B60E-64122F91750E}" Directory_="APPDIR" Attributes="0" KeyPath="System.Buffers.dll"/>
     <ROW Component="System.CodeDom.dll" ComponentId="{F8277A29-7897-489D-97A3-40A263CAA764}" Directory_="APPDIR" Attributes="256" KeyPath="System.CodeDom.dll"/>
@@ -417,6 +544,7 @@
     <ROW Component="System.Xml.XmlSerializer.dll" ComponentId="{929A54FE-2A22-459A-8BDD-E33337F0CD68}" Directory_="APPDIR" Attributes="0" KeyPath="System.Xml.XmlSerializer.dll"/>
     <ROW Component="System.Xml.dll" ComponentId="{975D0CB5-8A85-4B4B-B5D2-C4978D1634A4}" Directory_="APPDIR" Attributes="0" KeyPath="System.Xml.dll"/>
     <ROW Component="System.dll" ComponentId="{8F2BE740-052A-4BD2-9A54-AF964CFB6D56}" Directory_="APPDIR" Attributes="0" KeyPath="System.dll"/>
+    <ROW Component="TrustProtectionLists" ComponentId="{B7384C70-1934-4548-AA98-72BBC435FCEB}" Directory_="TrustProtectionLists_Dir" Attributes="0"/>
     <ROW Component="UI.dll" ComponentId="{B00215EC-B8E0-471C-A687-F4C123FE1C8A}" Directory_="APPDIR" Attributes="256" KeyPath="UI.dll"/>
     <ROW Component="UI.exe" ComponentId="{5EDC4977-9E58-40A1-95E8-EA6DC32BD768}" Directory_="APPDIR" Attributes="256" KeyPath="UI.exe"/>
     <ROW Component="UIAutomationClient.dll" ComponentId="{318D6294-8BD4-4C1C-BC2C-92F0D8EF69A5}" Directory_="APPDIR" Attributes="256" KeyPath="UIAutomationClient.dll"/>
@@ -475,6 +603,10 @@
     <ROW Component="UIAutomationTypes.resources.dll_7" ComponentId="{ABC0EA9F-0F5F-4750-A763-55753672865A}" Directory_="pl_Dir" Attributes="0" KeyPath="UIAutomationTypes.resources.dll_7"/>
     <ROW Component="UIAutomationTypes.resources.dll_8" ComponentId="{1F3C88B2-5B0B-492D-9788-AF2A164F2404}" Directory_="ptBR_Dir" Attributes="0" KeyPath="UIAutomationTypes.resources.dll_8"/>
     <ROW Component="UIAutomationTypes.resources.dll_9" ComponentId="{3A70D5B4-AD3D-4083-92DA-4F8DDF608A3D}" Directory_="ru_Dir" Attributes="0" KeyPath="UIAutomationTypes.resources.dll_9"/>
+    <ROW Component="UnindexedRules" ComponentId="{C713A923-6190-4EE7-89E6-957B72EDF209}" Directory_="UnindexedRules_Dir" Attributes="0"/>
+    <ROW Component="WebView2Loader.dll" ComponentId="{4DE00E08-CC4A-4EFE-9026-3275FCC3DD31}" Directory_="native_Dir" Attributes="256" KeyPath="WebView2Loader.dll"/>
+    <ROW Component="WebView2Loader.dll_1" ComponentId="{F5E81A29-B837-4437-8DD2-430C2C418147}" Directory_="APPDIR" Attributes="256" KeyPath="WebView2Loader.dll_1"/>
+    <ROW Component="WidevineCdm" ComponentId="{B49292BF-DB57-4C8C-82A1-4288717BD3CD}" Directory_="WidevineCdm_Dir" Attributes="0"/>
     <ROW Component="WindowsBase.dll" ComponentId="{2DB935A4-613B-4D6C-A1FE-BAC1A244BA94}" Directory_="APPDIR" Attributes="256" KeyPath="WindowsBase.dll"/>
     <ROW Component="WindowsBase.resources.dll" ComponentId="{E31418CE-37DC-4A6A-86E9-B10BBF5E1967}" Directory_="cs_Dir" Attributes="0" KeyPath="WindowsBase.resources.dll"/>
     <ROW Component="WindowsBase.resources.dll_1" ComponentId="{ED55D7E4-D912-458D-BDBC-62E38BDE613B}" Directory_="de_Dir" Attributes="0" KeyPath="WindowsBase.resources.dll_1"/>
@@ -490,15 +622,49 @@
     <ROW Component="WindowsBase.resources.dll_8" ComponentId="{63D97784-A948-4F07-A3A5-E99688C44CF2}" Directory_="ptBR_Dir" Attributes="0" KeyPath="WindowsBase.resources.dll_8"/>
     <ROW Component="WindowsBase.resources.dll_9" ComponentId="{8F8B4A9C-1FEE-4125-86AF-F602C6F7898F}" Directory_="ru_Dir" Attributes="0" KeyPath="WindowsBase.resources.dll_9"/>
     <ROW Component="Xaml.Behaviors.Interactivity.dll" ComponentId="{54F6B980-71A2-46CA-BFA4-F2C6065ADE49}" Directory_="APPDIR" Attributes="0" KeyPath="Xaml.Behaviors.Interactivity.dll"/>
+    <ROW Component="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" ComponentId="{EC3FFFBF-534C-4A37-B8F9-3B39F4198776}" Directory_="component_crx_cache_Dir" Attributes="0" KeyPath="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" Type="0"/>
     <ROW Component="appsettings.dev.json" ComponentId="{8AC457D4-2C6C-4EBF-B6A1-7A64F5EF4D3C}" Directory_="APPDIR" Attributes="0" KeyPath="appsettings.dev.json" Type="0"/>
+    <ROW Component="attachments" ComponentId="{2FDD1984-6665-4EAC-A22B-22CEDC40AA32}" Directory_="attachments_Dir" Attributes="0"/>
+    <ROW Component="cache.db" ComponentId="{FEFD7B69-7FAC-4518-B020-E0F109238646}" Directory_="IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3A_Dir" Attributes="0" KeyPath="cache.db" Type="0"/>
     <ROW Component="clretwrc.dll" ComponentId="{E8EADE0C-22EF-4C4E-B87A-E77D2EC90B2A}" Directory_="APPDIR" Attributes="256" KeyPath="clretwrc.dll"/>
     <ROW Component="clrgc.dll" ComponentId="{FFF56CC2-FF88-4922-86D4-D679DB0CC8CF}" Directory_="APPDIR" Attributes="256" KeyPath="clrgc.dll"/>
     <ROW Component="clrgcexp.dll" ComponentId="{FF35375F-8B11-4FB9-A1DE-1C69604E7FC8}" Directory_="APPDIR" Attributes="256" KeyPath="clrgcexp.dll"/>
     <ROW Component="clrjit.dll" ComponentId="{2EBC0EFA-D0F0-419E-985F-CA12CFA58701}" Directory_="APPDIR" Attributes="256" KeyPath="clrjit.dll"/>
     <ROW Component="coreclr.dll" ComponentId="{39E8D45D-E10C-4D27-B1F0-9C302AC15F20}" Directory_="APPDIR" Attributes="256" KeyPath="coreclr.dll"/>
     <ROW Component="createdump.exe" ComponentId="{0336CC1B-D8C3-47E5-BEEB-2AACD12F5B0C}" Directory_="APPDIR" Attributes="256" KeyPath="createdump.exe"/>
+    <ROW Component="crlset" ComponentId="{CB6B34B6-496F-473D-9807-72C9306DE376}" Directory_="__1_Dir" Attributes="0" KeyPath="crlset" Type="0"/>
+    <ROW Component="crs.pb" ComponentId="{7E08F759-0F51-4369-BE09-EFAC62750A33}" Directory_="__4_Dir" Attributes="0" KeyPath="crs.pb" Type="0"/>
+    <ROW Component="customSettings" ComponentId="{0D44C3ED-6875-4C25-B71A-E0D8C3CCD043}" Directory_="RemoteData_Dir" Attributes="0" KeyPath="customSettings" Type="0"/>
+    <ROW Component="d27fd29ce4068a1770cbf538b934e" ComponentId="{C8A57F75-F6DD-4DE5-8988-D40B4DC35671}" Directory_="d27fd29ce4068a1770cbf538b934e_Dir" Attributes="0"/>
+    <ROW Component="d3f7e13322edebe_0" ComponentId="{A712CBEB-3511-4DE9-8F94-9C206BB0D7A8}" Directory_="js_Dir" Attributes="0" KeyPath="d3f7e13322edebe_0" Type="0"/>
+    <ROW Component="data_0" ComponentId="{C867AEFB-7569-4584-885F-4EF2271652DD}" Directory_="DawnGraphiteCache_Dir" Attributes="0" KeyPath="data_0" Type="0"/>
+    <ROW Component="data_0_1" ComponentId="{1D81DD8A-E563-413B-8030-19FC15286609}" Directory_="DawnWebGPUCache_Dir" Attributes="0" KeyPath="data_0_1" Type="0"/>
+    <ROW Component="data_0_2" ComponentId="{6B75FB8C-D4B8-42AC-8824-37C0F5A65447}" Directory_="GPUCache_Dir" Attributes="0" KeyPath="data_0_2" Type="0"/>
+    <ROW Component="data_0_3" ComponentId="{714574C9-2AE8-4083-B28F-BCD66550A196}" Directory_="GrShaderCache_Dir" Attributes="0" KeyPath="data_0_3" Type="0"/>
+    <ROW Component="data_0_4" ComponentId="{0B468AC7-E8B1-4876-8601-5FE7CBF8DA69}" Directory_="ShaderCache_Dir" Attributes="0" KeyPath="data_0_4" Type="0"/>
+    <ROW Component="db" ComponentId="{FBE248B9-39E0-4B0F-9D40-468AC2C8F57B}" Directory_="SharedDictionary_Dir" Attributes="0" KeyPath="db" Type="0"/>
+    <ROW Component="downloadCache" ComponentId="{C877EF4F-1A28-4434-BC2C-61DBE31887BD}" Directory_="local_Dir" Attributes="0" KeyPath="downloadCache" Type="0"/>
     <ROW Component="hostfxr.dll" ComponentId="{D0F02BD4-D9B1-4ACB-8F3B-4F9CA0EB96FC}" Directory_="APPDIR" Attributes="256" KeyPath="hostfxr.dll"/>
     <ROW Component="hostpolicy.dll" ComponentId="{4199C311-CCA4-48F3-A1DA-8BC79CF16F55}" Directory_="APPDIR" Attributes="256" KeyPath="hostpolicy.dll"/>
+    <ROW Component="hyphaf.hyb" ComponentId="{4B334DEF-189C-43A5-99CF-4BBACDA4540D}" Directory_="__2_Dir" Attributes="0" KeyPath="hyphaf.hyb" Type="0"/>
+    <ROW Component="index" ComponentId="{A2080AA1-4BFC-4580-9426-6A25B1D64BCF}" Directory_="wasm_Dir" Attributes="0" KeyPath="index_1" Type="0"/>
+    <ROW Component="index.html" ComponentId="{A82B7574-1323-4CAF-AAC8-D796731B1D11}" Directory_="Mermaid_Dir" Attributes="0" KeyPath="index.html" Type="0"/>
+    <ROW Component="index_1" ComponentId="{98045B48-B472-41CB-908C-DF5678E11B58}" Directory_="cache_Dir" Attributes="0" KeyPath="index_5" Type="0"/>
+    <ROW Component="keys.json" ComponentId="{8052C52E-2F9D-41C3-AFF9-CD681D339F5B}" Directory_="__6_Dir" Attributes="0" KeyPath="keys.json" Type="0"/>
+    <ROW Component="log" ComponentId="{A0EE9448-C72F-4D27-8068-770047FEF99B}" Directory_="ExtensionRules_Dir" Attributes="0" KeyPath="log_7" Type="0"/>
+    <ROW Component="log_1" ComponentId="{2F157745-E84B-4B2E-A6DD-055987A457ED}" Directory_="ExtensionScripts_Dir" Attributes="0" KeyPath="log_9" Type="0"/>
+    <ROW Component="log_2" ComponentId="{A31BA324-0630-41A2-853F-E2A19F3E62F2}" Directory_="ExtensionState_Dir" Attributes="0" KeyPath="log_11" Type="0"/>
+    <ROW Component="log_3" ComponentId="{0D1983BA-2EDD-4241-9328-C520A3D89C28}" Directory_="leveldb_Dir" Attributes="0" KeyPath="log_15" Type="0"/>
+    <ROW Component="log_4" ComponentId="{1F4827C1-638D-4DF7-8732-232450F4D026}" Directory_="SessionStorage_Dir" Attributes="0" KeyPath="log_21" Type="0"/>
+    <ROW Component="log_5" ComponentId="{F76BC27B-8CCF-45D3-AFC9-E69B0EFE34FE}" Directory_="shared_proto_db_Dir" Attributes="0" KeyPath="log_23" Type="0"/>
+    <ROW Component="log_6" ComponentId="{C77D3773-D11D-45F4-A966-68B70CBAC888}" Directory_="metadata_Dir" Attributes="0" KeyPath="log_25" Type="0"/>
+    <ROW Component="log_7" ComponentId="{51817D62-D193-4C18-8436-8338573FF08B}" Directory_="SiteCharacteristicsDatabase_Dir" Attributes="0" KeyPath="log_27" Type="0"/>
+    <ROW Component="log_8" ComponentId="{7596D854-85AF-4F2D-A738-BF8ACF4EB8D6}" Directory_="LevelDB_Dir" Attributes="0" KeyPath="log_29" Type="0"/>
+    <ROW Component="manifest.json" ComponentId="{3E2974A9-AEB7-48F0-931F-5B942E3C9979}" Directory_="__Dir" Attributes="0" KeyPath="manifest.json" Type="0"/>
+    <ROW Component="manifest.json_1" ComponentId="{1C2C4273-8216-41EF-8D87-81D6D11F06A9}" Directory_="__3_Dir" Attributes="0" KeyPath="manifest.json_3" Type="0"/>
+    <ROW Component="manifest.json_2" ComponentId="{61DFD297-FCB6-40B0-B29A-F2934370C037}" Directory_="__5_Dir" Attributes="0" KeyPath="manifest.json_5" Type="0"/>
+    <ROW Component="metadata" ComponentId="{9707218E-0C76-4898-ABE9-DF8E0868265C}" Directory_="Crashpad_Dir" Attributes="0" KeyPath="metadata" Type="0"/>
+    <ROW Component="metadata.json" ComponentId="{CF1FF235-A903-4B1D-AB1E-D7C91BC15F87}" Directory_="extensions_crx_cache_Dir" Attributes="0" KeyPath="metadata.json_1" Type="0"/>
     <ROW Component="mscordaccore.dll" ComponentId="{603BE1F5-4406-4404-A660-55245EA9FFBD}" Directory_="APPDIR" Attributes="256" KeyPath="mscordaccore.dll"/>
     <ROW Component="mscordaccore_amd64_amd64_10.0.626.17701.dll" ComponentId="{56D71A17-C813-416F-852F-8A2098B60578}" Directory_="APPDIR" Attributes="256" KeyPath="mscordaccore_amd64_amd64_10.0.626.17701.dll"/>
     <ROW Component="mscordbi.dll" ComponentId="{AFAA1B71-0A71-4E07-B0A9-2C66AAE8B144}" Directory_="APPDIR" Attributes="256" KeyPath="mscordbi.dll"/>
@@ -506,7 +672,13 @@
     <ROW Component="mscorrc.dll" ComponentId="{D0E3A63F-A967-4EFF-AB20-19A06956A389}" Directory_="APPDIR" Attributes="256" KeyPath="mscorrc.dll"/>
     <ROW Component="msquic.dll" ComponentId="{F081A044-C847-4BF9-84E4-D67EDD1144FB}" Directory_="APPDIR" Attributes="256" KeyPath="msquic.dll"/>
     <ROW Component="netstandard.dll" ComponentId="{B0EC548C-0463-4146-BEA6-9058AA5D8FFB}" Directory_="APPDIR" Attributes="0" KeyPath="netstandard.dll"/>
+    <ROW Component="reports" ComponentId="{0A0FE4C1-5676-460E-9F0E-150EF42E5C29}" Directory_="reports_Dir" Attributes="0"/>
+    <ROW Component="therealindex" ComponentId="{FA964D65-4451-4AD9-A8F7-F689E0DAB53F}" Directory_="indexdir_Dir" Attributes="0" KeyPath="therealindex" Type="0"/>
+    <ROW Component="therealindex_1" ComponentId="{E1B974C2-92BF-465E-8A2C-65ADB0E44EDC}" Directory_="indexdir_1_Dir" Attributes="0" KeyPath="therealindex_1" Type="0"/>
+    <ROW Component="therealindex_2" ComponentId="{B8FC572E-16D5-4E19-9ED7-ED2F458374AD}" Directory_="indexdir_2_Dir" Attributes="0" KeyPath="therealindex_2" Type="0"/>
     <ROW Component="vcruntime140_cor3.dll" ComponentId="{E1563D82-00AD-4DD2-9FA3-94B45722BEA1}" Directory_="APPDIR" Attributes="256" KeyPath="vcruntime140_cor3.dll"/>
+    <ROW Component="verified_contents.json" ComponentId="{9107B87C-EF97-4F28-B9BF-D27BC0DF7F33}" Directory_="_metadata_Dir" Attributes="0" KeyPath="verified_contents.json" Type="0"/>
+    <ROW Component="verified_contents.json_1" ComponentId="{2012E2C2-C2BC-49CD-913F-8E090F43E3AE}" Directory_="_metadata_1_Dir" Attributes="0" KeyPath="verified_contents.json_1" Type="0"/>
     <ROW Component="wpfgfx_cor3.dll" ComponentId="{E43E78EF-BF88-4630-850C-F433FC8CABD2}" Directory_="APPDIR" Attributes="256" KeyPath="wpfgfx_cor3.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
@@ -972,6 +1144,282 @@
     <ROW File="UIAutomationProvider.resources.dll_12" Component_="UIAutomationProvider.resources.dll_12" FileName="UIAUTO~3.DLL|UIAutomationProvider.resources.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\zh-Hant\UIAutomationProvider.resources.dll" SelfReg="false"/>
     <ROW File="UIAutomationTypes.resources.dll_12" Component_="UIAutomationTypes.resources.dll_12" FileName="UIAUTO~4.DLL|UIAutomationTypes.resources.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\zh-Hant\UIAutomationTypes.resources.dll" SelfReg="false"/>
     <ROW File="WindowsBase.resources.dll_12" Component_="WindowsBase.resources.dll_12" FileName="WINDOW~1.DLL|WindowsBase.resources.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\zh-Hant\WindowsBase.resources.dll" SelfReg="false"/>
+    <ROW File="AngleSharp.dll" Component_="AngleSharp.dll" FileName="ANGLES~1.DLL|AngleSharp.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\AngleSharp.dll" SelfReg="false"/>
+    <ROW File="index.html" Component_="index.html" FileName="INDEX~1.HTM|index.html" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Assets\Mermaid\index.html" SelfReg="false"/>
+    <ROW File="mermaid.min.js" Component_="index.html" FileName="MERMAI~1.JS|mermaid.min.js" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Assets\Mermaid\mermaid.min.js" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.Core.dll" Component_="Microsoft.Web.WebView2.Core.dll" FileName="MICRO~37.DLL|Microsoft.Web.WebView2.Core.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.Core.dll" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.Core.xml" Component_="appsettings.dev.json" FileName="MICROS~1.XML|Microsoft.Web.WebView2.Core.xml" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.Core.xml" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.WinForms.dll" Component_="Microsoft.Web.WebView2.WinForms.dll" FileName="MICRO~38.DLL|Microsoft.Web.WebView2.WinForms.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.WinForms.dll" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.WinForms.xml" Component_="appsettings.dev.json" FileName="MICROS~2.XML|Microsoft.Web.WebView2.WinForms.xml" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.WinForms.xml" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.Wpf.dll" Component_="Microsoft.Web.WebView2.Wpf.dll" FileName="MICRO~39.DLL|Microsoft.Web.WebView2.Wpf.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.Wpf.dll" SelfReg="false"/>
+    <ROW File="Microsoft.Web.WebView2.Wpf.xml" Component_="appsettings.dev.json" FileName="MICROS~3.XML|Microsoft.Web.WebView2.Wpf.xml" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Web.WebView2.Wpf.xml" SelfReg="false"/>
+    <ROW File="MigraDoc.DocumentObjectModel.dll" Component_="MigraDoc.DocumentObjectModel.dll" FileName="MIGRAD~1.DLL|MigraDoc.DocumentObjectModel.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\MigraDoc.DocumentObjectModel.dll" SelfReg="false"/>
+    <ROW File="MigraDoc.Rendering.dll" Component_="MigraDoc.Rendering.dll" FileName="MIGRAD~2.DLL|MigraDoc.Rendering.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\MigraDoc.Rendering.dll" SelfReg="false"/>
+    <ROW File="MigraDoc.RtfRendering.dll" Component_="MigraDoc.RtfRendering.dll" FileName="MIGRAD~3.DLL|MigraDoc.RtfRendering.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\MigraDoc.RtfRendering.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.BarCodes.dll" Component_="PdfSharp.BarCodes.dll" FileName="PDFSHA~1.DLL|PdfSharp.BarCodes.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.BarCodes.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.Charting.dll" Component_="PdfSharp.Charting.dll" FileName="PDFSHA~2.DLL|PdfSharp.Charting.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.Charting.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.Cryptography.dll" Component_="PdfSharp.Cryptography.dll" FileName="PDFSHA~3.DLL|PdfSharp.Cryptography.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.Cryptography.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.dll" Component_="PdfSharp.dll" FileName="PdfSharp.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.Quality.dll" Component_="PdfSharp.Quality.dll" FileName="PDFSHA~4.DLL|PdfSharp.Quality.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.Quality.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.Shared.dll" Component_="PdfSharp.Shared.dll" FileName="PDFSHA~5.DLL|PdfSharp.Shared.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.Shared.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.Snippets.dll" Component_="PdfSharp.Snippets.dll" FileName="PDFSHA~6.DLL|PdfSharp.Snippets.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.Snippets.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.System.dll" Component_="PdfSharp.System.dll" FileName="PDFSHA~7.DLL|PdfSharp.System.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.System.dll" SelfReg="false"/>
+    <ROW File="PdfSharp.WPFonts.dll" Component_="PdfSharp.WPFonts.dll" FileName="PDFSHA~8.DLL|PdfSharp.WPFonts.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\PdfSharp.WPFonts.dll" SelfReg="false"/>
+    <ROW File="ReverseMarkdown.dll" Component_="ReverseMarkdown.dll" FileName="REVERS~1.DLL|ReverseMarkdown.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\ReverseMarkdown.dll" SelfReg="false"/>
+    <ROW File="WebView2Loader.dll" Component_="WebView2Loader.dll" FileName="WEBVIE~1.DLL|WebView2Loader.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\runtimes\win-x64\native\WebView2Loader.dll" SelfReg="false"/>
+    <ROW File="WebView2Loader.dll_1" Component_="WebView2Loader.dll_1" FileName="WEBVIE~1.DLL|WebView2Loader.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\WebView2Loader.dll" SelfReg="false"/>
+    <ROW File="manifest.json" Component_="manifest.json" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\AutoLaunchProtocolsComponent\1.0.0.10\manifest.json" SelfReg="false"/>
+    <ROW File="protocols.json" Component_="manifest.json" FileName="PROTOC~1.JSO|protocols.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\AutoLaunchProtocolsComponent\1.0.0.10\protocols.json" SelfReg="false"/>
+    <ROW File="BrowserMetricsspare.pma" Component_="BrowserMetricsspare.pma" FileName="BROWSE~1.PMA|BrowserMetrics-spare.pma" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\BrowserMetrics-spare.pma" SelfReg="false"/>
+    <ROW File="crlset" Component_="crlset" FileName="crl-set" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\CertificateRevocation\6498.2025.9.4\crl-set" SelfReg="false"/>
+    <ROW File="manifest.json_1" Component_="crlset" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\CertificateRevocation\6498.2025.9.4\manifest.json" SelfReg="false"/>
+    <ROW File="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="000AC7~1|000ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\000ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" SelfReg="false"/>
+    <ROW File="af3f07b5abb71f6d30337e1eef62fa280f06ef19485c0cf6b72171f92ccc0a" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="00AF3F~1|00af3f07b5abb71f6d30337e1eef62fa280f06ef19485c0cf6b72171f92ccc0a" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\00af3f07b5abb71f6d30337e1eef62fa280f06ef19485c0cf6b72171f92ccc0a" SelfReg="false"/>
+    <ROW File="fd9d48e4fc245a3f3a99a3a16ecd1355050ba3f4afc555f19a97c7f9b49677" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="95FD9D~1|95fd9d48e4fc245a3f3a99a3a16ecd1355050ba3f4afc555f19a97c7f9b49677" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\95fd9d48e4fc245a3f3a99a3a16ecd1355050ba3f4afc555f19a97c7f9b49677" SelfReg="false"/>
+    <ROW File="a81d1959892ae4180554347df1b97834abba2e1a5e6b9aeba000ecea26eabecc" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="A81D19~1|a81d1959892ae4180554347df1b97834abba2e1a5e6b9aeba000ecea26eabecc" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\a81d1959892ae4180554347df1b97834abba2e1a5e6b9aeba000ecea26eabecc" SelfReg="false"/>
+    <ROW File="a922b7d113e67ce71528805d3c6780f7a207cada8ad56642047577358e46ba3d" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="A922B7~1|a922b7d113e67ce71528805d3c6780f7a207cada8ad56642047577358e46ba3d" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\a922b7d113e67ce71528805d3c6780f7a207cada8ad56642047577358e46ba3d" SelfReg="false"/>
+    <ROW File="bec8ead1da3c9600fe66bbcc0e7a9bed9a184c1be821b4d23570c6b7af7f0410" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="BEC8EA~1|bec8ead1da3c9600fe66bbcc0e7a9bed9a184c1be821b4d23570c6b7af7f0410" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\bec8ead1da3c9600fe66bbcc0e7a9bed9a184c1be821b4d23570c6b7af7f0410" SelfReg="false"/>
+    <ROW File="fa29a6d5775ff340900a65b39b02fc8b4b77d403c048d8debf22f2f5d09c61a0" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="FA29A6~1|fa29a6d5775ff340900a65b39b02fc8b4b77d403c048d8debf22f2f5d09c61a0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\fa29a6d5775ff340900a65b39b02fc8b4b77d403c048d8debf22f2f5d09c61a0" SelfReg="false"/>
+    <ROW File="metadata.json" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7" FileName="METADA~1.JSO|metadata.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\component_crx_cache\metadata.json" SelfReg="false"/>
+    <ROW File="metadata" Component_="metadata" FileName="metadata" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Crashpad\metadata" SelfReg="false"/>
+    <ROW File="settings.dat" Component_="metadata" FileName="settings.dat" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Crashpad\settings.dat" SelfReg="false"/>
+    <ROW File="throttle_store.dat" Component_="metadata" FileName="THROTT~1.DAT|throttle_store.dat" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Crashpad\throttle_store.dat" SelfReg="false"/>
+    <ROW File="LOCK" Component_="LOCK" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\AutofillAiModelCache\LOCK" SelfReg="false"/>
+    <ROW File="LOG" Component_="LOCK" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\AutofillAiModelCache\LOG" SelfReg="false"/>
+    <ROW File="LOCK_1" Component_="LOCK_1" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\AutofillStrikeDatabase\LOCK" SelfReg="false"/>
+    <ROW File="LOG_1" Component_="LOCK_1" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\AutofillStrikeDatabase\LOG" SelfReg="false"/>
+    <ROW File="BookmarkMergedSurfaceOrdering" Component_="BookmarkMergedSurfaceOrdering" FileName="BOOKMA~1|BookmarkMergedSurfaceOrdering" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BookmarkMergedSurfaceOrdering" SelfReg="false"/>
+    <ROW File="BrowsingTopicsSiteData" Component_="BookmarkMergedSurfaceOrdering" FileName="BROWSI~1|BrowsingTopicsSiteData" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BrowsingTopicsSiteData" SelfReg="false"/>
+    <ROW File="BrowsingTopicsSiteDatajournal" Component_="BookmarkMergedSurfaceOrdering" FileName="BROWSI~2|BrowsingTopicsSiteData-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BrowsingTopicsSiteData-journal" SelfReg="false"/>
+    <ROW File="BrowsingTopicsState" Component_="BookmarkMergedSurfaceOrdering" FileName="BROWSI~3|BrowsingTopicsState" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BrowsingTopicsState" SelfReg="false"/>
+    <ROW File="LOCK_2" Component_="LOCK_2" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BudgetDatabase\LOCK" SelfReg="false"/>
+    <ROW File="LOG_2" Component_="LOCK_2" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\BudgetDatabase\LOG" SelfReg="false"/>
+    <ROW File="LOCK_3" Component_="LOCK_3" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ClientCertificates\LOCK" SelfReg="false"/>
+    <ROW File="LOG_3" Component_="LOCK_3" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ClientCertificates\LOG" SelfReg="false"/>
+    <ROW File="d3f7e13322edebe_0" Component_="d3f7e13322edebe_0" FileName="0D3F7E~1|0d3f7e13322edebe_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\js\0d3f7e13322edebe_0" SelfReg="false"/>
+    <ROW File="efa46727fdc4_0" Component_="d3f7e13322edebe_0" FileName="2669EF~1|2669efa46727fdc4_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\js\2669efa46727fdc4_0" SelfReg="false"/>
+    <ROW File="index" Component_="d3f7e13322edebe_0" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\js\index" SelfReg="false"/>
+    <ROW File="therealindex" Component_="therealindex" FileName="THE-RE~1|the-real-index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\js\index-dir\the-real-index" SelfReg="false"/>
+    <ROW File="index_1" Component_="index" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\wasm\index" SelfReg="false"/>
+    <ROW File="therealindex_1" Component_="therealindex_1" FileName="THE-RE~1|the-real-index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Code Cache\wasm\index-dir\the-real-index" SelfReg="false"/>
+    <ROW File="LOCK_4" Component_="LOCK_4" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\commerce_subscription_db\LOCK" SelfReg="false"/>
+    <ROW File="LOG_4" Component_="LOCK_4" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\commerce_subscription_db\LOG" SelfReg="false"/>
+    <ROW File="data_0" Component_="data_0" FileName="data_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnGraphiteCache\data_0" SelfReg="false"/>
+    <ROW File="data_1" Component_="data_0" FileName="data_1" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnGraphiteCache\data_1" SelfReg="false"/>
+    <ROW File="data_2" Component_="data_0" FileName="data_2" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnGraphiteCache\data_2" SelfReg="false"/>
+    <ROW File="data_3" Component_="data_0" FileName="data_3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnGraphiteCache\data_3" SelfReg="false"/>
+    <ROW File="index_2" Component_="data_0" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnGraphiteCache\index" SelfReg="false"/>
+    <ROW File="data_0_1" Component_="data_0_1" FileName="data_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnWebGPUCache\data_0" SelfReg="false"/>
+    <ROW File="data_1_1" Component_="data_0_1" FileName="data_1" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnWebGPUCache\data_1" SelfReg="false"/>
+    <ROW File="data_2_1" Component_="data_0_1" FileName="data_2" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnWebGPUCache\data_2" SelfReg="false"/>
+    <ROW File="data_3_1" Component_="data_0_1" FileName="data_3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnWebGPUCache\data_3" SelfReg="false"/>
+    <ROW File="index_3" Component_="data_0_1" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DawnWebGPUCache\index" SelfReg="false"/>
+    <ROW File="DIPS" Component_="BookmarkMergedSurfaceOrdering" FileName="DIPS" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\DIPS" SelfReg="false"/>
+    <ROW File="LOCK_5" Component_="LOCK_5" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\discounts_db\LOCK" SelfReg="false"/>
+    <ROW File="LOG_5" Component_="LOCK_5" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\discounts_db\LOG" SelfReg="false"/>
+    <ROW File="LOCK_6" Component_="LOCK_6" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\discount_infos_db\LOCK" SelfReg="false"/>
+    <ROW File="LOG_6" Component_="LOCK_6" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\discount_infos_db\LOG" SelfReg="false"/>
+    <ROW File="EdgeJourneys.db" Component_="EdgeJourneys.db" FileName="EDGEJO~1.DB|EdgeJourneys.db" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\EdgeJourneys\EdgeJourneys.db" SelfReg="false"/>
+    <ROW File="SessionRestoreLog" Component_="SessionRestoreLog" FileName="SESSIO~1|SessionRestoreLog" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\EdgeSessions\SessionRestoreLog" SelfReg="false"/>
+    <ROW File="log_7" Component_="log" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Rules\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT" Component_="log" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Rules\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_7" Component_="log" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Rules\LOCK" SelfReg="false"/>
+    <ROW File="LOG_8" Component_="log" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Rules\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001" Component_="log" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Rules\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="log_9" Component_="log_1" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Scripts\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_1" Component_="log_1" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Scripts\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_8" Component_="log_1" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Scripts\LOCK" SelfReg="false"/>
+    <ROW File="LOG_10" Component_="log_1" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Scripts\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_1" Component_="log_1" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension Scripts\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="log_11" Component_="log_2" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension State\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_2" Component_="log_2" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension State\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_9" Component_="log_2" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension State\LOCK" SelfReg="false"/>
+    <ROW File="LOG_12" Component_="log_2" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension State\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_2" Component_="log_2" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Extension State\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="ExtensionActivityComp" Component_="BookmarkMergedSurfaceOrdering" FileName="EXTENS~1|ExtensionActivityComp" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ExtensionActivityComp" SelfReg="false"/>
+    <ROW File="ExtensionActivityEdge" Component_="BookmarkMergedSurfaceOrdering" FileName="EXTENS~2|ExtensionActivityEdge" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ExtensionActivityEdge" SelfReg="false"/>
+    <ROW File="ExtensionActivityEdgejournal" Component_="BookmarkMergedSurfaceOrdering" FileName="EXTENS~3|ExtensionActivityEdge-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ExtensionActivityEdge-journal" SelfReg="false"/>
+    <ROW File="Favicons" Component_="BookmarkMergedSurfaceOrdering" FileName="Favicons" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Favicons" SelfReg="false"/>
+    <ROW File="Faviconsjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="FAVICO~1|Favicons-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Favicons-journal" SelfReg="false"/>
+    <ROW File="favorites_diagnostic.log" Component_="BookmarkMergedSurfaceOrdering" FileName="FAVORI~1.LOG|favorites_diagnostic.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\favorites_diagnostic.log" SelfReg="false"/>
+    <ROW File="LOCK_10" Component_="LOCK_7" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Feature Engagement Tracker\AvailabilityDB\LOCK" SelfReg="false"/>
+    <ROW File="LOG_13" Component_="LOCK_7" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Feature Engagement Tracker\AvailabilityDB\LOG" SelfReg="false"/>
+    <ROW File="LOCK_11" Component_="LOCK_8" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Feature Engagement Tracker\EventDB\LOCK" SelfReg="false"/>
+    <ROW File="LOG_14" Component_="LOCK_8" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Feature Engagement Tracker\EventDB\LOG" SelfReg="false"/>
+    <ROW File="data_0_2" Component_="data_0_2" FileName="data_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\GPUCache\data_0" SelfReg="false"/>
+    <ROW File="data_1_2" Component_="data_0_2" FileName="data_1" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\GPUCache\data_1" SelfReg="false"/>
+    <ROW File="data_2_2" Component_="data_0_2" FileName="data_2" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\GPUCache\data_2" SelfReg="false"/>
+    <ROW File="data_3_2" Component_="data_0_2" FileName="data_3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\GPUCache\data_3" SelfReg="false"/>
+    <ROW File="index_4" Component_="data_0_2" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\GPUCache\index" SelfReg="false"/>
+    <ROW File="History" Component_="BookmarkMergedSurfaceOrdering" FileName="History" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\History" SelfReg="false"/>
+    <ROW File="Historyjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="HISTOR~1|History-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\History-journal" SelfReg="false"/>
+    <ROW File="log_15" Component_="log_3" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Local Storage\leveldb\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_3" Component_="log_3" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Local Storage\leveldb\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_12" Component_="log_3" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Local Storage\leveldb\LOCK" SelfReg="false"/>
+    <ROW File="LOG_16" Component_="log_3" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Local Storage\leveldb\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_3" Component_="log_3" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Local Storage\leveldb\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="LOCK_13" Component_="BookmarkMergedSurfaceOrdering" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\LOCK" SelfReg="false"/>
+    <ROW File="LOG_17" Component_="BookmarkMergedSurfaceOrdering" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\LOG" SelfReg="false"/>
+    <ROW File="LoginData" Component_="BookmarkMergedSurfaceOrdering" FileName="LOGIND~1|Login Data" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Login Data" SelfReg="false"/>
+    <ROW File="LoginDataForAccount" Component_="BookmarkMergedSurfaceOrdering" FileName="LOGIND~2|Login Data For Account" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Login Data For Account" SelfReg="false"/>
+    <ROW File="LoginDataForAccountjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="LOGIND~3|Login Data For Account-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Login Data For Account-journal" SelfReg="false"/>
+    <ROW File="LoginDatajournal" Component_="BookmarkMergedSurfaceOrdering" FileName="LOGIND~4|Login Data-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Login Data-journal" SelfReg="false"/>
+    <ROW File="Cookies" Component_="Cookies" FileName="Cookies" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Cookies" SelfReg="false"/>
+    <ROW File="Cookiesjournal" Component_="Cookies" FileName="COOKIE~1|Cookies-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Cookies-journal" SelfReg="false"/>
+    <ROW File="DeviceBoundSessions" Component_="Cookies" FileName="DEVICE~1|Device Bound Sessions" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Device Bound Sessions" SelfReg="false"/>
+    <ROW File="DeviceBoundSessionsjournal" Component_="Cookies" FileName="DEVICE~2|Device Bound Sessions-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Device Bound Sessions-journal" SelfReg="false"/>
+    <ROW File="NetworkPersistentState" Component_="Cookies" FileName="NETWOR~1|Network Persistent State" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Network Persistent State" SelfReg="false"/>
+    <ROW File="NetworkDataMigrated" Component_="Cookies" FileName="NETWOR~2|NetworkDataMigrated" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\NetworkDataMigrated" SelfReg="false"/>
+    <ROW File="ReportingandNEL" Component_="Cookies" FileName="REPORT~1|Reporting and NEL" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Reporting and NEL" SelfReg="false"/>
+    <ROW File="ReportingandNELjournal" Component_="Cookies" FileName="REPORT~2|Reporting and NEL-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Reporting and NEL-journal" SelfReg="false"/>
+    <ROW File="SCTAuditingPendingReports" Component_="Cookies" FileName="SCTAUD~1|SCT Auditing Pending Reports" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\SCT Auditing Pending Reports" SelfReg="false"/>
+    <ROW File="SdchDictionaries" Component_="Cookies" FileName="SDCHDI~1|Sdch Dictionaries" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Sdch Dictionaries" SelfReg="false"/>
+    <ROW File="TrustTokens" Component_="Cookies" FileName="TRUSTT~1|Trust Tokens" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Trust Tokens" SelfReg="false"/>
+    <ROW File="TrustTokensjournal" Component_="Cookies" FileName="TRUSTT~2|Trust Tokens-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network\Trust Tokens-journal" SelfReg="false"/>
+    <ROW File="NetworkActionPredictor" Component_="BookmarkMergedSurfaceOrdering" FileName="NETWOR~1|Network Action Predictor" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network Action Predictor" SelfReg="false"/>
+    <ROW File="NetworkActionPredictorjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="NETWOR~2|Network Action Predictor-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Network Action Predictor-journal" SelfReg="false"/>
+    <ROW File="LOCK_14" Component_="LOCK_9" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\optimization_guide_hint_cache_store\LOCK" SelfReg="false"/>
+    <ROW File="LOG_18" Component_="LOCK_9" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\optimization_guide_hint_cache_store\LOG" SelfReg="false"/>
+    <ROW File="LOCK_15" Component_="LOCK_10" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\parcel_tracking_db\LOCK" SelfReg="false"/>
+    <ROW File="LOG_19" Component_="LOCK_10" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\parcel_tracking_db\LOG" SelfReg="false"/>
+    <ROW File="LOCK_16" Component_="LOCK_11" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\PersistentOriginTrials\LOCK" SelfReg="false"/>
+    <ROW File="LOG_20" Component_="LOCK_11" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\PersistentOriginTrials\LOG" SelfReg="false"/>
+    <ROW File="Preferences" Component_="BookmarkMergedSurfaceOrdering" FileName="PREFER~1|Preferences" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Preferences" SelfReg="false"/>
+    <ROW File="README" Component_="BookmarkMergedSurfaceOrdering" FileName="README" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\README" SelfReg="false"/>
+    <ROW File="NetworkDataMigrated_1" Component_="NetworkDataMigrated" FileName="NETWOR~1|NetworkDataMigrated" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Safe Browsing Network\NetworkDataMigrated" SelfReg="false"/>
+    <ROW File="SafeBrowsingCookies" Component_="NetworkDataMigrated" FileName="SAFEBR~1|Safe Browsing Cookies" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Safe Browsing Network\Safe Browsing Cookies" SelfReg="false"/>
+    <ROW File="SafeBrowsingCookiesjournal" Component_="NetworkDataMigrated" FileName="SAFEBR~2|Safe Browsing Cookies-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Safe Browsing Network\Safe Browsing Cookies-journal" SelfReg="false"/>
+    <ROW File="SecurePreferences" Component_="BookmarkMergedSurfaceOrdering" FileName="SECURE~1|Secure Preferences" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Secure Preferences" SelfReg="false"/>
+    <ROW File="ServerCertificate" Component_="BookmarkMergedSurfaceOrdering" FileName="SERVER~1|ServerCertificate" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ServerCertificate" SelfReg="false"/>
+    <ROW File="ServerCertificatejournal" Component_="BookmarkMergedSurfaceOrdering" FileName="SERVER~2|ServerCertificate-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\ServerCertificate-journal" SelfReg="false"/>
+    <ROW File="log_21" Component_="log_4" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Session Storage\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_4" Component_="log_4" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Session Storage\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_17" Component_="log_4" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Session Storage\LOCK" SelfReg="false"/>
+    <ROW File="LOG_22" Component_="log_4" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Session Storage\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_4" Component_="log_4" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Session Storage\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="index_5" Component_="index_1" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Shared Dictionary\cache\index" SelfReg="false"/>
+    <ROW File="therealindex_2" Component_="therealindex_2" FileName="THE-RE~1|the-real-index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Shared Dictionary\cache\index-dir\the-real-index" SelfReg="false"/>
+    <ROW File="db" Component_="db" FileName="db" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Shared Dictionary\db" SelfReg="false"/>
+    <ROW File="dbjournal" Component_="db" FileName="DB-JOU~1|db-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Shared Dictionary\db-journal" SelfReg="false"/>
+    <ROW File="SharedStorage" Component_="BookmarkMergedSurfaceOrdering" FileName="SHARED~1|SharedStorage" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\SharedStorage" SelfReg="false"/>
+    <ROW File="log_23" Component_="log_5" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_5" Component_="log_5" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_18" Component_="log_5" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\LOCK" SelfReg="false"/>
+    <ROW File="LOG_24" Component_="log_5" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_5" Component_="log_5" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="log_25" Component_="log_6" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\metadata\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_6" Component_="log_6" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\metadata\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_19" Component_="log_6" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\metadata\LOCK" SelfReg="false"/>
+    <ROW File="LOG_26" Component_="log_6" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\metadata\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_6" Component_="log_6" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\shared_proto_db\metadata\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="log_27" Component_="log_7" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Site Characteristics Database\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_7" Component_="log_7" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Site Characteristics Database\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_20" Component_="log_7" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Site Characteristics Database\LOCK" SelfReg="false"/>
+    <ROW File="LOG_28" Component_="log_7" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Site Characteristics Database\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_7" Component_="log_7" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Site Characteristics Database\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="log_29" Component_="log_8" FileName="000003.log" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Sync Data\LevelDB\000003.log" SelfReg="false"/>
+    <ROW File="CURRENT_8" Component_="log_8" FileName="CURRENT" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Sync Data\LevelDB\CURRENT" SelfReg="false"/>
+    <ROW File="LOCK_21" Component_="log_8" FileName="LOCK" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Sync Data\LevelDB\LOCK" SelfReg="false"/>
+    <ROW File="LOG_30" Component_="log_8" FileName="LOG" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Sync Data\LevelDB\LOG" SelfReg="false"/>
+    <ROW File="MANIFEST000001_8" Component_="log_8" FileName="MANIFE~1|MANIFEST-000001" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Sync Data\LevelDB\MANIFEST-000001" SelfReg="false"/>
+    <ROW File="TopSites" Component_="BookmarkMergedSurfaceOrdering" FileName="TOPSIT~1|Top Sites" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Top Sites" SelfReg="false"/>
+    <ROW File="TopSitesjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="TOPSIT~2|Top Sites-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Top Sites-journal" SelfReg="false"/>
+    <ROW File="VpnTokens" Component_="BookmarkMergedSurfaceOrdering" FileName="VPNTOK~1|Vpn Tokens" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Vpn Tokens" SelfReg="false"/>
+    <ROW File="VpnTokensjournal" Component_="BookmarkMergedSurfaceOrdering" FileName="VPNTOK~2|Vpn Tokens-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Vpn Tokens-journal" SelfReg="false"/>
+    <ROW File="WebData" Component_="BookmarkMergedSurfaceOrdering" FileName="WEBDAT~1|Web Data" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Web Data" SelfReg="false"/>
+    <ROW File="WebDatajournal" Component_="BookmarkMergedSurfaceOrdering" FileName="WEBDAT~2|Web Data-journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Default\Web Data-journal" SelfReg="false"/>
+    <ROW File="metadata.json_1" Component_="metadata.json" FileName="METADA~1.JSO|metadata.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\extensions_crx_cache\metadata.json" SelfReg="false"/>
+    <ROW File="cache.db" Component_="cache.db" FileName="cache.db" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GPUPersistentCache\DawnGraphiteCache\IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3AK\cache.db" SelfReg="false"/>
+    <ROW File="cache.dbwal" Component_="cache.db" FileName="CACHE~1.DB-|cache.db-wal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GPUPersistentCache\DawnGraphiteCache\IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3AK\cache.db-wal" SelfReg="false"/>
+    <ROW File="cache.journal" Component_="cache.db" FileName="CACHE~1.JOU|cache.journal" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GPUPersistentCache\DawnGraphiteCache\IJOGKRFPMZ7VTQMWF2G3DJTAKIRMX3AK\cache.journal" SelfReg="false"/>
+    <ROW File="data_0_3" Component_="data_0_3" FileName="data_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GrShaderCache\data_0" SelfReg="false"/>
+    <ROW File="data_1_3" Component_="data_0_3" FileName="data_1" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GrShaderCache\data_1" SelfReg="false"/>
+    <ROW File="data_2_3" Component_="data_0_3" FileName="data_2" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GrShaderCache\data_2" SelfReg="false"/>
+    <ROW File="data_3_3" Component_="data_0_3" FileName="data_3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GrShaderCache\data_3" SelfReg="false"/>
+    <ROW File="index_6" Component_="data_0_3" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\GrShaderCache\index" SelfReg="false"/>
+    <ROW File="hyphaf.hyb" Component_="hyphaf.hyb" FileName="hyph-af.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-af.hyb" SelfReg="false"/>
+    <ROW File="hyphas.hyb" Component_="hyphaf.hyb" FileName="hyph-as.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-as.hyb" SelfReg="false"/>
+    <ROW File="hyphbe.hyb" Component_="hyphaf.hyb" FileName="hyph-be.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-be.hyb" SelfReg="false"/>
+    <ROW File="hyphbg.hyb" Component_="hyphaf.hyb" FileName="hyph-bg.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-bg.hyb" SelfReg="false"/>
+    <ROW File="hyphbn.hyb" Component_="hyphaf.hyb" FileName="hyph-bn.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-bn.hyb" SelfReg="false"/>
+    <ROW File="hyphcs.hyb" Component_="hyphaf.hyb" FileName="hyph-cs.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-cs.hyb" SelfReg="false"/>
+    <ROW File="hyphcu.hyb" Component_="hyphaf.hyb" FileName="hyph-cu.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-cu.hyb" SelfReg="false"/>
+    <ROW File="hyphcy.hyb" Component_="hyphaf.hyb" FileName="hyph-cy.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-cy.hyb" SelfReg="false"/>
+    <ROW File="hyphda.hyb" Component_="hyphaf.hyb" FileName="hyph-da.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-da.hyb" SelfReg="false"/>
+    <ROW File="hyphde1901.hyb" Component_="hyphaf.hyb" FileName="HYPH-D~1.HYB|hyph-de-1901.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-de-1901.hyb" SelfReg="false"/>
+    <ROW File="hyphde1996.hyb" Component_="hyphaf.hyb" FileName="HYPH-D~2.HYB|hyph-de-1996.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-de-1996.hyb" SelfReg="false"/>
+    <ROW File="hyphdech1901.hyb" Component_="hyphaf.hyb" FileName="HYPH-D~3.HYB|hyph-de-ch-1901.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-de-ch-1901.hyb" SelfReg="false"/>
+    <ROW File="hyphel.hyb" Component_="hyphaf.hyb" FileName="hyph-el.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-el.hyb" SelfReg="false"/>
+    <ROW File="hyphengb.hyb" Component_="hyphaf.hyb" FileName="HYPH-E~1.HYB|hyph-en-gb.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-en-gb.hyb" SelfReg="false"/>
+    <ROW File="hyphenus.hyb" Component_="hyphaf.hyb" FileName="HYPH-E~2.HYB|hyph-en-us.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-en-us.hyb" SelfReg="false"/>
+    <ROW File="hyphes.hyb" Component_="hyphaf.hyb" FileName="hyph-es.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-es.hyb" SelfReg="false"/>
+    <ROW File="hyphet.hyb" Component_="hyphaf.hyb" FileName="hyph-et.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-et.hyb" SelfReg="false"/>
+    <ROW File="hypheu.hyb" Component_="hyphaf.hyb" FileName="hyph-eu.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-eu.hyb" SelfReg="false"/>
+    <ROW File="hyphfr.hyb" Component_="hyphaf.hyb" FileName="hyph-fr.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-fr.hyb" SelfReg="false"/>
+    <ROW File="hyphga.hyb" Component_="hyphaf.hyb" FileName="hyph-ga.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-ga.hyb" SelfReg="false"/>
+    <ROW File="hyphgl.hyb" Component_="hyphaf.hyb" FileName="hyph-gl.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-gl.hyb" SelfReg="false"/>
+    <ROW File="hyphgu.hyb" Component_="hyphaf.hyb" FileName="hyph-gu.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-gu.hyb" SelfReg="false"/>
+    <ROW File="hyphhi.hyb" Component_="hyphaf.hyb" FileName="hyph-hi.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-hi.hyb" SelfReg="false"/>
+    <ROW File="hyphhr.hyb" Component_="hyphaf.hyb" FileName="hyph-hr.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-hr.hyb" SelfReg="false"/>
+    <ROW File="hyphhu.hyb" Component_="hyphaf.hyb" FileName="hyph-hu.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-hu.hyb" SelfReg="false"/>
+    <ROW File="hyphhy.hyb" Component_="hyphaf.hyb" FileName="hyph-hy.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-hy.hyb" SelfReg="false"/>
+    <ROW File="hyphit.hyb" Component_="hyphaf.hyb" FileName="hyph-it.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-it.hyb" SelfReg="false"/>
+    <ROW File="hyphka.hyb" Component_="hyphaf.hyb" FileName="hyph-ka.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-ka.hyb" SelfReg="false"/>
+    <ROW File="hyphkn.hyb" Component_="hyphaf.hyb" FileName="hyph-kn.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-kn.hyb" SelfReg="false"/>
+    <ROW File="hyphla.hyb" Component_="hyphaf.hyb" FileName="hyph-la.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-la.hyb" SelfReg="false"/>
+    <ROW File="hyphlt.hyb" Component_="hyphaf.hyb" FileName="hyph-lt.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-lt.hyb" SelfReg="false"/>
+    <ROW File="hyphlv.hyb" Component_="hyphaf.hyb" FileName="hyph-lv.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-lv.hyb" SelfReg="false"/>
+    <ROW File="hyphml.hyb" Component_="hyphaf.hyb" FileName="hyph-ml.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-ml.hyb" SelfReg="false"/>
+    <ROW File="hyphmncyrl.hyb" Component_="hyphaf.hyb" FileName="HYPH-M~1.HYB|hyph-mn-cyrl.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-mn-cyrl.hyb" SelfReg="false"/>
+    <ROW File="hyphmr.hyb" Component_="hyphaf.hyb" FileName="hyph-mr.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-mr.hyb" SelfReg="false"/>
+    <ROW File="hyphmulethi.hyb" Component_="hyphaf.hyb" FileName="HYPH-M~2.HYB|hyph-mul-ethi.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-mul-ethi.hyb" SelfReg="false"/>
+    <ROW File="hyphnb.hyb" Component_="hyphaf.hyb" FileName="hyph-nb.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-nb.hyb" SelfReg="false"/>
+    <ROW File="hyphnl.hyb" Component_="hyphaf.hyb" FileName="hyph-nl.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-nl.hyb" SelfReg="false"/>
+    <ROW File="hyphnn.hyb" Component_="hyphaf.hyb" FileName="hyph-nn.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-nn.hyb" SelfReg="false"/>
+    <ROW File="hyphor.hyb" Component_="hyphaf.hyb" FileName="hyph-or.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-or.hyb" SelfReg="false"/>
+    <ROW File="hyphpa.hyb" Component_="hyphaf.hyb" FileName="hyph-pa.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-pa.hyb" SelfReg="false"/>
+    <ROW File="hyphpt.hyb" Component_="hyphaf.hyb" FileName="hyph-pt.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-pt.hyb" SelfReg="false"/>
+    <ROW File="hyphru.hyb" Component_="hyphaf.hyb" FileName="hyph-ru.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-ru.hyb" SelfReg="false"/>
+    <ROW File="hyphsk.hyb" Component_="hyphaf.hyb" FileName="hyph-sk.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-sk.hyb" SelfReg="false"/>
+    <ROW File="hyphsl.hyb" Component_="hyphaf.hyb" FileName="hyph-sl.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-sl.hyb" SelfReg="false"/>
+    <ROW File="hyphsq.hyb" Component_="hyphaf.hyb" FileName="hyph-sq.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-sq.hyb" SelfReg="false"/>
+    <ROW File="hyphsv.hyb" Component_="hyphaf.hyb" FileName="hyph-sv.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-sv.hyb" SelfReg="false"/>
+    <ROW File="hyphta.hyb" Component_="hyphaf.hyb" FileName="hyph-ta.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-ta.hyb" SelfReg="false"/>
+    <ROW File="hyphte.hyb" Component_="hyphaf.hyb" FileName="hyph-te.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-te.hyb" SelfReg="false"/>
+    <ROW File="hyphtk.hyb" Component_="hyphaf.hyb" FileName="hyph-tk.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-tk.hyb" SelfReg="false"/>
+    <ROW File="hyphuk.hyb" Component_="hyphaf.hyb" FileName="hyph-uk.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-uk.hyb" SelfReg="false"/>
+    <ROW File="hyphundethi.hyb" Component_="hyphaf.hyb" FileName="HYPH-U~1.HYB|hyph-und-ethi.hyb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\hyph-und-ethi.hyb" SelfReg="false"/>
+    <ROW File="manifest.json_2" Component_="hyphaf.hyb" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\manifest.json" SelfReg="false"/>
+    <ROW File="verified_contents.json" Component_="verified_contents.json" FileName="VERIFI~1.JSO|verified_contents.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\hyphen-data\120.0.6050.0\_metadata\verified_contents.json" SelfReg="false"/>
+    <ROW File="LastVersion" Component_="BrowserMetricsspare.pma" FileName="LASTVE~1|Last Version" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Last Version" SelfReg="false"/>
+    <ROW File="LocalState" Component_="BrowserMetricsspare.pma" FileName="LOCALS~1|Local State" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Local State" SelfReg="false"/>
+    <ROW File="manifest.json_3" Component_="manifest.json_1" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\OriginTrials\0.0.1.7\manifest.json" SelfReg="false"/>
+    <ROW File="crs.pb" Component_="crs.pb" FileName="crs.pb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\PKIMetadata\46.0.0.0\crs.pb" SelfReg="false"/>
+    <ROW File="ct_config.pb" Component_="crs.pb" FileName="CT_CON~1.PB|ct_config.pb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\PKIMetadata\46.0.0.0\ct_config.pb" SelfReg="false"/>
+    <ROW File="kp_pinslist.pb" Component_="crs.pb" FileName="KP_PIN~1.PB|kp_pinslist.pb" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\PKIMetadata\46.0.0.0\kp_pinslist.pb" SelfReg="false"/>
+    <ROW File="manifest.json_4" Component_="crs.pb" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\PKIMetadata\46.0.0.0\manifest.json" SelfReg="false"/>
+    <ROW File="data_0_4" Component_="data_0_4" FileName="data_0" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\ShaderCache\data_0" SelfReg="false"/>
+    <ROW File="data_1_4" Component_="data_0_4" FileName="data_1" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\ShaderCache\data_1" SelfReg="false"/>
+    <ROW File="data_2_4" Component_="data_0_4" FileName="data_2" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\ShaderCache\data_2" SelfReg="false"/>
+    <ROW File="data_3_4" Component_="data_0_4" FileName="data_3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\ShaderCache\data_3" SelfReg="false"/>
+    <ROW File="index_7" Component_="data_0_4" FileName="index" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\ShaderCache\index" SelfReg="false"/>
+    <ROW File="downloadCache" Component_="downloadCache" FileName="DOWNLO~1|downloadCache" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\local\downloadCache" SelfReg="false"/>
+    <ROW File="downloadCache_" Component_="downloadCache" FileName="DOWNLO~2|downloadCache_" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\local\downloadCache_" SelfReg="false"/>
+    <ROW File="uriCache" Component_="downloadCache" FileName="uriCache" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\local\uriCache" SelfReg="false"/>
+    <ROW File="uriCache_" Component_="downloadCache" FileName="URICAC~1|uriCache_" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\local\uriCache_" SelfReg="false"/>
+    <ROW File="customSettings" Component_="customSettings" FileName="CUSTOM~1|customSettings" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\customSettings" SelfReg="false"/>
+    <ROW File="customSettings_F95BA787499AB4FA9EFFF472CE383A14" Component_="customSettings" FileName="CUSTOM~2|customSettings_F95BA787499AB4FA9EFFF472CE383A14" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\customSettings_F95BA787499AB4FA9EFFF472CE383A14" SelfReg="false"/>
+    <ROW File="edgeSettings" Component_="customSettings" FileName="EDGESE~1|edgeSettings" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\edgeSettings" SelfReg="false"/>
+    <ROW File="edgeSettings_2.0a82cb2897a8bf9445d68dcc2be05af89ad4b2fda1fddb2952693b" Component_="customSettings" FileName="EDGESE~1.0-A|edgeSettings_2.0-a82cb2897a8bf9445d68dcc2be05af89ad4b2fda1fddb2952693be7cd5353ad3" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\edgeSettings_2.0-a82cb2897a8bf9445d68dcc2be05af89ad4b2fda1fddb2952693be7cd5353ad3" SelfReg="false"/>
+    <ROW File="topTraffic" Component_="customSettings" FileName="TOPTRA~1|topTraffic" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\topTraffic" SelfReg="false"/>
+    <ROW File="topTraffic_638004170464094982" Component_="customSettings" FileName="TOPTRA~2|topTraffic_638004170464094982" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\SmartScreen\RemoteData\topTraffic_638004170464094982" SelfReg="false"/>
+    <ROW File="manifest.json_5" Component_="manifest.json_2" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Speech Recognition\1.15.0.1\manifest.json" SelfReg="false"/>
+    <ROW File="Microsoft.CognitiveServices.Speech.core.dll" Component_="Microsoft.CognitiveServices.Speech.core.dll" FileName="MICROS~1.DLL|Microsoft.CognitiveServices.Speech.core.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Speech Recognition\1.15.0.1\Microsoft.CognitiveServices.Speech.core.dll" SelfReg="false"/>
+    <ROW File="keys.json" Component_="keys.json" FileName="KEYS~1.JSO|keys.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\keys.json" SelfReg="false"/>
+    <ROW File="LICENSE" Component_="keys.json" FileName="LICENSE" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\LICENSE" SelfReg="false"/>
+    <ROW File="manifest.json_6" Component_="keys.json" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\manifest.json" SelfReg="false"/>
+    <ROW File="verified_contents.json_1" Component_="verified_contents.json_1" FileName="VERIFI~1.JSO|verified_contents.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\_metadata\verified_contents.json" SelfReg="false"/>
+    <ROW File="Variations" Component_="BrowserMetricsspare.pma" FileName="VARIAT~1|Variations" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Variations" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
     <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
@@ -1081,6 +1529,16 @@
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCreateFolderComponent">
     <ROW Directory_="APPDIR" Component_="APPDIR" ManualDelete="true"/>
     <ROW Directory_="SHORTCUTDIR" Component_="SHORTCUTDIR" ManualDelete="false"/>
+    <ROW Directory_="attachments_Dir" Component_="attachments" ManualDelete="false"/>
+    <ROW Directory_="reports_Dir" Component_="reports" ManualDelete="false"/>
+    <ROW Directory_="d27fd29ce4068a1770cbf538b934e_Dir" Component_="d27fd29ce4068a1770cbf538b934e" ManualDelete="false"/>
+    <ROW Directory_="Cache_Data_Dir" Component_="Cache_Data" ManualDelete="false"/>
+    <ROW Directory_="No_Vary_Search_Dir" Component_="No_Vary_Search" ManualDelete="false"/>
+    <ROW Directory_="Sessions_Dir" Component_="Sessions" ManualDelete="false"/>
+    <ROW Directory_="MEIPreload_Dir" Component_="MEIPreload" ManualDelete="false"/>
+    <ROW Directory_="UnindexedRules_Dir" Component_="UnindexedRules" ManualDelete="false"/>
+    <ROW Directory_="TrustProtectionLists_Dir" Component_="TrustProtectionLists" ManualDelete="false"/>
+    <ROW Directory_="WidevineCdm_Dir" Component_="WidevineCdm" ManualDelete="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCustActComponent">
     <ROW Action="AI_AppSearchEx" Type="1" Source="Prereq.dll" Target="DoAppSearchEx"/>
@@ -1580,6 +2038,91 @@
     <ROW Feature_="MainFeature" Component_="WindowsBase.resources.dll_12"/>
     <ROW Feature_="MainFeature" Component_="SHORTCUTDIR"/>
     <ROW Feature_="MainFeature" Component_="AI_ExePath"/>
+    <ROW Feature_="MainFeature" Component_="AngleSharp.dll"/>
+    <ROW Feature_="MainFeature" Component_="index.html"/>
+    <ROW Feature_="MainFeature" Component_="Microsoft.Web.WebView2.Core.dll"/>
+    <ROW Feature_="MainFeature" Component_="Microsoft.Web.WebView2.WinForms.dll"/>
+    <ROW Feature_="MainFeature" Component_="Microsoft.Web.WebView2.Wpf.dll"/>
+    <ROW Feature_="MainFeature" Component_="MigraDoc.DocumentObjectModel.dll"/>
+    <ROW Feature_="MainFeature" Component_="MigraDoc.Rendering.dll"/>
+    <ROW Feature_="MainFeature" Component_="MigraDoc.RtfRendering.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.BarCodes.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.Charting.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.Cryptography.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.Quality.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.Shared.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.Snippets.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.System.dll"/>
+    <ROW Feature_="MainFeature" Component_="PdfSharp.WPFonts.dll"/>
+    <ROW Feature_="MainFeature" Component_="ReverseMarkdown.dll"/>
+    <ROW Feature_="MainFeature" Component_="WebView2Loader.dll"/>
+    <ROW Feature_="MainFeature" Component_="WebView2Loader.dll_1"/>
+    <ROW Feature_="MainFeature" Component_="manifest.json"/>
+    <ROW Feature_="MainFeature" Component_="BrowserMetricsspare.pma"/>
+    <ROW Feature_="MainFeature" Component_="crlset"/>
+    <ROW Feature_="MainFeature" Component_="ac7dc9366969db9d1e41810a3a27c747a7623535d856eecc2de86cfed80c7"/>
+    <ROW Feature_="MainFeature" Component_="attachments"/>
+    <ROW Feature_="MainFeature" Component_="metadata"/>
+    <ROW Feature_="MainFeature" Component_="reports"/>
+    <ROW Feature_="MainFeature" Component_="LOCK"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_1"/>
+    <ROW Feature_="MainFeature" Component_="d27fd29ce4068a1770cbf538b934e"/>
+    <ROW Feature_="MainFeature" Component_="BookmarkMergedSurfaceOrdering"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_2"/>
+    <ROW Feature_="MainFeature" Component_="Cache_Data"/>
+    <ROW Feature_="MainFeature" Component_="No_Vary_Search"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_3"/>
+    <ROW Feature_="MainFeature" Component_="d3f7e13322edebe_0"/>
+    <ROW Feature_="MainFeature" Component_="therealindex"/>
+    <ROW Feature_="MainFeature" Component_="index"/>
+    <ROW Feature_="MainFeature" Component_="therealindex_1"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_4"/>
+    <ROW Feature_="MainFeature" Component_="data_0"/>
+    <ROW Feature_="MainFeature" Component_="data_0_1"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_5"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_6"/>
+    <ROW Feature_="MainFeature" Component_="EdgeJourneys.db"/>
+    <ROW Feature_="MainFeature" Component_="SessionRestoreLog"/>
+    <ROW Feature_="MainFeature" Component_="log"/>
+    <ROW Feature_="MainFeature" Component_="log_1"/>
+    <ROW Feature_="MainFeature" Component_="log_2"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_7"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_8"/>
+    <ROW Feature_="MainFeature" Component_="data_0_2"/>
+    <ROW Feature_="MainFeature" Component_="log_3"/>
+    <ROW Feature_="MainFeature" Component_="Cookies"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_9"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_10"/>
+    <ROW Feature_="MainFeature" Component_="LOCK_11"/>
+    <ROW Feature_="MainFeature" Component_="NetworkDataMigrated"/>
+    <ROW Feature_="MainFeature" Component_="log_4"/>
+    <ROW Feature_="MainFeature" Component_="Sessions"/>
+    <ROW Feature_="MainFeature" Component_="index_1"/>
+    <ROW Feature_="MainFeature" Component_="therealindex_2"/>
+    <ROW Feature_="MainFeature" Component_="db"/>
+    <ROW Feature_="MainFeature" Component_="log_5"/>
+    <ROW Feature_="MainFeature" Component_="log_6"/>
+    <ROW Feature_="MainFeature" Component_="log_7"/>
+    <ROW Feature_="MainFeature" Component_="log_8"/>
+    <ROW Feature_="MainFeature" Component_="metadata.json"/>
+    <ROW Feature_="MainFeature" Component_="cache.db"/>
+    <ROW Feature_="MainFeature" Component_="data_0_3"/>
+    <ROW Feature_="MainFeature" Component_="hyphaf.hyb"/>
+    <ROW Feature_="MainFeature" Component_="verified_contents.json"/>
+    <ROW Feature_="MainFeature" Component_="MEIPreload"/>
+    <ROW Feature_="MainFeature" Component_="manifest.json_1"/>
+    <ROW Feature_="MainFeature" Component_="crs.pb"/>
+    <ROW Feature_="MainFeature" Component_="data_0_4"/>
+    <ROW Feature_="MainFeature" Component_="downloadCache"/>
+    <ROW Feature_="MainFeature" Component_="customSettings"/>
+    <ROW Feature_="MainFeature" Component_="manifest.json_2"/>
+    <ROW Feature_="MainFeature" Component_="Microsoft.CognitiveServices.Speech.core.dll"/>
+    <ROW Feature_="MainFeature" Component_="UnindexedRules"/>
+    <ROW Feature_="MainFeature" Component_="TrustProtectionLists"/>
+    <ROW Feature_="MainFeature" Component_="keys.json"/>
+    <ROW Feature_="MainFeature" Component_="verified_contents.json_1"/>
+    <ROW Feature_="MainFeature" Component_="WidevineCdm"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
     <ROW Name="app.exe" SourcePath="..\src\UI\Assets\app.ico" Index="0"/>
@@ -1665,12 +2208,15 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
     <ROW PrereqKey="B96F93FA27E74B02866727AAE83982D0" DisplayName=".NET Framework 4.8" SetupFileUrl="https://download.visualstudio.microsoft.com/download/pr/014120d7-d689-4305-befd-3cb711108212/0fd66638cde16859462a6243a4629a50/ndp48-x86-x64-allos-enu.exe" Location="1" ExactSize="117380440" WinNTVersions="Windows 7 RTM x86, Windows 8 x86, Windows 10 version 1507 x86, Windows 10 version 1511 x86, Windows 10 version 1903 x86, Windows 10 version 1909 x86, Windows 10 version 2004 x86, Windows 10 version 20H2 x86, Windows 10 version 21H1 x86, Windows 10 version 21H2 x86, Windows 10 version 22H2 x86" WinNT64Versions="Windows 7 RTM x64, Windows Server 2008 R2 RTM x64, Windows 8 x64, Windows 10 version 1507 x64, Windows 10 version 1511 x64, Windows 10 version 1903 x64, Windows 10 version 1909 x64, Windows 10 version 2004 x64, Windows 10 version 20H2 x64, Windows 10 version 21H1 x64, Windows 10 version 21H2 x64, Windows 10 version 22H2 x64, Windows Server 2022 x64, Windows 11 x64" Operator="1" NoUiComLine="/q /norestart" Options="xky" MD5="aebcb9fcafa2becf8bb30458a7e1f0a2" TargetName=".NET Framework 4.8"/>
-    <ATTRIBUTE name="PrereqsOrder" value="B96F93FA27E74B02866727AAE83982D0"/>
+    <ROW PrereqKey="D09784F374E3A9F5FB0AFDC657291" DisplayName="Microsoft Edge WebView2 Runtime (web installer)" VersionMin="128.0" SetupFileUrl="Prerequisites\WebView2\MicrosoftEdgeWebview2Setup.exe" Location="0" ExactSize="0" WinNTVersions="Windows 8 x86" WinNT64Versions="Windows 8 x64" Operator="1" NoUiComLine="/silent /install" Options="yx" TargetName="WebView2\MicrosoftEdgeWebview2Setup.exe"/>
+    <ATTRIBUTE name="PrereqsOrder" value="D09784F374E3A9F5FB0AFDC657291 B96F93FA27E74B02866727AAE83982D0"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqSearchComponent">
     <ROW SearchKey="B96F93FA27E74B02866727AAE83982D0Release" Prereq="B96F93FA27E74B02866727AAE83982D0" SearchType="9" SearchString="HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\Release" RefContent="G528048" Order="1" Property="PreReqSearch_B96F93FA27E74B02866727"/>
+    <ROW SearchKey="D09784F374E3A9F5FB0AFDC657291p_1" Prereq="D09784F374E3A9F5FB0AFDC657291" SearchType="7" SearchString="HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv" Order="2" Property="PreReqSearch_D09784F374E3A9F5FB0AFD"/>
+    <ROW SearchKey="D09784F374E3A9F5FB0AFDC657291pv" Prereq="D09784F374E3A9F5FB0AFDC657291" SearchType="7" SearchString="HKCU\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv" Order="1" Property="PreReqSearch_AF4EF7137AE24E488A4E12"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.SynchronizedFolderComponent">
-    <ROW Directory_="APPDIR" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
+    <ROW Directory_="APPDIR" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
   </COMPONENT>
 </DOCUMENT>
