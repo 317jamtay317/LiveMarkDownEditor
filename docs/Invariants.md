@@ -847,7 +847,7 @@ and tested.
 ### INV-047 — A Mermaid Diagram renders as a picture in the Visual Document
 - **Statement:** A Mermaid Diagram is shown in the Visual Document as its rendered picture, and
   rendering it never changes the Markdown Document — the counterpart of Code Shading (INV-017), reached
-  for a whole diagram. Five rules bound it:
+  for a whole diagram. Six rules bound it:
   - **Identified by language alone.** A fenced Code Block whose info string is `mermaid` (compared
     case-insensitively) is a Mermaid Diagram; any other Code Block is not. Identifying it and reading
     its source is a pure function of the Visual Document.
@@ -856,6 +856,9 @@ and tested.
     projection and change no part of the Visual Document's structure, exactly as a remote Image's pixels
     do (INV-003) — and view-only: Capturing yields identical Markdown source text before and after any
     diagram is rendered or re-rendered.
+  - **Rendered in the active theme.** The picture matches the editor's light/dark palette — the same
+    Mermaid theme the Diagram Preview uses — and is re-rendered when the theme changes. Re-rendering for
+    a theme change is equally view-only: it changes the picture, never the Markdown Document.
   - **Falls back to its source text.** A diagram the renderer cannot produce — no renderer available,
     or source Mermaid rejects — shows its source text instead, never a hole (the Image fallback of
     INV-031, reached for a diagram).
@@ -870,14 +873,17 @@ and tested.
   as a `BlockUIContainer` hosting a `MermaidDiagramView`, tagged with a `MermaidDiagramRole` carrying
   the diagram's source (the projection stays a pure function of the source — INV-003 — the picture
   arriving later); `FlowDocumentToMarkdownCapturer`, which re-emits the fenced block from that role; the
-  pure `MermaidDiagram.SourceOfBlock` (reading a diagram block's source); and the editor's render
-  coordinator, which renders each diagram through the `IMermaidImageRenderer` port and fills its
-  picture, falling back to the source text when the port yields nothing. None of it feeds back into
-  Capture.
+  pure `MermaidDiagram.SourceOfBlock` (reading a diagram block's source); and the editor's
+  `MermaidRenderCoordinator`, which renders each diagram through the `IMermaidImageRenderer` port in the
+  editor's current theme (re-rendering, and caching by source *and* theme, when `IsDarkTheme` changes)
+  and fills its picture, falling back to the source text when the port yields nothing. None of it feeds
+  back into Capture.
 - **Tested by:** `MermaidDiagramTests.*_INV047` (a `mermaid` block projects to a diagram block whose
-  source is read back; the language match is case-insensitive; another Code Block does not) and
+  source is read back; the language match is case-insensitive; another Code Block does not),
   `MarkdownRichEditorMermaidTests.*_INV047` (a Mermaid Diagram Round-Trips as its fenced block, and
-  rendering never changes the Captured Markdown).
+  rendering never changes the Captured Markdown) and `MarkdownRichEditorDiagramRenderTests` (a diagram
+  renders in the current theme, re-renders when the theme changes, and is not re-rendered in a theme it
+  has already been rendered in).
 
 ### INV-048 — Toggling the Preview Panel is view-only
 - **Statement:** Showing or hiding the Preview Panel never changes the Markdown Document. The Preview
@@ -1007,6 +1013,28 @@ and tested.
   `Insert_WhenOpenedOnADiagram_ReplacesThatDiagram_AndCapturesCanonicalMarkdown_INV053`,
   `Insert_WithNoDiagramAtCaret_InsertsANewBlock_INV053`, and
   `Cancel_MakesNoEdit_INV053`.
+
+### INV-054 — The Command Bar collapses a group to its dropdown only when the row would overflow
+- **Statement:** The Command Bar shows each collapsible group of actions — the **Insert Menu** group and
+  the **View Menu** group — as its individual Command Icons while they fit, and collapses a group to its
+  single dropdown only when the row is too narrow to show everything. It collapses the lowest-priority
+  group first, then the next, until the row fits, so nothing is ever pushed off-screen. Three rules bound
+  it:
+  - **Collapse only on overflow.** While the expanded icons fit the available width they are shown; a
+    group collapses to its dropdown only when, and only as far as, the row would otherwise overflow.
+  - **Lowest priority first.** Groups collapse in ascending collapse order — the View Menu group before
+    the Insert Menu group — and expand again in the reverse order as the window grows.
+  - **Collapsing is presentation-only.** It changes no Markdown Document, Editor Session, or any action's
+    behaviour: the same command runs whether reached as an icon or a dropdown entry, and the choice is a
+    pure function of the available width (the same width always yields the same collapsed groups).
+- **Enforced by:** `CommandBarPanel`, a custom layout panel that measures each child at its natural width
+  and collapses groups (each a pair of children — the expanded icons and the collapsed dropdown — sharing
+  an `OverflowGroup`) by ascending `CollapseOrder` until the active items fit the width, reserving the
+  right-docked theme toggle's width first. Hiding is by opacity, so a collapsed group takes no space yet
+  reappears the instant the window grows.
+- **Tested by:** `CommandBarPanelTests` (everything shown when it fits; a group collapses to its dropdown
+  when too narrow; a group of several icons collapses as a whole; the lowest `CollapseOrder` collapses
+  first; a right-docked item stays at the right edge).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

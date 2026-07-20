@@ -63,7 +63,8 @@ public sealed class MigraDocPdfExporter(IMermaidImageRenderer diagramRenderer) :
 
         foreach (var source in MermaidBlocks.Find(ast))
         {
-            var image = await diagramRenderer.RenderAsync(source).ConfigureAwait(true);
+            // Diagrams render light for print, whatever the app's on-screen theme (INV-050).
+            var image = await diagramRenderer.RenderAsync(source, dark: false).ConfigureAwait(true);
             if (image is null)
             {
                 continue;

@@ -18,7 +18,7 @@ internal sealed class FakeMermaidImageRenderer(bool rendersNothing = false) : IM
     public List<string> Rendered { get; } = [];
 
     /// <inheritdoc />
-    public Task<DiagramImage?> RenderAsync(string source)
+    public Task<DiagramImage?> RenderAsync(string source, bool dark)
     {
         Rendered.Add(source);
         return Task.FromResult<DiagramImage?>(rendersNothing ? null : new DiagramImage(OnePixelPng, 1, 1));

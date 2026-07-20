@@ -21,6 +21,25 @@ person or tool.
 
 ![Folder workspace in dark theme](docs/images/folder-workspace-dark.png)
 
+### Diagrams and flow charts
+
+- Write a **Mermaid diagram** in a fenced code block tagged `mermaid` and it renders as a **picture
+  right in the editor** — flowcharts, sequence, state, class, ER, gantt, and pie — while the file on
+  disk stays plain Markdown.
+- The picture **follows your theme**, light or dark, and re-renders as you edit the source. A diagram
+  Mermaid can't draw falls back to showing its source, never a blank hole.
+- **Double-click a flowchart** to open the **Flowchart Builder**: a drag-and-drop canvas of nodes and
+  arrows with a live preview. Whatever you build is written straight back as canonical Mermaid source,
+  so the text stays the single source of truth.
+- Diagrams render in **exported HTML and PDF** too, and a toggleable preview pane shows the selected
+  diagram larger.
+
+![A Mermaid flowchart rendered as a picture in the editor](docs/images/mermaid-diagram.png)
+
+![The same diagram in dark theme](docs/images/mermaid-diagram-dark.png)
+
+![The Flowchart Builder — a drag-and-drop canvas of nodes and arrows with a live preview](docs/images/flowchart-builder.png)
+
 ### Write
 
 - **WYSIWYG editing** — bold, italics, strikethrough, headings, links, images, inline code

@@ -33,10 +33,12 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Single command bar: file actions, formatting, and the theme toggle. -->
+        <!-- Single command bar: file actions, formatting, and the theme toggle. The Insert and View
+             groups show their individual icons while they fit and collapse to a dropdown only when the
+             row would run off-screen (INV-054); CommandBarPanel does that measuring. -->
         <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-            <DockPanel LastChildFill="False" Margin="8,6">
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" ClipToBounds="True">
+            <controls:CommandBarPanel Margin="8,6">
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconCommandButton}"
                         Command="{Binding NewCommand}" ToolTip="New document (Ctrl+N)"
                         AutomationProperties.Name="New document">
@@ -227,32 +229,34 @@
                     </MenuItem>
                 </Menu>
 
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                <!-- Insert group — expanded form: the individual insert icons, shown while the row is wide
+                     enough. When it would overflow they collapse to the Insert dropdown below, which shares
+                     OverflowGroup="Insert" (INV-054). CollapseOrder 1 collapses it after the View group. -->
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
                         ToolTip="Insert link (Ctrl+K) — turn the selection into a link"
                         AutomationProperties.Name="Insert link"
                         Command="controls:MarkdownEditingCommands.InsertLink"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
                 </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Insert image"
-                        AutomationProperties.Name="Insert image"
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
+                        ToolTip="Insert image" AutomationProperties.Name="Insert image"
                         Command="controls:MarkdownEditingCommands.InsertImage"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
                 </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
                         ToolTip="Block quote — quote the blocks the selection touches, or unquote them"
                         AutomationProperties.Name="Block quote"
                         Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
                 </Button>
-
-                <!-- Table dropdown: Add Table outside a Table; Add Row / Add Column inside one. The
-                     entries keep their words — a dropdown is a list of choices to read, and three
-                     near-identical grid icons would separate them far less than the words do. -->
-                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                <Menu Style="{StaticResource CommandMenu}"
+                      controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1">
                     <MenuItem Style="{StaticResource CommandMenuItem}"
                               ToolTip="Insert a table, or grow the table at the caret"
                               AutomationProperties.Name="Table">
@@ -270,9 +274,8 @@
                                   CommandTarget="{Binding ElementName=Editor}" />
                     </MenuItem>
                 </Menu>
-
-                <!-- Flowchart Builder: build a Mermaid flowchart graphically, then Insert it (INV-053). -->
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
                         ToolTip="Flowchart builder — build a Mermaid flowchart graphically (Ctrl+Shift+D)"
                         AutomationProperties.Name="Flowchart builder"
                         Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
@@ -280,26 +283,93 @@
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
                 </Button>
 
+                <!-- Insert group — collapsed form: one dropdown gathering the same insert actions, shown
+                     only while the expanded icons above do not fit (INV-054). -->
+                <Menu Style="{StaticResource CommandMenu}"
+                      controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.IsOverflow="True"
+                      controls:CommandBarPanel.CollapseOrder="1">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="Insert — a link, image, table, flowchart, or block quote"
+                              AutomationProperties.Name="Insert">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Insert}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Insert link"
+                                  Command="controls:MarkdownEditingCommands.InsertLink"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertLink}" />
+                                    <TextBlock Text="Link  (Ctrl+K)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Insert image"
+                                  Command="controls:MarkdownEditingCommands.InsertImage"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
+                                    <TextBlock Text="Image" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Block quote"
+                                  Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleBlockQuote}" />
+                                    <TextBlock Text="Block quote" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Table"
+                                  Command="controls:MarkdownEditingCommands.InsertTable"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Table}" />
+                                    <TextBlock Text="Table" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Row"
+                                  Command="controls:MarkdownEditingCommands.AddTableRow"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <TextBlock Text="Add row" Margin="32,0,0,0" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Add Column"
+                                  Command="controls:MarkdownEditingCommands.AddTableColumn"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <TextBlock Text="Add column" Margin="32,0,0,0" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Flowchart builder"
+                                  Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
+                                    <TextBlock Text="Flowchart…  (Ctrl+Shift+D)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
+
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Collapse all sections" AutomationProperties.Name="Collapse all sections"
-                        Command="controls:MarkdownEditingCommands.CollapseAllFolds"
-                        CommandTarget="{Binding ElementName=Editor}">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
-                        ToolTip="Expand all sections (Ctrl+Shift+M)"
-                        AutomationProperties.Name="Expand all sections"
-                        Command="controls:MarkdownEditingCommands.ExpandAllFolds"
-                        CommandTarget="{Binding ElementName=Editor}">
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
-                </Button>
-
-                <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
-
-                <!-- Folder Panel toggle: highlighted while the file-tree panel is shown. -->
-                <Button DockPanel.Dock="Left" Command="{Binding Folder.ToggleFolderPanelCommand}"
+                <!-- View group — expanded form: the panel toggles (highlighted while their panel is shown)
+                     and the fold-all actions, shown while the row is wide enough. When it would overflow
+                     they collapse to the View dropdown below (INV-054). CollapseOrder 0 collapses first. -->
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding Folder.ToggleFolderPanelCommand}"
                         ToolTip="Toggle the folder panel"
                         AutomationProperties.Name="Toggle the folder panel">
                     <Button.Style>
@@ -313,10 +383,8 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleFolderPanel}" />
                 </Button>
-
-                <!-- Navigation Panel toggle: adds or removes the Outline tab in the Side Dock,
-                     highlighted while that tab is shown (INV-046). -->
-                <Button DockPanel.Dock="Left" Command="{Binding SideDock.ToggleNavigationPanelCommand}"
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding SideDock.ToggleNavigationPanelCommand}"
                         ToolTip="Toggle the navigation panel"
                         AutomationProperties.Name="Toggle the navigation panel">
                     <Button.Style>
@@ -330,9 +398,8 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleNavigationPanel}" />
                 </Button>
-
-                <!-- Source Panel toggle: highlighted while the raw-source pane is shown. -->
-                <Button DockPanel.Dock="Left" Command="{Binding ToggleSourcePanelCommand}"
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding ToggleSourcePanelCommand}"
                         ToolTip="Toggle the raw Markdown source panel"
                         AutomationProperties.Name="Toggle the raw Markdown source panel">
                     <Button.Style>
@@ -346,9 +413,8 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleSourcePanel}" />
                 </Button>
-
-                <!-- Preview Panel toggle: highlighted while the Diagram Preview pane is shown (INV-048). -->
-                <Button DockPanel.Dock="Left" Command="{Binding TogglePreviewPanelCommand}"
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding TogglePreviewPanelCommand}"
                         ToolTip="Toggle the diagram preview panel"
                         AutomationProperties.Name="Toggle the diagram preview panel">
                     <Button.Style>
@@ -362,6 +428,98 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
                 </Button>
+                <Rectangle Style="{StaticResource CommandSeparator}"
+                           controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0" />
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        ToolTip="Collapse all sections" AutomationProperties.Name="Collapse all sections"
+                        Command="controls:MarkdownEditingCommands.CollapseAllFolds"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
+                </Button>
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        ToolTip="Expand all sections (Ctrl+Shift+M)"
+                        AutomationProperties.Name="Expand all sections"
+                        Command="controls:MarkdownEditingCommands.ExpandAllFolds"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
+                </Button>
+
+                <!-- View group — collapsed form: one dropdown gathering the same panel toggles (checked
+                     while shown) and fold actions, shown only while the expanded icons do not fit (INV-054). -->
+                <Menu Style="{StaticResource CommandMenu}"
+                      controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.IsOverflow="True"
+                      controls:CommandBarPanel.CollapseOrder="0">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              ToolTip="View — show or hide the panels, and fold all sections"
+                              AutomationProperties.Name="View">
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.View}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the folder panel"
+                                  IsChecked="{Binding DataContext.Folder.IsFolderPanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.Folder.ToggleFolderPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleFolderPanel}" />
+                                    <TextBlock Text="Folder panel" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the navigation panel"
+                                  IsChecked="{Binding DataContext.SideDock.IsNavigationTabVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SideDock.ToggleNavigationPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleNavigationPanel}" />
+                                    <TextBlock Text="Navigation panel" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the raw Markdown source panel"
+                                  IsChecked="{Binding DataContext.IsSourcePanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.ToggleSourcePanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleSourcePanel}" />
+                                    <TextBlock Text="Source panel" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the diagram preview panel"
+                                  IsChecked="{Binding DataContext.IsPreviewPanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.TogglePreviewPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
+                                    <TextBlock Text="Preview panel" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Collapse all sections"
+                                  Command="controls:MarkdownEditingCommands.CollapseAllFolds"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.CollapseAllFolds}" />
+                                    <TextBlock Text="Collapse all sections" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Expand all sections"
+                                  Command="controls:MarkdownEditingCommands.ExpandAllFolds"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ExpandAllFolds}" />
+                                    <TextBlock Text="Expand all sections  (Ctrl+Shift+M)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
 
                 <!-- Theme toggle: shows the theme you'd switch to. -->
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconCommandButton}"
@@ -381,7 +539,7 @@
                         </Path.Style>
                     </Path>
                 </Button>
-            </DockPanel>
+            </controls:CommandBarPanel>
         </Border>
 
         <!-- Tab strip: one Tab per open Editor Session, plus a new-tab button. -->
@@ -615,6 +773,7 @@
                                              LinkPrompt="{Binding LinkPrompt}"
                                              FlowchartBuilder="{Binding FlowchartBuilder}"
                                              DiagramImageRenderer="{Binding DiagramImageRenderer}"
+                                             IsDarkTheme="{Binding Appearance.IsDarkTheme}"
                                              DocumentPrinter="{Binding DocumentPrinter}"
                                              Renderer="{Binding Renderer}"
                                              FollowLinkCommand="{Binding FollowLinkCommand}"

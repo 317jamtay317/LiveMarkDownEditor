@@ -13,8 +13,9 @@ namespace Domain;
 /// </remarks>
 public interface IMermaidImageRenderer
 {
-    /// <summary>Renders the given Mermaid Diagram source to a PNG image.</summary>
+    /// <summary>Renders the given Mermaid Diagram source to a PNG image, in the requested theme.</summary>
     /// <param name="source">The Mermaid Diagram source to render.</param>
+    /// <param name="dark">Whether to render with Mermaid's dark theme rather than its light one.</param>
     /// <returns>The rendered image, or <see langword="null"/> when it cannot be produced.</returns>
-    Task<DiagramImage?> RenderAsync(string source);
+    Task<DiagramImage?> RenderAsync(string source, bool dark);
 }

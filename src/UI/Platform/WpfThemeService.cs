@@ -13,7 +13,9 @@ namespace UI.Platform;
 /// <see cref="ResourceDictionary"/> merged into the application's resources. The control styles in
 /// <c>Themes/Controls.xaml</c> reference the palette's brushes via <c>DynamicResource</c>, so
 /// recolouring those brushes repaints the whole UI live. The window's non-client area (title bar) is
-/// not covered by WPF styling, so it is themed here via the DWM immersive-dark-mode attribute.
+/// not covered by WPF styling, so it is themed here via the DWM immersive-dark-mode attribute — for
+/// every window as it loads (a dialog opened after a theme change would otherwise keep a light title
+/// bar) as well as for every open window when the theme changes.
 /// </summary>
 /// <remarks>
 /// The palette brushes are recoloured <em>in place</em> rather than by swapping a merged palette
@@ -45,6 +47,27 @@ public sealed class WpfThemeService : IThemeService
 
     // The live brushes themselves, kept so their (unbound) Opacity can be updated per theme.
     private Dictionary<object, SolidColorBrush>? _liveBrushes;
+
+    /// <summary>
+    /// Creates the theme service and arranges for every window's title bar to follow the current theme
+    /// as the window loads.
+    /// </summary>
+    public WpfThemeService()
+    {
+        // A process-wide class handler so any Window — including a dialog created long after the theme
+        // was last applied — gets the current title-bar treatment the moment it loads (its window
+        // handle exists by then). The service is a DI singleton, so this registers exactly once.
+        EventManager.RegisterClassHandler(
+            typeof(Window),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is Window window)
+                {
+                    ApplyTitleBar(window, Current == AppTheme.Dark);
+                }
+            }));
+    }
 
     /// <inheritdoc />
     public AppTheme Current { get; private set; } = AppTheme.Light;
@@ -139,15 +162,24 @@ public sealed class WpfThemeService : IThemeService
     /// <summary>Darkens or lightens each open window's title bar to match the theme.</summary>
     private static void ApplyTitleBar(System.Windows.Application application, AppTheme theme)
     {
-        var useDark = theme == AppTheme.Dark ? 1 : 0;
+        var dark = theme == AppTheme.Dark;
         foreach (Window window in application.Windows)
         {
-            var handle = new WindowInteropHelper(window).Handle;
-            if (handle != IntPtr.Zero)
-            {
-                DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref useDark, sizeof(int));
-            }
+            ApplyTitleBar(window, dark);
         }
+    }
+
+    /// <summary>Darkens or lightens one window's title bar via the DWM immersive-dark-mode attribute.</summary>
+    private static void ApplyTitleBar(Window window, bool dark)
+    {
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var useDark = dark ? 1 : 0;
+        DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref useDark, sizeof(int));
     }
 
     // A mutable colour a live brush binds to. Binding the brush's Color to this holder makes the brush

@@ -40,7 +40,8 @@
   // is delivered to a native caller (the image renderer) through postMessage — ExecuteScriptAsync does
   // not await a returned Promise, so it would otherwise receive an empty object. The Preview Panel
   // ignores the result and only needs the SVG injected. It also returns the result for completeness.
-  async function renderDiagram(source, dark) {
+  // An optional scale > 1 enlarges the SVG crisply (it is vector) so the inline picture is legible.
+  async function renderDiagram(source, dark, scale) {
     applyTheme(dark);
     var container = document.getElementById('container');
     var message = document.getElementById('message');
@@ -58,7 +59,15 @@
         var svg = container.querySelector('svg');
         if (svg) {
           var rect = svg.getBoundingClientRect();
-          result = { ok: true, width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+          var width = rect.width, height = rect.height;
+          if (scale && scale > 1) {
+            width = Math.ceil(width * scale);
+            height = Math.ceil(height * scale);
+            svg.style.maxWidth = 'none';
+            svg.style.width = width + 'px';
+            svg.style.height = height + 'px';
+          }
+          result = { ok: true, width: Math.ceil(width), height: Math.ceil(height) };
         } else {
           result = { ok: false };
         }

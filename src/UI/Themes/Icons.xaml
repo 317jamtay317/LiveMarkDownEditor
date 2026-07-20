@@ -123,4 +123,10 @@
     <Geometry x:Key="Icon.ThemeDark">M12 3 A6 6 0 0 0 21 12 A9 9 0 1 1 12 3 Z</Geometry>
     <Geometry x:Key="Icon.ThemeLight">M8 12 A4 4 0 1 0 16 12 A4 4 0 1 0 8 12 Z M12 2 V4.5 M12 19.5 V22 M2 12 H4.5 M19.5 12 H22 M4.9 4.9 L6.7 6.7 M17.3 17.3 L19.1 19.1 M19.1 4.9 L17.3 6.7 M6.7 17.3 L4.9 19.1</Geometry>
 
+    <!-- Insert dropdown: a plus — the header for the menu that inserts links, images, tables, and more. -->
+    <Geometry x:Key="Icon.Insert">M12 5 V19 M5 12 H19</Geometry>
+
+    <!-- View dropdown: an eye — the header for the menu that shows or hides the panels beside the document. -->
+    <Geometry x:Key="Icon.View">M3 12 C7 7 17 7 21 12 C17 17 7 17 3 12 Z M9.5 12 A2.5 2.5 0 1 0 14.5 12 A2.5 2.5 0 1 0 9.5 12 Z</Geometry>
+
 </ResourceDictionary>
