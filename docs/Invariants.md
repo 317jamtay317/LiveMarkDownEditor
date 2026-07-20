@@ -222,8 +222,9 @@ and tested.
 
 ### INV-018 — A Formatting Action Captures to canonical Markdown
 - **Statement:** Applying a Formatting Action (Toggle Strikethrough, Toggle Code, Set Heading Level,
-  Insert Link, Insert Image, Toggle Block Quote, Insert Table, Add Row, Add Column,
-  Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual Document using the
+  Insert Link, Insert Image, Toggle Block Quote, Insert Table, Add Row, Add Column, Remove Row,
+  Remove Column, Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual
+  Document using the
   same tagged elements a Project produces, so the Captured source text is canonical Markdown:
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
   never corrupts the document — after it runs, the Visual Document and the Markdown Document still
@@ -257,12 +258,27 @@ and tested.
 - **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
   alignments list exactly one alignment per column. Insert Table creates such a Table; Add Row mints
   its new row at the Table's column count; Add Column extends every row — header and body — by one
-  cell. No Table operation ever leaves a ragged Table.
+  cell; Remove Row drops one whole row; Remove Column drops that column's cell from every row —
+  header and body — and its alignment with it. No Table operation ever leaves a ragged Table.
+- **A Table always keeps a header row and at least one column.** A GFM pipe table is nothing without
+  its header and delimiter rows, so the two shrinking actions stop short of destroying the Table
+  rather than producing source that no longer parses as one: **Remove Row is unavailable while the
+  caret is in the header row**, and **Remove Column is unavailable while the Table has only one
+  column**. Shrinking a Table is bounded by what Markdown can express, exactly as Toggle Block Quote
+  is bounded to whole blocks (INV-028) — the action is offered only where the result is still a
+  Table. Removing the Table itself is a deletion, not a Table operation.
 - **Enforced by:** The `TableEditing` helper, which derives the new row's width from the Table's
   columns and inserts a cell into every row when adding a column, updating the `TableRole` alignments
-  in the same operation.
+  in the same operation; and, for the shrinking actions, `TableEditing.CanRemoveRow` /
+  `CanRemoveColumn` — the same predicates that gate the commands' `CanExecute`, so an action that
+  would ruin the Table is greyed out rather than refused after the fact.
 - **Tested by:** `MarkdownRichEditorTableTests.AddRow_MatchesColumnCount_INV019`,
-  `MarkdownRichEditorTableTests.AddColumn_ExtendsEveryRow_INV019`.
+  `MarkdownRichEditorTableTests.AddColumn_ExtendsEveryRow_INV019`,
+  `MarkdownRichEditorTableTests.RemoveRow_LeavesEveryRowRectangular_INV019`,
+  `MarkdownRichEditorTableTests.RemoveColumn_ShrinksEveryRow_INV019`,
+  `MarkdownRichEditorTableTests.RemoveColumn_PreservesRemainingColumnAlignments_INV019`,
+  `MarkdownRichEditorTableTests.RemoveRow_CannotExecute_WhenCaretIsInTheHeaderRow_INV019`, and
+  `MarkdownRichEditorTableTests.RemoveColumn_CannotExecute_WhenTableHasOneColumn_INV019`.
 
 ### INV-020 — A Startup Document opens in the one running Workspace
 - **Statement:** Launching the editor with a Startup Document opens that file into the Workspace at
@@ -440,6 +456,10 @@ and tested.
   - **It sets, it does not toggle.** Choosing the level a Heading already has leaves it a Heading of
     that level, so the action is idempotent. Only **Paragraph** clears a Heading — a level is a value
     the user picks, so reaching for a level can never silently destroy the Heading.
+  - **Paragraph is reachable as directly as a level.** Because the action does not toggle, Paragraph
+    is a Heading's only exit, so it is never harder to reach than the levels it undoes: it leads the
+    Heading Level Picker rather than trailing it, and carries the Ctrl+0 gesture beside the levels'
+    Ctrl+1–Ctrl+6. An action with no way back that the user can find is an action they cannot undo.
   - **A Heading Level is always 1–6.** No other level is reachable: the Heading Level Picker offers
     exactly six, and Set Heading Level refuses any level outside 1–6 (Paragraph aside) rather than
     writing one. `#` repeats once per level, and a seventh `#` is not a heading in Markdown at all.
@@ -1035,6 +1055,40 @@ and tested.
 - **Tested by:** `CommandBarPanelTests` (everything shown when it fits; a group collapses to its dropdown
   when too narrow; a group of several icons collapses as a whole; the lowest `CollapseOrder` collapses
   first; a right-docked item stays at the right edge).
+
+### INV-055 — A Block Island never traps the caret at the end of the document
+- **Statement:** A **Block Island** — a block the caret cannot type after from within, namely a Table
+  and a Mermaid Diagram — is never the last block of a Visual Document. Whenever a Formatting Action
+  places one at the end of the document, an empty paragraph follows it, so there is always a line
+  below for the user to carry on typing in. Inserting a Block Island leaves the caret in a text
+  position: in the Table's first header cell, or in the paragraph after the Mermaid Diagram — never
+  inside the diagram's own container, which holds a picture rather than text and so swallows Enter.
+- **Why:** A Mermaid Diagram is projected as a `BlockUIContainer`, which hosts a `UIElement` and no
+  text at all. A caret placed inside one has nowhere to go: Enter cannot split it, and if it is the
+  last block there is no position after it to move to. The user is stranded with a document they
+  cannot add to — the diagram becomes a dead end rather than a block in a document.
+- **It holds for a loaded document, not only an edited one.** Projecting Markdown that ends in a
+  Table or a `mermaid` block appends the same trailing paragraph, so reopening a saved document
+  leaves the user just as able to type below the diagram as inserting one did. The rule is about the
+  document, not about the edit that happened to produce it.
+- **The trailing paragraph costs the Round-Trip nothing.** It is a caret affordance, not content, so
+  **Capture drops a trailing empty paragraph** rather than emitting it. Emitting it would append a
+  blank line the user never typed — which Markdown discards on the way back in, so the source would
+  not converge (INV-005) and a freshly opened document would Capture as something other than what
+  was loaded. Dropping it keeps Capture a fixed point over the affordance.
+- **Enforced by:** `TableEditing.PlaceTable`, `DiagramBlockEditing.InsertOrReplaceDiagramAtCaret`,
+  and `MarkdownToFlowDocumentProjector.Project`, which all append a trailing paragraph when a Block
+  Island ends the document, through the one shared `VisualDocumentTraversal.EnsureParagraphAfter`
+  seam — so every Block Island is bounded the same way, and a future one inherits the rule by using
+  it; and `FlowDocumentToMarkdownCapturer.Capture`, which trims the trailing empty paragraph back off
+  so the affordance never reaches the source.
+- **Tested by:** `MarkdownRichEditorFlowchartTests.InsertOrReplace_AtEndOfDocument_LeavesALineBelow_INV055`,
+  `MarkdownRichEditorFlowchartTests.InsertOrReplace_PlacesTheCaretInTextAfterTheDiagram_INV055`,
+  `MarkdownRichEditorFlowchartTests.InsertOrReplace_WhenReplacingADiagram_StillLeavesALineBelow_INV055`,
+  `MarkdownRichEditorFlowchartTests.ADocumentEndingInADiagram_ProjectsALineBelowIt_INV055`,
+  `MarkdownRichEditorFlowchartTests.ADocumentEndingInADiagram_CapturesUnchanged_INV055`,
+  `MarkdownRichEditorFlowchartTests.InsertOrReplace_AtEndOfDocument_StillRoundTrips_INV055`, and
+  `MarkdownRichEditorTableTests.InsertTable_AtEndOfDocument_LeavesALineBelow_INV055`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

@@ -63,6 +63,15 @@ public sealed class FlowDocumentToMarkdownCapturer
             }
         }
 
+        // A Block Island (a Table, a Mermaid Diagram) is always followed by an empty paragraph so the
+        // caret can reach the line below it (INV-055). That paragraph is a caret affordance, not
+        // content: emitting it would append a blank line the user never typed, which Markdown drops
+        // on the way back in — so the source would not converge on Round-Trip (INV-005).
+        while (captured.Count > 0 && captured[^1].Length == 0)
+        {
+            captured.RemoveAt(captured.Count - 1);
+        }
+
         return string.Join("\n\n", captured);
     }
 

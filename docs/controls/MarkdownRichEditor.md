@@ -29,7 +29,7 @@ two directions echoing each other.
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `Markdown` | `string` | `""` | The canonical Markdown source text. **Binds two-way by default.** Setting it Projects a new Visual Document; editing the surface Captures back into it. |
-| `IsCaretInTable` | `bool` | `false` | Whether the caret sits inside a Table — the availability switch for the Table Formatting Actions (Insert Table only outside, Add Row / Add Column only inside). |
+| `IsCaretInTable` | `bool` | `false` | Whether the caret sits inside a Table — the availability switch for the Table Formatting Actions (Insert Table only outside, Add Row / Add Column only inside). Remove Row and Remove Column narrow this further: they are gated on `TableEditing.CanRemoveRow` / `CanRemoveColumn`, which also exclude the header row and the last column (INV-019). |
 | `FindQuery` | `string` | `""` | The Find query. Every occurrence in the Visual Document is highlighted as a Match. |
 | `IsFindActive` | `bool` | `false` | Whether the Find Bar is open. Setting it false clears the Find highlights. |
 | `Replacement` | `string` | `""` | The text a Match is swapped for, inserted verbatim (INV-022). |
@@ -47,9 +47,12 @@ Formatting Actions are real edits: they change the Visual Document, which Captur
 | Member | Command | Description |
 | --- | --- | --- |
 | `ToggleCodeAtSelection()` | `ToggleCode` | A selection within a single line becomes a Code Span; a selection spanning multiple lines, or a whole line, becomes a Code Block; inside existing code the code formatting is removed. Enabled when text is selected or the caret is in code. |
+| `SetHeadingLevelAtCaret(int level)` | `SetHeadingLevel` | Makes the block at the caret a Heading of `level` (1–6), or — given `MarkdownEditingCommands.ParagraphHeadingLevel` (`0`) — a plain paragraph again. It sets rather than toggles, so only `0` clears a Heading (INV-027). The control registers **Ctrl+0–Ctrl+6** for these itself: the level rides on each `KeyBinding`'s `CommandParameter`, because a `RoutedUICommand`'s own `KeyGesture` carries no parameter. |
 | `InsertTableAtCaret()` | `InsertTable` | Inserts a new Table — three columns, a header row, two empty body rows — at the caret and selects the first header cell. Enabled only while the caret is **not** in a Table. |
 | `AddTableRowAtCaret()` | `AddTableRow` | Inserts a new empty row below the caret's row, at the Table's column count (INV-019). Enabled only while the caret is in a Table. |
 | `AddTableColumnAtCaret()` | `AddTableColumn` | Inserts a new empty column right of the caret's column, extending every row (INV-019). Enabled only while the caret is in a Table. |
+| `RemoveTableRowAtCaret()` | `RemoveTableRow` | Deletes the caret's row from its Table (INV-019). Enabled only while the caret is in a Table and **not** in its header row — a pipe table is nothing without its header. |
+| `RemoveTableColumnAtCaret()` | `RemoveTableColumn` | Deletes the caret's column from its Table, shrinking every row and dropping that column's alignment (INV-019). Enabled only while the caret is in a Table with **more than one** column. |
 | `ToggleUnorderedListAtSelection()` | `ToggleUnorderedList` | The selected paragraphs become an Unordered List; an Unordered List becomes plain paragraphs again; an Ordered List is converted rather than removed (INV-023). |
 | `ToggleOrderedListAtSelection()` | `ToggleOrderedList` | The counterpart of Toggle Unordered List, for Ordered Lists (INV-023). |
 | `ToggleTaskListAtSelection()` | `ToggleTaskList` | Gives every selected List Item lacking one an unchecked Task Marker, or clears them all when every selected List Item already carries one. Outside a List it makes the selected paragraphs an Unordered List first, since a Task Marker exists only on a List Item. An Unordered Task List shows no bullet — the checkbox is the item's marker (INV-023). |

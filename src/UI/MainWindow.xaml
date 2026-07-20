@@ -1,4 +1,4 @@
-<Window x:Class="UI.MainWindow"
+﻿<Window x:Class="UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -174,66 +174,69 @@
                               AutomationProperties.Name="Heading level">
                         <MenuItem.ToolTip>
                             <controls:CommandTip Heading="Heading level"
-                                                 Detail="Make the current line a heading (1–6), or a normal paragraph again." />
+                                                 Detail="Make the current line a heading (Ctrl+1–6), or a normal paragraph again (Ctrl+0)." />
                         </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.SetHeadingLevel}" />
                         </MenuItem.Header>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 1"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="1" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 1"
-                                                     Detail="Make the current line a top-level heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 2"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="2" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 2"
-                                                     Detail="Make the current line a level-2 heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 3"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="3" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 3"
-                                                     Detail="Make the current line a level-3 heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 4"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="4" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 4"
-                                                     Detail="Make the current line a level-4 heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 5"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="5" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 5"
-                                                     Detail="Make the current line a level-5 heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 6"
-                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
-                                  CommandParameter="6" CommandTarget="{Binding ElementName=Editor}">
-                            <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Heading 6"
-                                                     Detail="Make the current line a level-6 heading." />
-                            </MenuItem.ToolTip>
-                        </MenuItem>
-                        <Separator />
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Paragraph"
+                        <!-- Paragraph leads the list: Set Heading Level never toggles, so this is a
+                             Heading's only way back to plain text (INV-027). Trailing the levels, it
+                             read as an afterthought and was missed. -->
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Paragraph  (Ctrl+0)"
                                   Command="controls:MarkdownEditingCommands.SetHeadingLevel"
                                   CommandParameter="0" CommandTarget="{Binding ElementName=Editor}">
                             <MenuItem.ToolTip>
                                 <controls:CommandTip Heading="Paragraph"
-                                                     Detail="Turn the heading at the cursor back into normal text." />
+                                                     Detail="Turn the heading at the cursor back into normal text." Gesture="Ctrl+0" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 1  (Ctrl+1)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="1" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 1"
+                                                     Detail="Make the current line a top-level heading." Gesture="Ctrl+1" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 2  (Ctrl+2)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="2" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 2"
+                                                     Detail="Make the current line a level-2 heading." Gesture="Ctrl+2" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 3  (Ctrl+3)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="3" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 3"
+                                                     Detail="Make the current line a level-3 heading." Gesture="Ctrl+3" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 4  (Ctrl+4)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="4" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 4"
+                                                     Detail="Make the current line a level-4 heading." Gesture="Ctrl+4" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 5  (Ctrl+5)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="5" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 5"
+                                                     Detail="Make the current line a level-5 heading." Gesture="Ctrl+5" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Heading 6  (Ctrl+6)"
+                                  Command="controls:MarkdownEditingCommands.SetHeadingLevel"
+                                  CommandParameter="6" CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Heading 6"
+                                                     Detail="Make the current line a level-6 heading." Gesture="Ctrl+6" />
                             </MenuItem.ToolTip>
                         </MenuItem>
                     </MenuItem>
@@ -377,7 +380,7 @@
                               AutomationProperties.Name="Table">
                         <MenuItem.ToolTip>
                             <controls:CommandTip Heading="Table"
-                                                 Detail="Insert a table, or add a row or column to the table at the cursor." />
+                                                 Detail="Insert a table, or add and remove rows and columns in the table at the cursor." />
                         </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Table}" />
@@ -404,6 +407,23 @@
                             <MenuItem.ToolTip>
                                 <controls:CommandTip Heading="Add column"
                                                      Detail="Add a column to the right of the cursor's column." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Remove Row"
+                                  Command="controls:MarkdownEditingCommands.RemoveTableRow"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Remove row"
+                                                     Detail="Delete the cursor's row from the current table. A table always keeps its header row." />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Remove Column"
+                                  Command="controls:MarkdownEditingCommands.RemoveTableColumn"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Remove column"
+                                                     Detail="Delete the cursor's column from the current table. A table always keeps at least one column." />
                             </MenuItem.ToolTip>
                         </MenuItem>
                     </MenuItem>
@@ -511,6 +531,28 @@
                             </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <TextBlock Text="Add column" Margin="32,0,0,0" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Remove Row"
+                                  Command="controls:MarkdownEditingCommands.RemoveTableRow"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Remove row"
+                                                     Detail="Delete the cursor's row from the current table. A table always keeps its header row." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Remove row" Margin="32,0,0,0" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Remove Column"
+                                  Command="controls:MarkdownEditingCommands.RemoveTableColumn"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Remove column"
+                                                     Detail="Delete the cursor's column from the current table. A table always keeps at least one column." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Remove column" Margin="32,0,0,0" VerticalAlignment="Center" />
                             </MenuItem.Header>
                         </MenuItem>
                         <Separator />

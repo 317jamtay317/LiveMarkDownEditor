@@ -13,10 +13,10 @@ work that is still in review, noted inline.
 
 ## Closes a gap the docs or code already point at
 
-- [x] **Delete Row / Delete Column, and column alignment.** The Table Formatting Actions grow a
-  Table but cannot shrink one, and per-column alignment already survives a Round-Trip without
-  being reachable from the command bar. Must keep the Table rectangular. *(Builds on the Table*
-  *Formatting Actions, in review.)*
+- [ ] **Column alignment.** Per-column alignment already survives a Round-Trip (it rides on
+  `TableRole`, and Add Column / Remove Column maintain it) without being reachable from the command
+  bar. Setting a column's alignment is the last Table operation with no way in. *(Remove Row and*
+  *Remove Column shipped — see INV-019.)*
 - [x] **Split** `MarkdownRichEditor` **up.** At ~995 lines it is roughly double the 500-line hard limit in
   `CLAUDE.md`. It is really five features sharing a class — Project/Capture sync, Folding, the
   Outline, Find/Replace, and the adorner wiring. Find's scan has already moved out to

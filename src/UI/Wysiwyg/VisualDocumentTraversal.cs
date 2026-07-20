@@ -45,4 +45,31 @@ internal static class VisualDocumentTraversal
 
         return null;
     }
+
+    /// <summary>
+    /// Guarantees a line below <paramref name="island"/>: appends an empty paragraph when the Block
+    /// Island just placed became <paramref name="document"/>'s last block, and returns the paragraph
+    /// that now follows it. A Table and a Mermaid Diagram are both blocks the caret cannot type past
+    /// from within, so leaving one at the end of the document would strand the user with nowhere to
+    /// carry on typing (INV-055).
+    /// </summary>
+    /// <param name="document">The Visual Document being edited.</param>
+    /// <param name="island">The Block Island that must not be the last block.</param>
+    /// <returns>The paragraph following <paramref name="island"/>, or <see langword="null"/> when the
+    /// block that follows it is not a paragraph (an adjacent Table, say — which is reachable in its
+    /// own right, so no new paragraph is minted).</returns>
+    internal static Paragraph? EnsureParagraphAfter(FlowDocument document, Block island)
+    {
+        if (document.Blocks.LastBlock == island)
+        {
+            var trailing = new Paragraph { Margin = BlockSpacing };
+            document.Blocks.Add(trailing);
+            return trailing;
+        }
+
+        return island.NextBlock as Paragraph;
+    }
+
+    // The uniform spacing the Projector gives a body block.
+    private static readonly Thickness BlockSpacing = new(0, 0, 0, 6);
 }
