@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Domain;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Serilog;
 
 namespace UI.Platform;
 
@@ -22,9 +23,6 @@ namespace UI.Platform;
 /// </remarks>
 public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
 {
-    private const string HostName = "mermaid.host";
-    private const string HostUrl = "https://mermaid.host/index.html";
-
     // Render the diagram larger than Mermaid's compact default so the inline picture is comfortably
     // legible; the SVG is vector, so the bigger raster stays crisp (INV-047).
     private const double DiagramScale = 1.6;
@@ -53,6 +51,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         }
         catch (Exception exception) when (exception is WebView2RuntimeNotFoundException or InvalidOperationException or COMException or IOException)
         {
+            Log.Error(exception, "Rendering a Mermaid Diagram failed; it will be exported as source text");
             return null;
         }
         finally
@@ -105,13 +104,18 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
     }
 
     // Creates the off-screen host once and navigates it to the bundled Mermaid page, returning whether
-    // it is ready to render. A navigation that does not complete within the timeout leaves it not ready.
+    // it is ready to render. An attempt that does not get there tears its own host back down, so a
+    // retry starts clean rather than leaving a window and a browser behind.
     private async Task<bool> EnsureReadyAsync()
     {
         if (_ready)
         {
             return true;
         }
+
+        // A previous attempt may have failed part-way. Renders are retried per diagram and per
+        // re-render, so leaving its window and browser in place would leak one of each every time.
+        Teardown();
 
         _window = new Window
         {
@@ -128,28 +132,79 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         _window.Content = _webView;
         _window.Show();
 
-        await _webView.EnsureCoreWebView2Async().ConfigureAwait(true);
-        var core = _webView.CoreWebView2;
-        core.SetVirtualHostNameToFolderMapping(HostName, AssetsFolder(), CoreWebView2HostResourceAccessKind.Allow);
-        core.Settings.AreDevToolsEnabled = false;
-        core.Settings.AreDefaultContextMenusEnabled = false;
-        core.WebMessageReceived += OnWebMessageReceived;
-
-        var navigated = new TaskCompletionSource();
-        void OnNavigated(object? sender, CoreWebView2NavigationCompletedEventArgs e) => navigated.TrySetResult();
-        _webView.NavigationCompleted += OnNavigated;
         try
         {
-            core.Navigate(HostUrl);
+            // The browser works in a profile outside the installation directory, so an installed app
+            // renders diagrams just as a developer's build does (INV-047).
+            var environment = await MermaidBrowserHost.EnvironmentAsync().ConfigureAwait(true);
+            await _webView.EnsureCoreWebView2Async(environment).ConfigureAwait(true);
+
+            var core = _webView.CoreWebView2;
+            core.SetVirtualHostNameToFolderMapping(
+                MermaidBrowserHost.HostName,
+                MermaidBrowserHost.AssetsFolder,
+                CoreWebView2HostResourceAccessKind.Allow);
+            core.Settings.AreDevToolsEnabled = false;
+            core.Settings.AreDefaultContextMenusEnabled = false;
+            core.WebMessageReceived += OnWebMessageReceived;
+
+            _ready = await NavigateToHostAsync(core).ConfigureAwait(true);
+            if (!_ready)
+            {
+                Log.Warning(
+                    "The Mermaid host page did not load within {Timeout}; diagrams will be exported as source text",
+                    RenderTimeout);
+            }
+        }
+        catch (Exception exception) when (
+            exception is WebView2RuntimeNotFoundException or InvalidOperationException or COMException or IOException)
+        {
+            Log.Error(exception, "The Mermaid browser could not be started; diagrams will be exported as source text");
+        }
+
+        if (!_ready)
+        {
+            Teardown();
+        }
+
+        return _ready;
+    }
+
+    // Navigates the off-screen browser to the bundled host page, reporting whether it arrived in time.
+    private async Task<bool> NavigateToHostAsync(CoreWebView2 core)
+    {
+        var navigated = new TaskCompletionSource();
+        void OnNavigated(object? sender, CoreWebView2NavigationCompletedEventArgs e) => navigated.TrySetResult();
+
+        _webView!.NavigationCompleted += OnNavigated;
+        try
+        {
+            core.Navigate(MermaidBrowserHost.HostUrl);
             var completed = await Task.WhenAny(navigated.Task, Task.Delay(RenderTimeout)).ConfigureAwait(true);
-            _ready = completed == navigated.Task;
+            return completed == navigated.Task;
         }
         finally
         {
             _webView.NavigationCompleted -= OnNavigated;
         }
+    }
 
-        return _ready;
+    // Disposes the off-screen host, so an attempt that failed leaves nothing behind.
+    private void Teardown()
+    {
+        if (_webView is not null)
+        {
+            if (_webView.CoreWebView2 is { } core)
+            {
+                core.WebMessageReceived -= OnWebMessageReceived;
+            }
+
+            _webView.Dispose();
+            _webView = null;
+        }
+
+        _window?.Close();
+        _window = null;
     }
 
     // Reads the {ok,width,height} the host page posts back; null when the diagram did not render.
@@ -169,7 +224,4 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
 
         return (root.GetProperty("width").GetInt32(), root.GetProperty("height").GetInt32());
     }
-
-    private static string AssetsFolder() =>
-        Path.Combine(AppContext.BaseDirectory, "Assets", "Mermaid");
 }

@@ -6,6 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Serilog;
+using UI.Platform;
 
 namespace UI.Controls;
 
@@ -22,9 +24,6 @@ namespace UI.Controls;
 /// </remarks>
 public sealed class MermaidPreview : ContentControl
 {
-    private const string HostName = "mermaid.host";
-    private const string HostUrl = "https://mermaid.host/index.html";
-
     /// <summary>
     /// Identifies the <see cref="DiagramSource"/> dependency property — the Mermaid Diagram source to
     /// render, or <see langword="null"/> when the caret is not in a Mermaid Diagram.
@@ -116,10 +115,16 @@ public sealed class MermaidPreview : ContentControl
         _initialising = true;
         try
         {
-            await _webView.EnsureCoreWebView2Async().ConfigureAwait(true);
+            // The browser works in a profile outside the installation directory, so an installed app
+            // renders the Diagram Preview just as a developer's build does (INV-047).
+            var environment = await MermaidBrowserHost.EnvironmentAsync().ConfigureAwait(true);
+            await _webView.EnsureCoreWebView2Async(environment).ConfigureAwait(true);
 
             var core = _webView.CoreWebView2;
-            core.SetVirtualHostNameToFolderMapping(HostName, AssetsFolder(), CoreWebView2HostResourceAccessKind.Allow);
+            core.SetVirtualHostNameToFolderMapping(
+                MermaidBrowserHost.HostName,
+                MermaidBrowserHost.AssetsFolder,
+                CoreWebView2HostResourceAccessKind.Allow);
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
@@ -131,13 +136,15 @@ public sealed class MermaidPreview : ContentControl
                 RenderCurrent();
             };
 
-            core.Navigate(HostUrl);
+            core.Navigate(MermaidBrowserHost.HostUrl);
         }
         catch (Exception exception) when (
             exception is WebView2RuntimeNotFoundException or InvalidOperationException or COMException or IOException)
         {
             // WebView2 unavailable (no runtime, or a load failure): the panel stays blank rather than
-            // crashing the app. Rendering is view-only, so nothing else is affected (INV-047).
+            // crashing the app. Rendering is view-only, so nothing else is affected (INV-047). It is
+            // logged because a blank panel is otherwise indistinguishable from a diagram Mermaid rejects.
+            Log.Error(exception, "The Mermaid browser could not be started; the Diagram Preview stays blank");
         }
         finally
         {
@@ -158,7 +165,4 @@ public sealed class MermaidPreview : ContentControl
         var dark = IsDark ? "true" : "false";
         _ = _webView.CoreWebView2.ExecuteScriptAsync($"renderDiagram({source}, {dark})");
     }
-
-    private static string AssetsFolder() =>
-        Path.Combine(AppContext.BaseDirectory, "Assets", "Mermaid");
 }

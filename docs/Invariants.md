@@ -867,7 +867,7 @@ and tested.
 ### INV-047 — A Mermaid Diagram renders as a picture in the Visual Document
 - **Statement:** A Mermaid Diagram is shown in the Visual Document as its rendered picture, and
   rendering it never changes the Markdown Document — the counterpart of Code Shading (INV-017), reached
-  for a whole diagram. Six rules bound it:
+  for a whole diagram. Seven rules bound it:
   - **Identified by language alone.** A fenced Code Block whose info string is `mermaid` (compared
     case-insensitively) is a Mermaid Diagram; any other Code Block is not. Identifying it and reading
     its source is a pure function of the Visual Document.
@@ -887,6 +887,13 @@ and tested.
   - **Edited through the builder or the source, not inline.** Double-clicking the picture opens the
     Flowchart Builder on it (INV-053); the Source Panel edits the raw source (INV-013). The picture
     itself is not an editable text surface.
+  - **Rendered from a profile outside the installation directory.** The browser that renders a diagram
+    keeps its own working profile, and that profile lives under the user's local application data —
+    never beside the executable. An installed app sits in a directory the user may only read, so a
+    profile defaulted next to the executable cannot be written and the browser never starts: every
+    diagram would fall back to its source text on every machine but a developer's. The rendered assets
+    (the host page and the Mermaid library) are read from beside the executable, but nothing is
+    *written* there.
   The **Diagram Preview** in the Preview Panel shows the *selected* Mermaid Diagram larger; showing it
   is equally view-only (INV-048).
 - **Enforced by:** The pure `MarkdownToFlowDocumentProjector`, which projects a `mermaid` fenced block
@@ -896,14 +903,18 @@ and tested.
   pure `MermaidDiagram.SourceOfBlock` (reading a diagram block's source); and the editor's
   `MermaidRenderCoordinator`, which renders each diagram through the `IMermaidImageRenderer` port in the
   editor's current theme (re-rendering, and caching by source *and* theme, when `IsDarkTheme` changes)
-  and fills its picture, falling back to the source text when the port yields nothing. None of it feeds
-  back into Capture.
+  and fills its picture, falling back to the source text when the port yields nothing; and
+  `MermaidBrowserHost`, the one place the browser profile, the Mermaid assets folder and the virtual
+  host are resolved, shared by both render surfaces so neither can drift from the other. None of it
+  feeds back into Capture.
 - **Tested by:** `MermaidDiagramTests.*_INV047` (a `mermaid` block projects to a diagram block whose
   source is read back; the language match is case-insensitive; another Code Block does not),
   `MarkdownRichEditorMermaidTests.*_INV047` (a Mermaid Diagram Round-Trips as its fenced block, and
   rendering never changes the Captured Markdown) and `MarkdownRichEditorDiagramRenderTests` (a diagram
   renders in the current theme, re-renders when the theme changes, and is not re-rendered in a theme it
-  has already been rendered in).
+  has already been rendered in) and `MermaidBrowserHostTests.*_INV047` (the browser profile resolves
+  under the local application data and never inside the installation directory, while the Mermaid
+  assets still resolve beside the executable).
 
 ### INV-048 — Toggling the Preview Panel is view-only
 - **Statement:** Showing or hiding the Preview Panel never changes the Markdown Document. The Preview
