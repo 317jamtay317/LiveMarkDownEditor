@@ -844,6 +844,170 @@ and tested.
   toggling the Selected panel off falls back to the other or hides the dock; the dock is hidden when
   neither panel is on; and coordinating the tabs opens or edits no document).
 
+### INV-047 — A Mermaid Diagram renders as a picture in the Visual Document
+- **Statement:** A Mermaid Diagram is shown in the Visual Document as its rendered picture, and
+  rendering it never changes the Markdown Document — the counterpart of Code Shading (INV-017), reached
+  for a whole diagram. Five rules bound it:
+  - **Identified by language alone.** A fenced Code Block whose info string is `mermaid` (compared
+    case-insensitively) is a Mermaid Diagram; any other Code Block is not. Identifying it and reading
+    its source is a pure function of the Visual Document.
+  - **Rendered from its source, asynchronously and view-only.** The picture is produced from the
+    diagram's source by a Mermaid renderer. The render is asynchronous — its pixels arrive after the
+    projection and change no part of the Visual Document's structure, exactly as a remote Image's pixels
+    do (INV-003) — and view-only: Capturing yields identical Markdown source text before and after any
+    diagram is rendered or re-rendered.
+  - **Falls back to its source text.** A diagram the renderer cannot produce — no renderer available,
+    or source Mermaid rejects — shows its source text instead, never a hole (the Image fallback of
+    INV-031, reached for a diagram).
+  - **Captured as the fenced block.** However it is shown, a Mermaid Diagram Captures as exactly the
+    fenced ```mermaid``` Code Block it is, so its source Round-Trips (INV-004).
+  - **Edited through the builder or the source, not inline.** Double-clicking the picture opens the
+    Flowchart Builder on it (INV-053); the Source Panel edits the raw source (INV-013). The picture
+    itself is not an editable text surface.
+  The **Diagram Preview** in the Preview Panel shows the *selected* Mermaid Diagram larger; showing it
+  is equally view-only (INV-048).
+- **Enforced by:** The pure `MarkdownToFlowDocumentProjector`, which projects a `mermaid` fenced block
+  as a `BlockUIContainer` hosting a `MermaidDiagramView`, tagged with a `MermaidDiagramRole` carrying
+  the diagram's source (the projection stays a pure function of the source — INV-003 — the picture
+  arriving later); `FlowDocumentToMarkdownCapturer`, which re-emits the fenced block from that role; the
+  pure `MermaidDiagram.SourceOfBlock` (reading a diagram block's source); and the editor's render
+  coordinator, which renders each diagram through the `IMermaidImageRenderer` port and fills its
+  picture, falling back to the source text when the port yields nothing. None of it feeds back into
+  Capture.
+- **Tested by:** `MermaidDiagramTests.*_INV047` (a `mermaid` block projects to a diagram block whose
+  source is read back; the language match is case-insensitive; another Code Block does not) and
+  `MarkdownRichEditorMermaidTests.*_INV047` (a Mermaid Diagram Round-Trips as its fenced block, and
+  rendering never changes the Captured Markdown).
+
+### INV-048 — Toggling the Preview Panel is view-only
+- **Statement:** Showing or hiding the Preview Panel never changes the Markdown Document. The Preview
+  Panel is hidden until the user toggles it on, and toggling it alters neither the Active Session's
+  source text nor any Fold, Outline, Navigation, or Source-Panel state. (This is the Preview-Panel
+  counterpart of the Source Panel's INV-014.)
+- **Enforced by:** `WorkspaceViewModel.IsPreviewPanelVisible` and `TogglePreviewPanelCommand`, which
+  drive only presentation state and never touch any Editor Session's Markdown.
+- **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithPreviewPanelHidden_INV048`,
+  `WorkspaceViewModelTests.TogglePreviewPanel_TogglesVisibility_WithoutChangingDocument_INV048`.
+
+### INV-049 — Export as HTML renders Mermaid Diagrams
+- **Statement:** A Standalone Page renders its Mermaid Diagrams. Three rules bound it, in addition to
+  Export as HTML's own discipline (INV-032):
+  - **Render stays pure.** The Rendered Output is unchanged — Markdig still emits a Mermaid Diagram as
+    a `mermaid`-classed fenced code block (INV-002). The diagram is rendered client-side, in the page,
+    never inside Render.
+  - **A Standalone Page carries the Mermaid renderer; an HTML Fragment does not.** When the Rendered
+    Output contains a Mermaid Diagram, the Standalone Page's fixed wrapper embeds the Mermaid script —
+    bundled and inlined, so it needs no network — which renders those blocks in a browser. The
+    Fragment carries the same Rendered Output alone, so both Export Shapes still carry identical
+    Rendered Output and differ only in the wrapper (INV-032). A Rendered Output with no Mermaid Diagram
+    embeds no script.
+  - **Exporting is still not an edit** (INV-032).
+- **Enforced by:** `HtmlExport.Compose`, which appends the supplied Mermaid script to the Standalone
+  Page's wrapper only when the Rendered Output contains a Mermaid Diagram, leaving `output.Html`
+  untouched; `ExportViewModel.ExportHtmlAsync`, which supplies the bundled script through the
+  `IMermaidScriptSource` port.
+- **Tested by:** `HtmlExportTests.*_INV049` (a Standalone Page with a mermaid block embeds the script
+  and still contains the Fragment verbatim; a Fragment never does; a page without a mermaid block
+  embeds no script) and `ExportViewModelTests.*_INV049`.
+
+### INV-050 — Export as PDF renders Mermaid Diagrams as images
+- **Statement:** An Export as PDF renders each Mermaid Diagram as an image placed where the diagram's
+  Code Block was, the rest of the document re-laid-out as before (INV-033). Three rules bound it:
+  - **A rendered diagram replaces its code.** Where a Mermaid Diagram is rendered to an image, the PDF
+    shows the picture, not the diagram's source text. A Mermaid Diagram that cannot be rendered falls
+    back to its source text as an ordinary Code Block — a diagram that failed to render must never
+    leave a hole (the Image fallback rule of INV-031, reached from export).
+  - **Re-laid-out, not captured.** As with all of INV-033, the PDF is composed afresh from the
+    Markdown, so a diagram image need not match the on-screen Diagram Preview pixel for pixel.
+  - **Exporting is still not an edit, cancelling writes nothing, and fold state cannot reach it**
+    (INV-033).
+- **Enforced by:** `ExportViewModel.ExportPdfAsync`, which exports the session's own Markdown through
+  `IPdfExporter.ExportAsync`; the `MigraDocPdfExporter`, which renders each Mermaid Diagram through
+  the `IMermaidImageRenderer` port and hands the images to the `MarkdownPdfComposer`; and the
+  composer, which draws a provided diagram image for a `mermaid` Code Block and otherwise writes the
+  code text. The WebView2-backed renderer realises the port, and a diagram it cannot render is passed
+  as no image, so the composer falls back.
+- **Tested by:** `MarkdownPdfComposerTests.*_INV050` (a mermaid Code Block with a provided image
+  composes an image, not code text; without an image it composes the code text) and
+  `MigraDocPdfExporterTests.*_INV050` (a Mermaid Diagram rendered through a fake renderer still
+  produces a valid PDF, as does one the renderer cannot render).
+
+### INV-051 — A Diagram Graph round-trips through its Mermaid source, canonically
+- **Statement:** Emitting a Diagram Graph as Mermaid source and parsing that source back yields an
+  equal Diagram Graph, and emission is **canonical** — parsing then re-emitting a builder-produced
+  graph never keeps changing the source. Every part is preserved, in order: the Flow Direction, each
+  Diagram Node's Node Id, Node Label, and Node Shape, and each Diagram Edge's From, To, Edge Label, and
+  Edge Kind. It is the Diagram-Graph counterpart of a Round-Trip preserving semantics and converging
+  (INV-004/INV-005). Three rules bound it:
+  - **Structure round-trips; layout does not.** A Diagram Graph models nodes and edges, not where they
+    sit. Mermaid computes layout, so node positions are neither emitted nor parsed — they are the
+    Flowchart Builder's view state alone (INV-053). Two graphs that differ only in on-canvas position
+    are the same Diagram Graph.
+  - **A Node Label survives verbatim.** A label is emitted quoted, so spaces and punctuation round-trip;
+    a label is never confused with the Node Id, which is emitted bare.
+  - **Emission is deterministic.** The same Diagram Graph always emits the same source — nodes in
+    declaration order, then edges in order — so re-emitting a parsed graph is a fixed point.
+- **Enforced by:** The pure `DiagramGraph.ToMermaidSource` (canonical emit — header, then one
+  declaration per Diagram Node, then one line per Diagram Edge) and the pure static
+  `DiagramGraph.Parse` / `TryParse` (Domain — no I/O, no state), which are inverse over the forms emit
+  produces.
+- **Tested by:** `DiagramGraphTests.*_INV051` — in particular
+  `ToMermaidSource_ThenParse_YieldsAnEqualGraph_INV051`,
+  `Parse_ThenReEmit_IsAFixedPoint_INV051`, and
+  `RoundTrip_PreservesNodeLabelsWithSpaces_INV051`.
+
+### INV-052 — A Diagram Graph is always valid
+- **Statement:** A Diagram Graph can never be constructed in an invalid state. Three rules always hold:
+  - **Node Ids are unique and non-empty.** No two Diagram Nodes share a Node Id, and no Node Id is
+    blank — an edge could not otherwise say which node it means.
+  - **Every Diagram Edge references declared Diagram Nodes.** An edge whose From or To names a node the
+    graph does not declare cannot exist; there are no dangling edges.
+  - **Removing a Diagram Node removes its incident Diagram Edges.** Deleting a node cascades to every
+    edge that touches it, so the second rule is preserved rather than violated by a deletion.
+  It is the Diagram-Graph counterpart of a Table staying rectangular (INV-019).
+- **Enforced by:** The `DiagramGraph` constructor guard (rejecting duplicate/blank Node Ids and edges
+  to undeclared nodes) and its operations returning new, re-validated graphs — `Connect` refusing an
+  endpoint the graph does not declare, and `RemoveNode` dropping the node together with its incident
+  edges. `DiagramGraph` is an immutable value object, so an operation never mutates an existing graph
+  (the `RecentFiles` pattern).
+- **Tested by:** `DiagramGraphTests.*_INV052` — in particular
+  `Create_WithDuplicateNodeIds_Throws_INV052`,
+  `Connect_ToAnUndeclaredNode_Throws_INV052`, and
+  `RemoveNode_AlsoRemovesItsIncidentEdges_INV052`.
+
+### INV-053 — The Flowchart Builder is view-only until Insert, which writes canonical Mermaid
+- **Statement:** The Flowchart Builder authors a Diagram Graph over the Mermaid Diagram at the caret,
+  and touches the Markdown Document only when the user commits. Four rules bound it, the discipline of
+  Insert Link (INV-030) and a Formatting Action (INV-018) applied to a whole diagram:
+  - **Opening reads, it does not write.** Opening the builder parses the Mermaid Diagram at the caret
+    into a Diagram Graph (or starts empty when the caret is not within a parseable flowchart). Reading
+    the diagram is not an edit.
+  - **Editing in the builder changes no document.** Adding, moving, renaming, reshaping, connecting,
+    and deleting on the canvas change only the builder's Diagram Graph and its view state — never the
+    Markdown Document — until the user Inserts.
+  - **Insert writes canonical Mermaid.** Insert writes the Diagram Graph's Mermaid source as a
+    `mermaid` Code Block — **replacing** the Mermaid Diagram the builder was opened on, or **inserting**
+    a new Code Block at the caret when it was not opened on one — and the edit Captures canonical
+    Markdown, so Round-Tripping the result preserves its semantics (INV-004) and converges (INV-005), as
+    any Formatting Action does (INV-018).
+  - **Cancel writes nothing.** Dismissing the builder leaves the Markdown Document, the caret, and the
+    Visual Document exactly as they were — the Link Prompt's dismissal rule (INV-030) for the whole
+    dialog.
+- **Enforced by:** The `IFlowchartBuilder` port (which keeps the WPF builder window out of the editor,
+  so these rules are testable headlessly against a stub) yielding the Mermaid source to write or
+  `null` on Cancel; the `FlowchartBuilderViewModel`, which drives the Diagram Graph and emits its
+  source without touching any Markdown Document; and `MarkdownRichEditor.OpenFlowchartBuilderAtCaret`,
+  which returns before editing when the port yields `null`, and otherwise calls
+  `DiagramBlockEditing.InsertOrReplaceDiagramAtCaret` — composing a `mermaid` Code Block through the
+  same `CodeFormatting.ApplyCodeBlock` seam the Projector and Toggle Code use (INV-018), inside one
+  `BeginChange` unit, so the edit flows through the ordinary Capture path.
+- **Tested by:** `FlowchartBuilderViewModelTests.*_INV053` (editing the builder yields no source until
+  Insert; Cancel yields `null`; the emitted source is the Diagram Graph's own `ToMermaidSource`) and
+  `MarkdownRichEditorFlowchartTests.*_INV053` — in particular
+  `Insert_WhenOpenedOnADiagram_ReplacesThatDiagram_AndCapturesCanonicalMarkdown_INV053`,
+  `Insert_WithNoDiagramAtCaret_InsertsANewBlock_INV053`, and
+  `Cancel_MakesNoEdit_INV053`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

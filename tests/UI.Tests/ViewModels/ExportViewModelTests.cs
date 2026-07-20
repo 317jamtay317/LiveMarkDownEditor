@@ -25,9 +25,10 @@ public sealed class ExportViewModelTests
     private readonly InlineUiDispatcher _dispatcher = new();
     private readonly FakeMarkdownRoundTrip _roundTrip = new();
     private readonly StubMarkdownRenderer _renderer = new();
+    private readonly FakeMermaidScriptSource _mermaidScript = new();
 
     private ExportViewModel CreateExport() =>
-        new(_picker, _renderer, _exports, _pdfExporter, _pdfExports);
+        new(_picker, _renderer, _exports, _pdfExporter, _pdfExports, _mermaidScript);
 
     private EditorSessionViewModel CreateSession() =>
         new(_store, new FakeDocumentWatcher(), _dispatcher, _roundTrip);
@@ -36,35 +37,42 @@ public sealed class ExportViewModelTests
     public void Constructor_GivenNullFilePicker_ThrowsAndPreservesInvariant()
     {
         Should.Throw<ArgumentNullException>(
-            () => new ExportViewModel(null!, _renderer, _exports, _pdfExporter, _pdfExports));
+            () => new ExportViewModel(null!, _renderer, _exports, _pdfExporter, _pdfExports, _mermaidScript));
     }
 
     [Fact]
     public void Constructor_GivenNullRenderer_ThrowsAndPreservesInvariant()
     {
         Should.Throw<ArgumentNullException>(
-            () => new ExportViewModel(_picker, null!, _exports, _pdfExporter, _pdfExports));
+            () => new ExportViewModel(_picker, null!, _exports, _pdfExporter, _pdfExports, _mermaidScript));
     }
 
     [Fact]
     public void Constructor_GivenNullExportStore_ThrowsAndPreservesInvariant()
     {
         Should.Throw<ArgumentNullException>(
-            () => new ExportViewModel(_picker, _renderer, null!, _pdfExporter, _pdfExports));
+            () => new ExportViewModel(_picker, _renderer, null!, _pdfExporter, _pdfExports, _mermaidScript));
     }
 
     [Fact]
     public void Constructor_GivenNullPdfExporter_ThrowsAndPreservesInvariant()
     {
         Should.Throw<ArgumentNullException>(
-            () => new ExportViewModel(_picker, _renderer, _exports, null!, _pdfExports));
+            () => new ExportViewModel(_picker, _renderer, _exports, null!, _pdfExports, _mermaidScript));
     }
 
     [Fact]
     public void Constructor_GivenNullPdfExportStore_ThrowsAndPreservesInvariant()
     {
         Should.Throw<ArgumentNullException>(
-            () => new ExportViewModel(_picker, _renderer, _exports, _pdfExporter, null!));
+            () => new ExportViewModel(_picker, _renderer, _exports, _pdfExporter, null!, _mermaidScript));
+    }
+
+    [Fact]
+    public void Constructor_GivenNullMermaidScriptSource_ThrowsAndPreservesInvariant()
+    {
+        Should.Throw<ArgumentNullException>(
+            () => new ExportViewModel(_picker, _renderer, _exports, _pdfExporter, _pdfExports, null!));
     }
 
     [Fact]
@@ -192,6 +200,34 @@ public sealed class ExportViewModelTests
         await CreateExport().ExportHtmlAsync(session);
 
         _exports.SavedHtml(ExportPath).ShouldContain("<title>note</title>");
+    }
+
+    [Fact]
+    public async Task ExportHtml_AsAStandalonePage_WithAMermaidDiagram_EmbedsTheScript_INV049()
+    {
+        // The stub renderer echoes the source, so this stands in for Rendered Output carrying a
+        // language-mermaid code block; the real language-class output is covered by the Markdig adapter.
+        _mermaidScript.Script = "MERMAID_LIB_CODE";
+        _picker.HtmlExportResult = new HtmlExportTarget(ExportPath, ExportShape.StandalonePage);
+        var session = CreateSession();
+        session.Markdown = "language-mermaid";
+
+        await CreateExport().ExportHtmlAsync(session);
+
+        _exports.SavedHtml(ExportPath).ShouldContain("MERMAID_LIB_CODE");
+    }
+
+    [Fact]
+    public async Task ExportHtml_AsAStandalonePage_WithoutAMermaidDiagram_EmbedsNoScript_INV049()
+    {
+        _mermaidScript.Script = "MERMAID_LIB_CODE";
+        _picker.HtmlExportResult = new HtmlExportTarget(ExportPath, ExportShape.StandalonePage);
+        var session = CreateSession();
+        session.Markdown = "# Just a heading";
+
+        await CreateExport().ExportHtmlAsync(session);
+
+        _exports.SavedHtml(ExportPath).ShouldNotContain("MERMAID_LIB_CODE");
     }
 
     private const string PdfPath = @"C:\docs\note.pdf";

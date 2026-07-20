@@ -70,6 +70,29 @@ public static class HtmlExport
             hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
             img { max-width: 100%; }
             ul.contains-task-list { list-style: none; padding-left: 1.2em; }
+            .mermaid { margin: 1em 0; text-align: center; }
+            .mermaid svg { max-width: 100%; height: auto; }
+        """;
+
+    /// <summary>
+    /// The bootstrap that renders the page's Mermaid Diagrams. It runs after the bundled Mermaid
+    /// library, turning each <c>mermaid</c>-classed code block into its rendered diagram in the
+    /// browser — so a Standalone Page's diagrams appear without touching the Rendered Output itself
+    /// (INV-049). A diagram that fails to render falls back to its source text.
+    /// </summary>
+    private const string MermaidBootstrap = """
+        (function () {
+          if (typeof mermaid === 'undefined') { return; }
+          mermaid.initialize({ startOnLoad: false });
+          document.querySelectorAll('pre > code.language-mermaid').forEach(function (code, index) {
+            var host = document.createElement('div');
+            host.className = 'mermaid';
+            code.parentElement.replaceWith(host);
+            mermaid.render('mermaid-diagram-' + index, code.textContent)
+              .then(function (result) { host.innerHTML = result.svg; })
+              .catch(function () { host.textContent = code.textContent; });
+          });
+        })();
         """;
 
     /// <summary>
@@ -81,6 +104,13 @@ public static class HtmlExport
     /// The title a Standalone Page carries. It comes from a file name the user chose, so it is
     /// HTML-escaped rather than trusted. Ignored by <see cref="ExportShape.HtmlFragment"/>.
     /// </param>
+    /// <param name="mermaidScript">
+    /// The bundled Mermaid library to embed so a Standalone Page's Mermaid Diagrams render in a
+    /// browser (INV-049). Embedded only into a Standalone Page, and only when the Rendered Output
+    /// contains a Mermaid Diagram. Left <see langword="null"/> (or when there is no diagram), the page
+    /// carries the diagram as an unrendered code block — Render itself stays pure (INV-002). Never
+    /// alters <paramref name="output"/>, so both Export Shapes still carry the same Rendered Output.
+    /// </param>
     /// <returns>The HTML to write to the export file.</returns>
     /// <exception cref="ArgumentNullException">
     /// Thrown when <paramref name="output"/> or <paramref name="title"/> is <see langword="null"/>.
@@ -88,7 +118,7 @@ public static class HtmlExport
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="shape"/> is not a defined <see cref="ExportShape"/>.
     /// </exception>
-    public static string Compose(RenderedOutput output, ExportShape shape, string title)
+    public static string Compose(RenderedOutput output, ExportShape shape, string title, string? mermaidScript = null)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(title);
@@ -96,12 +126,12 @@ public static class HtmlExport
         return shape switch
         {
             ExportShape.HtmlFragment => output.Html,
-            ExportShape.StandalonePage => StandalonePage(output, title),
+            ExportShape.StandalonePage => StandalonePage(output, title, mermaidScript),
             _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown Export Shape."),
         };
     }
 
-    private static string StandalonePage(RenderedOutput output, string title) =>
+    private static string StandalonePage(RenderedOutput output, string title, string? mermaidScript) =>
         $"""
         <!DOCTYPE html>
         <html lang="en">
@@ -114,8 +144,22 @@ public static class HtmlExport
         </style>
         </head>
         <body>
-        {output.Html}
+        {output.Html}{DiagramScripts(output, mermaidScript)}
         </body>
         </html>
         """;
+
+    // The diagram-rendering scripts a Standalone Page carries — the bundled library and the bootstrap
+    // — or the empty string when there is no diagram to render or no script to render it with. It is
+    // appended to the wrapper and never touches the Rendered Output, so an HTML Fragment (which is the
+    // Rendered Output alone) is unaffected and both Export Shapes still carry identical content
+    // (INV-032, INV-049).
+    private static string DiagramScripts(RenderedOutput output, string? mermaidScript) =>
+        string.IsNullOrEmpty(mermaidScript) || !ContainsMermaidDiagram(output.Html)
+            ? string.Empty
+            : $"\n<script>{mermaidScript}</script>\n<script>{MermaidBootstrap}</script>";
+
+    // A Mermaid Diagram renders to a fenced code block whose class Markdig sets from the info string.
+    private static bool ContainsMermaidDiagram(string html) =>
+        html.Contains("language-mermaid", StringComparison.Ordinal);
 }

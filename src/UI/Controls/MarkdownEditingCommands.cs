@@ -54,6 +54,17 @@ public static class MarkdownEditingCommands
         [new KeyGesture(Key.M, ModifierKeys.Control | ModifierKeys.Shift)]);
 
     /// <summary>
+    /// Opens the Flowchart Builder — the graphical node/arrow authoring surface — on the Mermaid
+    /// Diagram at the caret (or a new diagram when the caret is not within one), and inserts the
+    /// diagram it returns (Ctrl+Shift+D). Cancelling makes no edit (INV-053).
+    /// </summary>
+    public static RoutedUICommand OpenFlowchartBuilder { get; } = new(
+        "Flowchart builder",
+        nameof(OpenFlowchartBuilder),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.D, ModifierKeys.Control | ModifierKeys.Shift)]);
+
+    /// <summary>
     /// The Toggle Code Formatting Action: the selection becomes a Code Span (within a single line) or
     /// a Code Block (spanning multiple lines, or a whole line); inside existing code it removes the
     /// code formatting instead (INV-018).

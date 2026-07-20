@@ -90,6 +90,9 @@ public sealed class MarkdownToFlowDocumentProjector
             case QuoteBlock quoteBlock:
                 return ProjectQuote(quoteBlock, baseDirectory);
 
+            case FencedCodeBlock fenced when MermaidDiagram.IsMermaidLanguage(fenced.Info):
+                return MermaidDiagram.CreateDiagramBlock(ExtractCode(fenced));
+
             case FencedCodeBlock fenced:
                 return ProjectCodeBlock(fenced, fenced.Info);
 

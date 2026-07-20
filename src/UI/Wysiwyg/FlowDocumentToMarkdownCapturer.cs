@@ -73,6 +73,7 @@ public sealed class FlowDocumentToMarkdownCapturer
         Paragraph { Tag: CodeBlockRole codeRole } paragraph => CaptureCodeBlock(paragraph, codeRole),
         Paragraph { Tag: BlockSemantic.ThematicBreak } => "---",
         Paragraph paragraph => CaptureInlines(paragraph.Inlines),
+        BlockUIContainer { Tag: MermaidDiagramRole diagram } => CaptureMermaidDiagram(diagram),
         WpfList list => CaptureList(list),
         Section { Tag: BlockSemantic.Quote } quote => CaptureQuote(quote),
         WpfTable table => CaptureTable(table),
@@ -132,6 +133,11 @@ public sealed class FlowDocumentToMarkdownCapturer
         var code = InlineText(paragraph.Inlines);
         return "```" + (role.Language ?? string.Empty) + "\n" + code + "\n```";
     }
+
+    // Emits a Mermaid Diagram as its fenced ```mermaid``` block, from the source carried on the diagram
+    // block's role — the block shows the rendered picture, so the source lives on the role (INV-047).
+    private static string CaptureMermaidDiagram(MermaidDiagramRole diagram) =>
+        "```mermaid\n" + diagram.Source + "\n```";
 
     // Emits a GFM pipe table: the header row, an alignment-aware delimiter row, then the body rows.
     private static string CaptureTable(WpfTable table)

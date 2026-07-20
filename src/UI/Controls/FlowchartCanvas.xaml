@@ -1,0 +1,151 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:UI.Controls">
+
+    <!-- Default look for the Flowchart Builder's canvas. Authored as the control's ResourceDictionary
+         alongside the FlowchartCanvas class, per the project's Control conventions. Colours are
+         DynamicResource lookups so the canvas follows the light/dark theme. -->
+
+    <controls:NodeShapeGeometryConverter x:Key="NodeShapeGeometry" />
+    <controls:EdgeGeometryConverter x:Key="EdgeGeometry" />
+    <controls:EdgeThicknessConverter x:Key="EdgeThickness" />
+    <controls:EdgeDashConverter x:Key="EdgeDash" />
+    <controls:MidpointConverter x:Key="Midpoint" />
+
+    <!-- One Diagram Edge: a wide transparent hit-line for easy selection, the drawn line (shaft plus
+         arrowhead), and the optional Edge Label at the midpoint. -->
+    <DataTemplate x:Key="FlowchartEdgeTemplate">
+        <Canvas>
+            <Path Stroke="Transparent" StrokeThickness="12" Fill="Transparent">
+                <Path.Data>
+                    <MultiBinding Converter="{StaticResource EdgeGeometry}">
+                        <Binding Path="X1" />
+                        <Binding Path="Y1" />
+                        <Binding Path="X2" />
+                        <Binding Path="Y2" />
+                        <Binding Path="Kind" />
+                    </MultiBinding>
+                </Path.Data>
+            </Path>
+            <Path x:Name="EdgeLine" Stroke="{DynamicResource MutedTextBrush}" Fill="{DynamicResource MutedTextBrush}"
+                  StrokeThickness="{Binding Kind, Converter={StaticResource EdgeThickness}}"
+                  StrokeDashArray="{Binding Kind, Converter={StaticResource EdgeDash}}"
+                  StrokeLineJoin="Round">
+                <Path.Data>
+                    <MultiBinding Converter="{StaticResource EdgeGeometry}">
+                        <Binding Path="X1" />
+                        <Binding Path="Y1" />
+                        <Binding Path="X2" />
+                        <Binding Path="Y2" />
+                        <Binding Path="Kind" />
+                    </MultiBinding>
+                </Path.Data>
+            </Path>
+            <Border x:Name="EdgeLabel" Background="{DynamicResource EditorBackgroundBrush}" Padding="3,0"
+                    CornerRadius="3">
+                <Canvas.Left>
+                    <MultiBinding Converter="{StaticResource Midpoint}">
+                        <Binding Path="X1" />
+                        <Binding Path="X2" />
+                    </MultiBinding>
+                </Canvas.Left>
+                <Canvas.Top>
+                    <MultiBinding Converter="{StaticResource Midpoint}">
+                        <Binding Path="Y1" />
+                        <Binding Path="Y2" />
+                    </MultiBinding>
+                </Canvas.Top>
+                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="{DynamicResource TextBrush}" />
+            </Border>
+        </Canvas>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Label}" Value="">
+                <Setter TargetName="EdgeLabel" Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                <Setter TargetName="EdgeLine" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="EdgeLine" Property="Fill" Value="{DynamicResource AccentBrush}" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- One Diagram Node: its shape (a Path whose geometry comes from the Node Shape), the Node Label
+         or an inline rename box, and a connector handle to drag out a new edge. -->
+    <DataTemplate x:Key="FlowchartNodeTemplate">
+        <Grid Width="132" Height="56" Background="Transparent" Cursor="SizeAll">
+            <Path x:Name="Shape" Data="{Binding Shape, Converter={StaticResource NodeShapeGeometry}}"
+                  Fill="{DynamicResource SurfaceBrush}" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1.5" />
+            <TextBlock x:Name="LabelText" Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap"
+                       TextTrimming="CharacterEllipsis" Margin="10,4" MaxHeight="48"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextBrush}" IsHitTestVisible="False" />
+            <TextBox x:Name="LabelEditor" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                     Visibility="Collapsed" Margin="8,0" TextAlignment="Center"
+                     controls:FocusOnVisible.Enabled="True"
+                     Background="{DynamicResource EditorBackgroundBrush}" Foreground="{DynamicResource TextBrush}"
+                     BorderThickness="0" VerticalAlignment="Center" />
+            <Ellipse x:Name="Connector" Tag="Connector" Width="18" Height="18" Cursor="Cross"
+                     Fill="{DynamicResource AccentBrush}" Stroke="{DynamicResource EditorBackgroundBrush}"
+                     StrokeThickness="2.5" HorizontalAlignment="Right" VerticalAlignment="Center"
+                     Margin="0,0,-9,0" ToolTip="Drag from here onto another node to connect them" />
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                <Setter TargetName="Shape" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="Shape" Property="StrokeThickness" Value="2.5" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                <Setter TargetName="LabelText" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="LabelEditor" Property="Visibility" Value="Visible" />
+                <Setter TargetName="Connector" Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <Style TargetType="{x:Type controls:FlowchartCanvas}">
+        <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:FlowchartCanvas}">
+                    <Border Background="{TemplateBinding Background}" ClipToBounds="True">
+                        <Grid>
+                            <!-- Edges beneath the nodes. -->
+                            <ItemsControl ItemsSource="{Binding Builder.Edges, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ItemTemplate="{StaticResource FlowchartEdgeTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <!-- Nodes on top, each positioned by its X/Y. -->
+                            <ItemsControl ItemsSource="{Binding Builder.Nodes, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ItemTemplate="{StaticResource FlowchartNodeTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                            </ItemsControl>
+
+                            <!-- The rubber-band line drawn while dragging out a new edge. -->
+                            <Canvas>
+                                <Line x:Name="PART_RubberBand" Visibility="Collapsed" IsHitTestVisible="False"
+                                      Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="3 3" />
+                            </Canvas>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

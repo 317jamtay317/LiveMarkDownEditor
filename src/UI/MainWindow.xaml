@@ -271,6 +271,15 @@
                     </MenuItem>
                 </Menu>
 
+                <!-- Flowchart Builder: build a Mermaid flowchart graphically, then Insert it (INV-053). -->
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
+                        ToolTip="Flowchart builder — build a Mermaid flowchart graphically (Ctrl+Shift+D)"
+                        AutomationProperties.Name="Flowchart builder"
+                        Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
+                </Button>
+
                 <Rectangle DockPanel.Dock="Left" Style="{StaticResource CommandSeparator}" />
 
                 <Button DockPanel.Dock="Left" Style="{StaticResource IconFormatButton}"
@@ -336,6 +345,22 @@
                         </Style>
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleSourcePanel}" />
+                </Button>
+
+                <!-- Preview Panel toggle: highlighted while the Diagram Preview pane is shown (INV-048). -->
+                <Button DockPanel.Dock="Left" Command="{Binding TogglePreviewPanelCommand}"
+                        ToolTip="Toggle the diagram preview panel"
+                        AutomationProperties.Name="Toggle the diagram preview panel">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPreviewPanelVisible}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
                 </Button>
 
                 <!-- Theme toggle: shows the theme you'd switch to. -->
@@ -579,6 +604,8 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
                 </Grid.ColumnDefinitions>
 
                 <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
@@ -586,6 +613,8 @@
                                              Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
+                                             FlowchartBuilder="{Binding FlowchartBuilder}"
+                                             DiagramImageRenderer="{Binding DiagramImageRenderer}"
                                              DocumentPrinter="{Binding DocumentPrinter}"
                                              Renderer="{Binding Renderer}"
                                              FollowLinkCommand="{Binding FollowLinkCommand}"
@@ -631,6 +660,28 @@
                                      CaretBrush="{DynamicResource TextBrush}"
                                      SpellCheck.IsEnabled="True" />
                         </Grid>
+                    </DockPanel>
+                </Border>
+
+                <!-- Splitter between the Source Panel (or the Visual Document) and the Preview Panel.
+                     Hidden with the panel. -->
+                <GridSplitter Grid.Column="4" Width="5" HorizontalAlignment="Center"
+                              VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
+                              Visibility="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!-- Preview Panel: the live Diagram Preview of the Mermaid Diagram at the caret,
+                     rendered by the bundled Mermaid library in a WebView2. Presentation-only and hidden
+                     until toggled on (INV-047, INV-048); it follows the app light/dark theme. -->
+                <Border Grid.Column="5" Background="{DynamicResource EditorBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
+                        Visibility="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="DIAGRAM PREVIEW" Margin="14,12,14,6"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                        <controls:MermaidPreview AutomationProperties.AutomationId="DiagramPreview"
+                                                 DiagramSource="{Binding CurrentDiagramSource, ElementName=Editor}"
+                                                 IsDark="{Binding Appearance.IsDarkTheme}" />
                     </DockPanel>
                 </Border>
             </Grid>

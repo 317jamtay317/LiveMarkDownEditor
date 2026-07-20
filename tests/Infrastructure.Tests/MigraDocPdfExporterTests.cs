@@ -8,41 +8,43 @@ namespace Infrastructure.Tests;
 
 /// <summary>
 /// Tests for <see cref="MigraDocPdfExporter"/>, the adapter that re-lays-out a Markdown Document as a
-/// PDF (INV-033). PDF content is compressed and stamped with a creation time, so these assert
-/// structural facts — a valid header, non-empty output, relative size, and no throw across the whole
-/// GFM construct set — rather than exact bytes.
+/// PDF (INV-033) and embeds each Mermaid Diagram as an image (INV-050). PDF content is compressed and
+/// stamped with a creation time, so these assert structural facts — a valid header, non-empty output,
+/// relative size, and no throw across the whole GFM construct set — rather than exact bytes.
 /// </summary>
 public sealed class MigraDocPdfExporterTests
 {
-    private readonly IPdfExporter _exporter = new MigraDocPdfExporter();
+    private const string Diagram = "```mermaid\ngraph TD\n  A-->B\n```";
+
+    private readonly IPdfExporter _exporter = new MigraDocPdfExporter(new FakeMermaidImageRenderer());
 
     private static string Header(byte[] pdf) => Encoding.ASCII.GetString(pdf, 0, 5);
 
     [Fact]
-    public void Export_GivenNullDocument_Throws()
+    public async Task Export_GivenNullDocument_Throws()
     {
-        Should.Throw<ArgumentNullException>(() => _exporter.Export(null!));
+        await Should.ThrowAsync<ArgumentNullException>(async () => await _exporter.ExportAsync(null!));
     }
 
     [Fact]
-    public void Export_GivenEmptyDocument_ProducesAValidPdf()
+    public async Task Export_GivenEmptyDocument_ProducesAValidPdf()
     {
-        var pdf = _exporter.Export(MarkdownDocument.Empty);
+        var pdf = await _exporter.ExportAsync(MarkdownDocument.Empty);
 
         pdf.Length.ShouldBeGreaterThan(0);
         Header(pdf).ShouldBe("%PDF-");
     }
 
     [Fact]
-    public void Export_ProducesBytesBeginningWithThePdfHeader()
+    public async Task Export_ProducesBytesBeginningWithThePdfHeader()
     {
-        var pdf = _exporter.Export(new MarkdownDocument("# Title\n\nA paragraph."));
+        var pdf = await _exporter.ExportAsync(new MarkdownDocument("# Title\n\nA paragraph."));
 
         Header(pdf).ShouldBe("%PDF-");
     }
 
     [Fact]
-    public void Export_GivenARichDocument_ExercisingEveryConstruct_DoesNotThrow_AndProducesAPdf()
+    public async Task Export_GivenARichDocument_ExercisingEveryConstruct_DoesNotThrow_AndProducesAPdf()
     {
         var markdown = string.Join("\n\n",
             "# Heading 1",
@@ -58,30 +60,53 @@ public sealed class MigraDocPdfExporterTests
             "| Left | Centre | Right |\n|:-----|:------:|------:|\n| a | b | c |",
             "![a picture](cat.png)");
 
-        var pdf = _exporter.Export(new MarkdownDocument(markdown));
+        var pdf = await _exporter.ExportAsync(new MarkdownDocument(markdown));
 
         Header(pdf).ShouldBe("%PDF-");
         pdf.Length.ShouldBeGreaterThan(1000);
     }
 
     [Fact]
-    public void Export_GivenMoreContent_ProducesALargerPdfThanLessContent()
+    public async Task Export_GivenMoreContent_ProducesALargerPdfThanLessContent()
     {
-        var shortPdf = _exporter.Export(new MarkdownDocument("A short line."));
+        var shortPdf = await _exporter.ExportAsync(new MarkdownDocument("A short line."));
 
         var longMarkdown = string.Join("\n\n", Enumerable.Repeat("A full paragraph of prose that fills a real line and then some.", 60));
-        var longPdf = _exporter.Export(new MarkdownDocument(longMarkdown));
+        var longPdf = await _exporter.ExportAsync(new MarkdownDocument(longMarkdown));
 
         longPdf.Length.ShouldBeGreaterThan(shortPdf.Length);
     }
 
     [Fact]
-    public void Export_CalledTwice_DoesNotThrow()
+    public async Task Export_CalledTwice_DoesNotThrow()
     {
         // Guards the one-time static font configuration against a second call.
-        _exporter.Export(new MarkdownDocument("# One"));
-        var second = _exporter.Export(new MarkdownDocument("# Two"));
+        await _exporter.ExportAsync(new MarkdownDocument("# One"));
+        var second = await _exporter.ExportAsync(new MarkdownDocument("# Two"));
 
         Header(second).ShouldBe("%PDF-");
+    }
+
+    [Fact]
+    public async Task Export_WithAMermaidDiagram_RendersItThroughTheRenderer_AndProducesAValidPdf_INV050()
+    {
+        var renderer = new FakeMermaidImageRenderer();
+        var exporter = new MigraDocPdfExporter(renderer);
+
+        var pdf = await exporter.ExportAsync(new MarkdownDocument($"# Title\n\n{Diagram}"));
+
+        renderer.Rendered.ShouldContain("graph TD\n  A-->B");
+        Header(pdf).ShouldBe("%PDF-");
+    }
+
+    [Fact]
+    public async Task Export_WithAMermaidDiagram_WhenTheRendererProducesNothing_FallsBackToAValidPdf_INV050()
+    {
+        // A diagram the renderer cannot produce falls back to its source text (INV-050), never a crash.
+        var exporter = new MigraDocPdfExporter(new FakeMermaidImageRenderer(rendersNothing: true));
+
+        var pdf = await exporter.ExportAsync(new MarkdownDocument($"# Title\n\n{Diagram}"));
+
+        Header(pdf).ShouldBe("%PDF-");
     }
 }

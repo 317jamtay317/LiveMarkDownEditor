@@ -46,13 +46,16 @@ public sealed class WorkspaceViewModelTests
             new StubLinkPrompt(answer: null),
             new FakeDocumentPrinter(),
             new StubMarkdownRenderer(),
+            new StubFlowchartBuilder(result: null),
+            new FakeMermaidImageRenderer(),
             new AppearanceViewModel(_theme),
             new ExportViewModel(
                 _picker,
                 new StubMarkdownRenderer(),
                 new FakeHtmlExportStore(),
                 new FakePdfExporter(),
-                new FakePdfExportStore()),
+                new FakePdfExportStore(),
+                new FakeMermaidScriptSource()),
             folder,
             new SideDockViewModel(folder),
             _stateStore);
@@ -92,6 +95,32 @@ public sealed class WorkspaceViewModelTests
         workspace.IsSourcePanelVisible.ShouldBeFalse();
 
         // Toggling the Source Panel is view-only: the Markdown Document is untouched (INV-014).
+        workspace.ActiveSession.Markdown.ShouldBe(sourceBefore);
+    }
+
+    [Fact]
+    public void Constructor_StartsWithPreviewPanelHidden_INV048()
+    {
+        var workspace = CreateWorkspace();
+
+        // The Preview Panel is hidden until the user toggles it on.
+        workspace.IsPreviewPanelVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TogglePreviewPanel_TogglesVisibility_WithoutChangingDocument_INV048()
+    {
+        var workspace = CreateWorkspace();
+        workspace.ActiveSession!.Markdown = "```mermaid\ngraph TD\n  A-->B\n```";
+        var sourceBefore = workspace.ActiveSession.Markdown;
+
+        workspace.TogglePreviewPanelCommand.Execute(null);
+        workspace.IsPreviewPanelVisible.ShouldBeTrue();
+
+        workspace.TogglePreviewPanelCommand.Execute(null);
+        workspace.IsPreviewPanelVisible.ShouldBeFalse();
+
+        // Toggling the Preview Panel is view-only: the Markdown Document is untouched (INV-048).
         workspace.ActiveSession.Markdown.ShouldBe(sourceBefore);
     }
 

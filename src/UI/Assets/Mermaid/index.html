@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src data:;">
+<script src="mermaid.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; }
+  #container { padding: 14px; display: inline-block; box-sizing: border-box; }
+  #container svg { max-width: 100%; height: auto; }
+  #message {
+    padding: 18px; color: #8a8f98; font-size: 13px; line-height: 1.5;
+    white-space: pre-wrap; display: none;
+  }
+  #message.error { color: #d1493f; }
+</style>
+</head>
+<body>
+<div id="container"></div>
+<div id="message"></div>
+<script>
+  var sequence = 0;
+
+  function applyTheme(dark) {
+    document.body.style.background = dark ? '#1B1D21' : '#FFFFFF';
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
+  }
+
+  function showMessage(text, isError) {
+    var container = document.getElementById('container');
+    var message = document.getElementById('message');
+    container.style.display = 'none';
+    message.textContent = text;
+    message.className = isError ? 'error' : '';
+    message.style.display = 'block';
+  }
+
+  // Renders the given Mermaid source and reports the rendered size. Because this is async, its result
+  // is delivered to a native caller (the image renderer) through postMessage — ExecuteScriptAsync does
+  // not await a returned Promise, so it would otherwise receive an empty object. The Preview Panel
+  // ignores the result and only needs the SVG injected. It also returns the result for completeness.
+  async function renderDiagram(source, dark) {
+    applyTheme(dark);
+    var container = document.getElementById('container');
+    var message = document.getElementById('message');
+    var result;
+
+    if (!source || !source.trim()) {
+      showMessage('Place the caret in a mermaid diagram to preview it.', false);
+      result = { ok: false };
+    } else {
+      try {
+        var rendered = await mermaid.render('diagram-' + (++sequence), source);
+        container.innerHTML = rendered.svg;
+        container.style.display = 'inline-block';
+        message.style.display = 'none';
+        var svg = container.querySelector('svg');
+        if (svg) {
+          var rect = svg.getBoundingClientRect();
+          result = { ok: true, width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+        } else {
+          result = { ok: false };
+        }
+      } catch (error) {
+        showMessage(String(error && error.message ? error.message : error), true);
+        result = { ok: false };
+      }
+    }
+
+    var payload = JSON.stringify(result);
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage(payload);
+    }
+    return payload;
+  }
+</script>
+</body>
+</html>

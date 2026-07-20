@@ -17,6 +17,7 @@
                 <ResourceDictionary Source="Controls/SourceGutter.xaml" />
                 <ResourceDictionary Source="Controls/OutlinePanel.xaml" />
                 <ResourceDictionary Source="Controls/FolderPanel.xaml" />
+                <ResourceDictionary Source="Controls/FlowchartCanvas.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
