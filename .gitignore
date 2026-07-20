@@ -97,3 +97,4 @@ logs/
 # Advanced Installer build cache
 installer/*-cache/
 installer/Setup Files/
+installer/Prerequisites/
