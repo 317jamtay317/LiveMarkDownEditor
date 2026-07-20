@@ -24,6 +24,11 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
 {
     private const string HostName = "mermaid.host";
     private const string HostUrl = "https://mermaid.host/index.html";
+
+    // Render the diagram larger than Mermaid's compact default so the inline picture is comfortably
+    // legible; the SVG is vector, so the bigger raster stays crisp (INV-047).
+    private const double DiagramScale = 1.6;
+
     private static readonly TimeSpan RenderTimeout = TimeSpan.FromSeconds(12);
 
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -36,7 +41,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
     private TaskCompletionSource<string>? _pendingRender;
 
     /// <inheritdoc />
-    public async Task<DiagramImage?> RenderAsync(string source)
+    public async Task<DiagramImage?> RenderAsync(string source, bool dark)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -44,7 +49,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         try
         {
             // WebView2 is a UI object: do everything on the UI thread.
-            return await _dispatcher.InvokeAsync(() => RenderOnUiThreadAsync(source)).Task.Unwrap().ConfigureAwait(false);
+            return await _dispatcher.InvokeAsync(() => RenderOnUiThreadAsync(source, dark)).Task.Unwrap().ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is WebView2RuntimeNotFoundException or InvalidOperationException or COMException or IOException)
         {
@@ -56,7 +61,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         }
     }
 
-    private async Task<DiagramImage?> RenderOnUiThreadAsync(string source)
+    private async Task<DiagramImage?> RenderOnUiThreadAsync(string source, bool dark)
     {
         if (!await EnsureReadyAsync().ConfigureAwait(true) || _webView?.CoreWebView2 is not { } core)
         {
@@ -67,7 +72,8 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         // an empty object), so the rendered size is delivered through postMessage (WebMessageReceived).
         _pendingRender = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var request = JsonSerializer.Serialize(source);
-        _ = core.ExecuteScriptAsync($"renderDiagram({request}, false)");
+        var scale = DiagramScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _ = core.ExecuteScriptAsync($"renderDiagram({request}, {(dark ? "true" : "false")}, {scale})");
 
         var finished = await Task.WhenAny(_pendingRender.Task, Task.Delay(RenderTimeout)).ConfigureAwait(true);
         if (finished != _pendingRender.Task || Measure(await _pendingRender.Task.ConfigureAwait(true)) is not { } size)

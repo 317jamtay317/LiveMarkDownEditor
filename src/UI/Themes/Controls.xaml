@@ -201,6 +201,43 @@
         </Setter>
     </Style>
 
+    <!-- A checkable entry within a command-bar dropdown: shows a check when IsChecked, which is bound to
+         the state it toggles (e.g. a panel's visibility). The View dropdown uses it for the panel
+         toggles, standing in for each toggle button's active highlight. -->
+    <Style x:Key="CommandMenuToggleEntry" TargetType="MenuItem" BasedOn="{StaticResource CommandMenuEntry}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="12,6" MinWidth="180">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter Grid.Column="0" ContentSource="Header" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                            <Path x:Name="Check" Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"
+                                  Stretch="None" Fill="{x:Null}" Stroke="{DynamicResource TextBrush}"
+                                  StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Data="M0 5 L4 9 L11 1" Visibility="Hidden" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Thin vertical divider between command-bar groups. -->
     <Style x:Key="CommandSeparator" TargetType="Rectangle">
         <Setter Property="Width" Value="1" />

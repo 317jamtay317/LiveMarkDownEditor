@@ -117,6 +117,16 @@ public sealed class MarkdownRichEditor : RichTextBox
         new PropertyMetadata(defaultValue: null, OnDiagramImageRendererChanged));
 
     /// <summary>
+    /// Identifies the <see cref="IsDarkTheme"/> dependency property. Bound to the active theme, it makes
+    /// each Mermaid Diagram render in the editor's light/dark palette and re-render when it flips (INV-047).
+    /// </summary>
+    public static readonly DependencyProperty IsDarkThemeProperty = DependencyProperty.Register(
+        nameof(IsDarkTheme),
+        typeof(bool),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: false, OnIsDarkThemeChanged));
+
+    /// <summary>
     /// Identifies the <see cref="FollowLinkCommand"/> dependency property. Ctrl+Clicking a Link to a
     /// Markdown file invokes it with the file's absolute path so the shell opens it in a new Tab; a
     /// web Link is opened in the browser without it (INV-038).
@@ -753,6 +763,16 @@ public sealed class MarkdownRichEditor : RichTextBox
     }
 
     /// <summary>
+    /// Whether the active theme is dark, so each Mermaid Diagram's picture matches the editor's palette.
+    /// Flipping it re-renders the diagrams in the new theme; it is view-only (INV-047).
+    /// </summary>
+    public bool IsDarkTheme
+    {
+        get => (bool)GetValue(IsDarkThemeProperty);
+        set => SetValue(IsDarkThemeProperty, value);
+    }
+
+    /// <summary>
     /// The printer Print sends the Visual Document to. Supplied by the composition root; when
     /// <see langword="null"/>, Print does nothing (INV-034).
     /// </summary>
@@ -1025,7 +1045,7 @@ public sealed class MarkdownRichEditor : RichTextBox
     public void InsertOrReplaceDiagramAtCaret(string mermaidSource)
     {
         DiagramBlockEditing.InsertOrReplaceDiagramAtCaret(this, mermaidSource);
-        _diagramRenderer.RenderAll(Document, DiagramImageRenderer);
+        _diagramRenderer.RenderAll(Document, DiagramImageRenderer, IsDarkTheme);
     }
 
     /// <summary>
@@ -1493,7 +1513,14 @@ public sealed class MarkdownRichEditor : RichTextBox
     {
         // The renderer usually binds after the first projection; render the diagrams already shown.
         var editor = (MarkdownRichEditor)d;
-        editor._diagramRenderer.RenderAll(editor.Document, e.NewValue as IMermaidImageRenderer);
+        editor._diagramRenderer.RenderAll(editor.Document, e.NewValue as IMermaidImageRenderer, editor.IsDarkTheme);
+    }
+
+    private static void OnIsDarkThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // A theme flip re-renders each diagram in the new palette (served from cache after the first time).
+        var editor = (MarkdownRichEditor)d;
+        editor._diagramRenderer.RenderAll(editor.Document, editor.DiagramImageRenderer, editor.IsDarkTheme);
     }
 
     private void ProjectFromMarkdown(string markdown)
@@ -1517,9 +1544,9 @@ public sealed class MarkdownRichEditor : RichTextBox
         _lastCaptured = markdown;
 
         // Render each Mermaid Diagram's picture into its inline view (async — INV-047). The picture
-        // arrives after this projection and changes no structure (INV-003); it is cached by source, so
-        // an unchanged diagram is not re-rendered as the user types elsewhere.
-        _diagramRenderer.RenderAll(Document, DiagramImageRenderer);
+        // arrives after this projection and changes no structure (INV-003); it is cached by source and
+        // theme, so an unchanged diagram is not re-rendered as the user types elsewhere.
+        _diagramRenderer.RenderAll(Document, DiagramImageRenderer, IsDarkTheme);
 
         InvalidateOutline();
 

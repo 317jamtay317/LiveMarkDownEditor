@@ -20,9 +20,12 @@ a `mermaid` fenced Code Block as a `BlockUIContainer` hosting a `MermaidDiagramV
 `Source` — a **pure, synchronous** projection (INV-003); no rendering happens here.
 
 After the projection, the editor's `MermaidRenderCoordinator` renders each diagram through the
-`IMermaidImageRenderer` port (the WebView2-backed renderer) and sets the control's `Rendered` image. The
-picture arrives asynchronously and changes no structure, exactly as a remote Image's pixels do (INV-003).
-Rendered pictures are cached by source, so typing elsewhere never re-renders an unchanged diagram.
+`IMermaidImageRenderer` port (the WebView2-backed renderer) in the editor's current light/dark theme and
+sets the control's `Rendered` image. The picture arrives asynchronously and changes no structure, exactly
+as a remote Image's pixels do (INV-003). Rendered pictures are cached by source **and** theme, so typing
+elsewhere never re-renders an unchanged diagram, and toggling the theme re-renders each diagram once per
+theme (driven by the editor's `IsDarkTheme`). The renderer produces the picture at a larger scale than
+Mermaid's compact default so it is comfortably legible inline; being vector, it stays crisp.
 
 Until the picture arrives — or if the diagram cannot be rendered (no renderer, or source Mermaid
 rejects) — the control shows the diagram's **source text** in a code-like box, so a diagram is never an
