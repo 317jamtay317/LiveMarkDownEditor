@@ -68,6 +68,15 @@ internal sealed record TaskMarkerRole(bool Checked);
 internal sealed record CodeBlockRole(string? Language);
 
 /// <summary>
+/// The role carried by the <see cref="System.Windows.Documents.BlockUIContainer"/> a Mermaid Diagram
+/// is projected into, so Capture can reproduce the fenced ```mermaid``` Code Block. The diagram's
+/// source is carried here rather than read back from a text surface, because the block shows the
+/// diagram's rendered picture, not editable code (INV-047).
+/// </summary>
+/// <param name="Source">The Mermaid Diagram's source text.</param>
+internal sealed record MermaidDiagramRole(string Source);
+
+/// <summary>
 /// The role carried by a <see cref="System.Windows.Documents.Table"/> projected from a Markdown
 /// pipe table, recording each column's alignment so Capture can reproduce the delimiter row.
 /// </summary>

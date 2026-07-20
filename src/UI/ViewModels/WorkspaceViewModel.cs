@@ -38,6 +38,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="documentPrinter">Sends the Visual Document to a printer for Print (INV-034).</param>
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
     /// <param name="flowchartBuilder">Opens the Flowchart Builder for Open Flowchart Builder (INV-053).</param>
+    /// <param name="diagramImageRenderer">Renders each Mermaid Diagram's inline picture (INV-047).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
     /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
@@ -51,6 +52,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         IDocumentPrinter documentPrinter,
         IMarkdownRenderer renderer,
         IFlowchartBuilder flowchartBuilder,
+        IMermaidImageRenderer diagramImageRenderer,
         AppearanceViewModel appearance,
         ExportViewModel export,
         FolderWorkspaceViewModel folder,
@@ -65,6 +67,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
+        DiagramImageRenderer = diagramImageRenderer ?? throw new ArgumentNullException(nameof(diagramImageRenderer));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
         Folder = folder ?? throw new ArgumentNullException(nameof(folder));
@@ -174,6 +177,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// the container — the same reason <see cref="LinkPrompt"/> is exposed.
     /// </summary>
     public IFlowchartBuilder FlowchartBuilder { get; }
+
+    /// <summary>
+    /// The renderer the editing surface uses to render each Mermaid Diagram's inline picture (INV-047).
+    /// Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which is composed in XAML
+    /// rather than by the container — the same reason <see cref="Renderer"/> is exposed.
+    /// </summary>
+    public IMermaidImageRenderer DiagramImageRenderer { get; }
 
     /// <summary>
     /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown

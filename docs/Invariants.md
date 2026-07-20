@@ -844,27 +844,40 @@ and tested.
   toggling the Selected panel off falls back to the other or hides the dock; the dock is hidden when
   neither panel is on; and coordinating the tabs opens or edits no document).
 
-### INV-047 — The Diagram Preview is view-only and shows the Mermaid Diagram at the caret
-- **Statement:** Identifying which Mermaid Diagram the caret is within, and rendering its Diagram
-  Preview, never changes the Markdown Document — the Diagram-Preview counterpart of Find (INV-016)
-  and Code Shading (INV-017). Three rules bound it:
-  - **A Mermaid Diagram is identified by its language alone.** A Code Block whose info string is
-    `mermaid` (compared case-insensitively) is a Mermaid Diagram; any other Code Block is not.
-    Identifying it and reading its source is a pure function of the Visual Document and the caret.
-  - **The Diagram Preview follows the caret.** The caret inside a Mermaid Diagram has that diagram as
-    its Diagram Preview; a caret anywhere else — in another Code Block, or in prose — has none. Moving
-    the caret between diagrams changes which one is previewed.
-  - **Rendering is not an edit.** The Diagram Preview is rendered from a read of the diagram's source;
-    Capturing the Visual Document yields identical Markdown source text before and after any Diagram
-    Preview is rendered or re-rendered. A Mermaid Diagram's source itself round-trips as the fenced
-    Code Block it is (INV-004).
-- **Enforced by:** The pure `MermaidDiagram.SourceAt` (which reads the caret's Code Block and returns
-  its source when the language is `mermaid`, otherwise `null` — it mutates nothing), the editor's
-  read-only `CurrentDiagramSource` (recomputed as the caret moves and on every edit), and the
-  `MermaidPreview` control, which only renders — none of it feeds back into Capture.
-- **Tested by:** `MermaidDiagramTests.*_INV047` (a caret in a mermaid block yields its source; a caret
-  in another Code Block or in prose yields none; the language match is case-insensitive) and
-  `MarkdownRichEditorMermaidTests.Preview_DoesNotChangeCapturedMarkdown_INV047`.
+### INV-047 — A Mermaid Diagram renders as a picture in the Visual Document
+- **Statement:** A Mermaid Diagram is shown in the Visual Document as its rendered picture, and
+  rendering it never changes the Markdown Document — the counterpart of Code Shading (INV-017), reached
+  for a whole diagram. Five rules bound it:
+  - **Identified by language alone.** A fenced Code Block whose info string is `mermaid` (compared
+    case-insensitively) is a Mermaid Diagram; any other Code Block is not. Identifying it and reading
+    its source is a pure function of the Visual Document.
+  - **Rendered from its source, asynchronously and view-only.** The picture is produced from the
+    diagram's source by a Mermaid renderer. The render is asynchronous — its pixels arrive after the
+    projection and change no part of the Visual Document's structure, exactly as a remote Image's pixels
+    do (INV-003) — and view-only: Capturing yields identical Markdown source text before and after any
+    diagram is rendered or re-rendered.
+  - **Falls back to its source text.** A diagram the renderer cannot produce — no renderer available,
+    or source Mermaid rejects — shows its source text instead, never a hole (the Image fallback of
+    INV-031, reached for a diagram).
+  - **Captured as the fenced block.** However it is shown, a Mermaid Diagram Captures as exactly the
+    fenced ```mermaid``` Code Block it is, so its source Round-Trips (INV-004).
+  - **Edited through the builder or the source, not inline.** Double-clicking the picture opens the
+    Flowchart Builder on it (INV-053); the Source Panel edits the raw source (INV-013). The picture
+    itself is not an editable text surface.
+  The **Diagram Preview** in the Preview Panel shows the *selected* Mermaid Diagram larger; showing it
+  is equally view-only (INV-048).
+- **Enforced by:** The pure `MarkdownToFlowDocumentProjector`, which projects a `mermaid` fenced block
+  as a `BlockUIContainer` hosting a `MermaidDiagramView`, tagged with a `MermaidDiagramRole` carrying
+  the diagram's source (the projection stays a pure function of the source — INV-003 — the picture
+  arriving later); `FlowDocumentToMarkdownCapturer`, which re-emits the fenced block from that role; the
+  pure `MermaidDiagram.SourceOfBlock` (reading a diagram block's source); and the editor's render
+  coordinator, which renders each diagram through the `IMermaidImageRenderer` port and fills its
+  picture, falling back to the source text when the port yields nothing. None of it feeds back into
+  Capture.
+- **Tested by:** `MermaidDiagramTests.*_INV047` (a `mermaid` block projects to a diagram block whose
+  source is read back; the language match is case-insensitive; another Code Block does not) and
+  `MarkdownRichEditorMermaidTests.*_INV047` (a Mermaid Diagram Round-Trips as its fenced block, and
+  rendering never changes the Captured Markdown).
 
 ### INV-048 — Toggling the Preview Panel is view-only
 - **Statement:** Showing or hiding the Preview Panel never changes the Markdown Document. The Preview

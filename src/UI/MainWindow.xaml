@@ -614,6 +614,7 @@
                                              BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                              LinkPrompt="{Binding LinkPrompt}"
                                              FlowchartBuilder="{Binding FlowchartBuilder}"
+                                             DiagramImageRenderer="{Binding DiagramImageRenderer}"
                                              DocumentPrinter="{Binding DocumentPrinter}"
                                              Renderer="{Binding Renderer}"
                                              FollowLinkCommand="{Binding FollowLinkCommand}"

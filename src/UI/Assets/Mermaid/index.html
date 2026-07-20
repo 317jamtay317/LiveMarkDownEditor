@@ -36,35 +36,43 @@
     message.style.display = 'block';
   }
 
-  // Renders the given Mermaid source and returns the rendered size as a JSON string, so a headless
-  // caller (the PDF image renderer) can size its capture to the diagram (INV-050).
+  // Renders the given Mermaid source and reports the rendered size. Because this is async, its result
+  // is delivered to a native caller (the image renderer) through postMessage — ExecuteScriptAsync does
+  // not await a returned Promise, so it would otherwise receive an empty object. The Preview Panel
+  // ignores the result and only needs the SVG injected. It also returns the result for completeness.
   async function renderDiagram(source, dark) {
     applyTheme(dark);
     var container = document.getElementById('container');
     var message = document.getElementById('message');
+    var result;
 
     if (!source || !source.trim()) {
       showMessage('Place the caret in a mermaid diagram to preview it.', false);
-      return JSON.stringify({ ok: false });
+      result = { ok: false };
+    } else {
+      try {
+        var rendered = await mermaid.render('diagram-' + (++sequence), source);
+        container.innerHTML = rendered.svg;
+        container.style.display = 'inline-block';
+        message.style.display = 'none';
+        var svg = container.querySelector('svg');
+        if (svg) {
+          var rect = svg.getBoundingClientRect();
+          result = { ok: true, width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+        } else {
+          result = { ok: false };
+        }
+      } catch (error) {
+        showMessage(String(error && error.message ? error.message : error), true);
+        result = { ok: false };
+      }
     }
 
-    try {
-      var result = await mermaid.render('diagram-' + (++sequence), source);
-      container.innerHTML = result.svg;
-      container.style.display = 'inline-block';
-      message.style.display = 'none';
-    } catch (error) {
-      showMessage(String(error && error.message ? error.message : error), true);
-      return JSON.stringify({ ok: false });
+    var payload = JSON.stringify(result);
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage(payload);
     }
-
-    var svg = container.querySelector('svg');
-    if (!svg) {
-      return JSON.stringify({ ok: false });
-    }
-
-    var rect = svg.getBoundingClientRect();
-    return JSON.stringify({ ok: true, width: Math.ceil(rect.width), height: Math.ceil(rect.height) });
+    return payload;
   }
 </script>
 </body>

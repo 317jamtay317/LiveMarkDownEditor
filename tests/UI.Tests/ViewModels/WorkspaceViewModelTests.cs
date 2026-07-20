@@ -47,6 +47,7 @@ public sealed class WorkspaceViewModelTests
             new FakeDocumentPrinter(),
             new StubMarkdownRenderer(),
             new StubFlowchartBuilder(result: null),
+            new FakeMermaidImageRenderer(),
             new AppearanceViewModel(_theme),
             new ExportViewModel(
                 _picker,

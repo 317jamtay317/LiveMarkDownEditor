@@ -33,6 +33,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
     private Window? _window;
     private WebView2? _webView;
     private bool _ready;
+    private TaskCompletionSource<string>? _pendingRender;
 
     /// <inheritdoc />
     public async Task<DiagramImage?> RenderAsync(string source)
@@ -62,9 +63,14 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
             return null;
         }
 
+        // renderDiagram is async; ExecuteScriptAsync does not await a returned Promise (it would yield
+        // an empty object), so the rendered size is delivered through postMessage (WebMessageReceived).
+        _pendingRender = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var request = JsonSerializer.Serialize(source);
-        var json = await core.ExecuteScriptAsync($"renderDiagram({request}, false)").ConfigureAwait(true);
-        if (Measure(json) is not { } size)
+        _ = core.ExecuteScriptAsync($"renderDiagram({request}, false)");
+
+        var finished = await Task.WhenAny(_pendingRender.Task, Task.Delay(RenderTimeout)).ConfigureAwait(true);
+        if (finished != _pendingRender.Task || Measure(await _pendingRender.Task.ConfigureAwait(true)) is not { } size)
         {
             return null;
         }
@@ -78,6 +84,18 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         using var stream = new MemoryStream();
         await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream).ConfigureAwait(true);
         return new DiagramImage(stream.ToArray(), size.Width, size.Height);
+    }
+
+    private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        try
+        {
+            _pendingRender?.TrySetResult(e.TryGetWebMessageAsString());
+        }
+        catch (ArgumentException)
+        {
+            _pendingRender?.TrySetResult(string.Empty);
+        }
     }
 
     // Creates the off-screen host once and navigates it to the bundled Mermaid page, returning whether
@@ -109,6 +127,7 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         core.SetVirtualHostNameToFolderMapping(HostName, AssetsFolder(), CoreWebView2HostResourceAccessKind.Allow);
         core.Settings.AreDevToolsEnabled = false;
         core.Settings.AreDefaultContextMenusEnabled = false;
+        core.WebMessageReceived += OnWebMessageReceived;
 
         var navigated = new TaskCompletionSource();
         void OnNavigated(object? sender, CoreWebView2NavigationCompletedEventArgs e) => navigated.TrySetResult();
@@ -127,17 +146,15 @@ public sealed class WebView2MermaidImageRenderer : IMermaidImageRenderer
         return _ready;
     }
 
-    // Reads the {ok,width,height} the host page returns; null when the diagram did not render.
-    private static (int Width, int Height)? Measure(string executeScriptJson)
+    // Reads the {ok,width,height} the host page posts back; null when the diagram did not render.
+    private static (int Width, int Height)? Measure(string? payload)
     {
-        // ExecuteScriptAsync returns the JS result as a JSON literal — here a JSON-encoded string.
-        var inner = JsonSerializer.Deserialize<string>(executeScriptJson);
-        if (inner is null)
+        if (string.IsNullOrEmpty(payload))
         {
             return null;
         }
 
-        using var document = JsonDocument.Parse(inner);
+        using var document = JsonDocument.Parse(payload);
         var root = document.RootElement;
         if (!root.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
         {

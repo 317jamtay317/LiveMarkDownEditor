@@ -1,12 +1,14 @@
-using System.Text;
+using System.Windows;
 using System.Windows.Documents;
+using UI.Controls;
 
 namespace UI.Wysiwyg;
 
 /// <summary>
-/// Locates the Mermaid Diagram a caret is within — a Code Block whose language is
-/// <see cref="Language"/> — and returns its source so the Diagram Preview can render it. Pure and
-/// view-only: it reads the Visual Document and never changes the Markdown Document (INV-047).
+/// The Mermaid Diagram seam: identifies a Mermaid Diagram by its language, builds the atomic block that
+/// shows its rendered picture in the Visual Document, and reads a diagram block's source back so the
+/// Diagram Preview and the Flowchart Builder can use it. Pure and view-only — it never changes the
+/// Markdown Document (INV-047).
 /// </summary>
 public static class MermaidDiagram
 {
@@ -23,41 +25,40 @@ public static class MermaidDiagram
         string.Equals(language?.Trim(), Language, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// The source of the Mermaid Diagram <paramref name="block"/> is, or <see langword="null"/> when the
+    /// block is not a Mermaid Diagram. Reading it is view-only (INV-047).
+    /// </summary>
+    /// <param name="block">The Visual Document block to inspect, or <see langword="null"/>.</param>
+    /// <returns>The diagram's source, or <see langword="null"/>.</returns>
+    public static string? SourceOfBlock(Block? block) =>
+        block is BlockUIContainer { Tag: MermaidDiagramRole role } ? role.Source : null;
+
+    /// <summary>
     /// The source of the Mermaid Diagram the caret at <paramref name="caret"/> is within, or
-    /// <see langword="null"/> when the caret is not inside a Mermaid Diagram (it sits in another Code
-    /// Block, in prose, or nowhere). Reading it is view-only — it never changes the Markdown Document
+    /// <see langword="null"/> when the caret is not on a Mermaid Diagram. Reading it is view-only
     /// (INV-047).
     /// </summary>
     /// <param name="caret">The caret position to inspect, or <see langword="null"/>.</param>
-    /// <returns>The diagram's source, or <see langword="null"/> when the caret is not in a Mermaid Diagram.</returns>
-    public static string? SourceAt(TextPointer? caret)
+    /// <returns>The diagram's source, or <see langword="null"/>.</returns>
+    public static string? SourceAt(TextPointer? caret) =>
+        caret is null ? null : SourceOfBlock(VisualDocumentTraversal.TopLevelBlockOf(caret));
+
+    /// <summary>
+    /// Builds the atomic block a Mermaid Diagram is shown as: a <see cref="BlockUIContainer"/> hosting a
+    /// <see cref="MermaidDiagramView"/>, tagged with a <see cref="MermaidDiagramRole"/> carrying the
+    /// source so Capture re-emits the fenced ```mermaid``` block (INV-047). The picture itself is
+    /// rendered afterwards by the editor's coordinator, so this stays a pure structural projection
+    /// (INV-003).
+    /// </summary>
+    /// <param name="source">The Mermaid Diagram source.</param>
+    /// <returns>The diagram block.</returns>
+    public static BlockUIContainer CreateDiagramBlock(string source)
     {
-        if (caret?.Paragraph is { Tag: CodeBlockRole role } paragraph && IsMermaidLanguage(role.Language))
+        ArgumentNullException.ThrowIfNull(source);
+        return new BlockUIContainer(new MermaidDiagramView { Source = source })
         {
-            return CodeText(paragraph);
-        }
-
-        return null;
-    }
-
-    // A Code Block paragraph holds one Run per line separated by LineBreaks (see the projector); join
-    // the Runs with newlines to recover the diagram's source exactly as it was projected.
-    private static string CodeText(Paragraph paragraph)
-    {
-        var builder = new StringBuilder();
-        foreach (var inline in paragraph.Inlines)
-        {
-            switch (inline)
-            {
-                case Run run:
-                    builder.Append(run.Text);
-                    break;
-                case LineBreak:
-                    builder.Append('\n');
-                    break;
-            }
-        }
-
-        return builder.ToString();
+            Tag = new MermaidDiagramRole(source),
+            Margin = new Thickness(0, 0, 0, 6),
+        };
     }
 }

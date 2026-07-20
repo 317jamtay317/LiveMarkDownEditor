@@ -78,4 +78,28 @@ public sealed class MermaidDiagramTests
     {
         MermaidDiagram.IsMermaidLanguage(language).ShouldBe(expected);
     }
+
+    [Fact]
+    public void MermaidBlock_ProjectsToADiagramBlock_WhoseSourceIsReadBack_INV047()
+    {
+        StaThread.Run(() =>
+        {
+            var block = Projector.Project("```mermaid\nflowchart TD\n    a[\"A\"]\n```").Blocks.FirstBlock;
+
+            MermaidDiagram.SourceOfBlock(block).ShouldBe("flowchart TD\n    a[\"A\"]");
+        });
+    }
+
+    [Fact]
+    public void RoundTrip_OfAMermaidBlock_EmitsTheFencedBlock_INV047()
+    {
+        StaThread.Run(() =>
+        {
+            const string source = "```mermaid\nflowchart TD\n    a[\"Start\"]\n    a --> b\n```";
+
+            var captured = new FlowDocumentToMarkdownCapturer().Capture(Projector.Project(source));
+
+            captured.ShouldBe(source);
+        });
+    }
 }

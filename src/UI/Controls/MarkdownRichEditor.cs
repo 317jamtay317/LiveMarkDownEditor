@@ -106,6 +106,17 @@ public sealed class MarkdownRichEditor : RichTextBox
         new PropertyMetadata(defaultValue: null));
 
     /// <summary>
+    /// Identifies the <see cref="DiagramImageRenderer"/> dependency property. Each Mermaid Diagram's
+    /// picture is rendered through it and shown inline; the composition root supplies the WebView2
+    /// renderer. Left unset, a diagram shows its source-text fallback instead (INV-047).
+    /// </summary>
+    public static readonly DependencyProperty DiagramImageRendererProperty = DependencyProperty.Register(
+        nameof(DiagramImageRenderer),
+        typeof(IMermaidImageRenderer),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null, OnDiagramImageRendererChanged));
+
+    /// <summary>
     /// Identifies the <see cref="FollowLinkCommand"/> dependency property. Ctrl+Clicking a Link to a
     /// Markdown file invokes it with the file's absolute path so the shell opens it in a new Tab; a
     /// web Link is opened in the browser without it (INV-038).
@@ -185,6 +196,7 @@ public sealed class MarkdownRichEditor : RichTextBox
 
     private readonly MarkdownToFlowDocumentProjector _projector = new();
     private readonly FlowDocumentToMarkdownCapturer _capturer = new();
+    private readonly MermaidRenderCoordinator _diagramRenderer = new();
 
     // Each Folded Section Heading mapped to the Section Body blocks removed from the visible Document.
     // The blocks are retained (not discarded) so Capture can reproduce the full source (INV-011).
@@ -731,6 +743,16 @@ public sealed class MarkdownRichEditor : RichTextBox
     }
 
     /// <summary>
+    /// The renderer that turns each Mermaid Diagram's source into the picture shown inline. Left
+    /// <see langword="null"/>, a diagram shows its source-text fallback (INV-047).
+    /// </summary>
+    public IMermaidImageRenderer? DiagramImageRenderer
+    {
+        get => (IMermaidImageRenderer?)GetValue(DiagramImageRendererProperty);
+        set => SetValue(DiagramImageRendererProperty, value);
+    }
+
+    /// <summary>
     /// The printer Print sends the Visual Document to. Supplied by the composition root; when
     /// <see langword="null"/>, Print does nothing (INV-034).
     /// </summary>
@@ -1000,8 +1022,11 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// Markdown like any other edit (INV-053/INV-018).
     /// </summary>
     /// <param name="mermaidSource">The Mermaid source to write.</param>
-    public void InsertOrReplaceDiagramAtCaret(string mermaidSource) =>
+    public void InsertOrReplaceDiagramAtCaret(string mermaidSource)
+    {
         DiagramBlockEditing.InsertOrReplaceDiagramAtCaret(this, mermaidSource);
+        _diagramRenderer.RenderAll(Document, DiagramImageRenderer);
+    }
 
     /// <summary>
     /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
@@ -1464,6 +1489,13 @@ public sealed class MarkdownRichEditor : RichTextBox
         }
     }
 
+    private static void OnDiagramImageRendererChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // The renderer usually binds after the first projection; render the diagrams already shown.
+        var editor = (MarkdownRichEditor)d;
+        editor._diagramRenderer.RenderAll(editor.Document, e.NewValue as IMermaidImageRenderer);
+    }
+
     private void ProjectFromMarkdown(string markdown)
     {
         _isSynchronising = true;
@@ -1483,6 +1515,11 @@ public sealed class MarkdownRichEditor : RichTextBox
         // equal the stale value (e.g. switching back to an empty tab) would be mistaken for an echo
         // and skip re-projection, leaving the previous document visible.
         _lastCaptured = markdown;
+
+        // Render each Mermaid Diagram's picture into its inline view (async — INV-047). The picture
+        // arrives after this projection and changes no structure (INV-003); it is cached by source, so
+        // an unchanged diagram is not re-rendered as the user types elsewhere.
+        _diagramRenderer.RenderAll(Document, DiagramImageRenderer);
 
         InvalidateOutline();
 
@@ -1511,6 +1548,20 @@ public sealed class MarkdownRichEditor : RichTextBox
     /// <inheritdoc />
     protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
     {
+        // Double-clicking a Mermaid Diagram's picture opens the Flowchart Builder on that diagram: the
+        // caret is placed on its block so Open Flowchart Builder seeds from — and Insert replaces — it
+        // (INV-047/INV-053). The block is found by the text hit-test (GetPositionFromPoint), since a
+        // RichTextBox overlays a text layer over embedded elements — a visual hit-test misses them.
+        if (e.ClickCount == 2 &&
+            VisualDocumentTraversal.TopLevelBlockOf(GetPositionFromPoint(e.GetPosition(this), snapToText: true))
+                is BlockUIContainer { Tag: MermaidDiagramRole } container)
+        {
+            CaretPosition = container.ContentStart;
+            OpenFlowchartBuilderAtCaret();
+            e.Handled = true;
+            return;
+        }
+
         // A click on a Task Marker's checkbox toggles it (INV-024). snapToText is off so only a click
         // on the checkbox itself resolves to it; every other click falls through to the base class and
         // places the caret exactly as it always has.
