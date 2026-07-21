@@ -173,7 +173,8 @@ and tested.
   source text nor any Fold, Outline, or Navigation state. (This is the Source Panel counterpart of
   INV-011/012.)
 - **Enforced by:** `WorkspaceViewModel.IsSourcePanelVisible` and `ToggleSourcePanelCommand`, which
-  drive only presentation state and never touch any Editor Session's Markdown.
+  drive only presentation state and never touch any Editor Session's Markdown. What hiding the panel
+  does to the space it occupied is INV-056's: its Panel Column gives every pixel back.
 - **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithSourcePanelHidden_INV014`,
   `WorkspaceViewModelTests.ToggleSourcePanel_TogglesVisibility_WithoutChangingDocument_INV014`.
 
@@ -922,7 +923,8 @@ and tested.
   source text nor any Fold, Outline, Navigation, or Source-Panel state. (This is the Preview-Panel
   counterpart of the Source Panel's INV-014.)
 - **Enforced by:** `WorkspaceViewModel.IsPreviewPanelVisible` and `TogglePreviewPanelCommand`, which
-  drive only presentation state and never touch any Editor Session's Markdown.
+  drive only presentation state and never touch any Editor Session's Markdown. Its Panel Column gives
+  its width back when it is hidden, as the Source Panel's does (INV-056).
 - **Tested by:** `WorkspaceViewModelTests.Constructor_StartsWithPreviewPanelHidden_INV048`,
   `WorkspaceViewModelTests.TogglePreviewPanel_TogglesVisibility_WithoutChangingDocument_INV048`.
 
@@ -1100,6 +1102,39 @@ and tested.
   `MarkdownRichEditorFlowchartTests.ADocumentEndingInADiagram_CapturesUnchanged_INV055`,
   `MarkdownRichEditorFlowchartTests.InsertOrReplace_AtEndOfDocument_StillRoundTrips_INV055`, and
   `MarkdownRichEditorTableTests.InsertTable_AtEndOfDocument_LeavesALineBelow_INV055`.
+
+### INV-056 — A hidden panel takes no width, and a shown one keeps the width it was dragged to
+- **Statement:** A Panel Column occupies **zero width** whenever its panel is hidden — however the user
+  has dragged its Panel Splitter — so the Visual Document fills the whole Workspace with no gap left
+  where the panel was. Showing the panel again reopens it at the width it was last dragged to; a panel
+  that has never been dragged opens at its own visible width. Neither end of a Panel Splitter drag can
+  crush a pane out of existence: a shown panel keeps a minimum width, and so does the editing area.
+  Resizing and toggling remain presentation-only (INV-014, INV-048).
+- **Why the width cannot simply be bound.** Dragging a `GridSplitter` writes the column's `Width`
+  **directly**, and a direct write replaces a one-way binding. A column whose width is projected from
+  the visibility flag by a converter therefore works only until the first drag: after that the binding
+  is gone, and hiding the panel collapses the panel's own view while leaving its column as wide as the
+  user dragged it — a dead band of empty space the Visual Document can never reclaim. The toggle and
+  the drag are two writers of one property, so one owner must hold both.
+- **The minimum bounds the splitter, not the toggle.** The minimum width a shown panel keeps is what
+  stops a drag from reducing it to a sliver; it must not survive into the hidden state, or hiding the
+  panel would leave exactly the gap this invariant forbids. Hiding therefore gives up the minimum
+  along with the width.
+- **Enforced by:** `PanelColumn`, the attached behaviour that owns a Panel Column's width — it sizes
+  the column to the remembered dragged width (or the panel's visible width) with its minimum applied
+  when the panel is shown, and to zero with no minimum when it is hidden, remembering the dragged
+  width across the toggle; and the editing column's own `MinWidth` in `MainWindow.xaml`, which bounds
+  how far a Panel Splitter can be dragged towards the Visual Document.
+- **Tested by:** `PanelColumnTests.AHiddenPanel_TakesNoWidth_INV056`,
+  `PanelColumnTests.AShownPanel_TakesItsVisibleWidth_INV056`,
+  `PanelColumnTests.Hiding_AfterTheSplitterResizedThePanel_StillTakesNoWidth_INV056`,
+  `PanelColumnTests.Showing_AfterTheSplitterResizedThePanel_RestoresTheDraggedWidth_INV056`,
+  `PanelColumnTests.Showing_APanelThatWasNeverResized_UsesItsVisibleWidth_INV056`,
+  `PanelColumnTests.Toggling_AfterAResize_KeepsTheDraggedWidthAcrossEveryRound_INV056`,
+  `PanelColumnTests.TheSplitter_CannotCrushTheEditingArea_INV056`,
+  `PanelColumnTests.TheSplitter_CannotCrushAShownPanel_INV056`, and
+  `PanelColumnTests.AHiddenPanel_KeepsNoMinimumWidth_SoTheColumnTrulyCollapses_INV056` — each driving a
+  real `GridSplitter` drag, so the tests exercise the very write that breaks a bound column.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

@@ -1047,13 +1047,19 @@
                  source) split to its right. The Outline (Navigation Panel) lives in the Side Dock to the
                  left of this grid, not inside it. -->
             <Grid Visibility="{Binding HasOpenSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <!-- Each toggleable panel is a Panel Column: PanelColumn owns its width, so a Panel
+                     Splitter drag and the View-menu toggle cannot fight over it, and a hidden panel
+                     gives up every pixel to the Visual Document (INV-056). The editing area keeps a
+                     minimum width so no drag can crush it away. -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" MinWidth="240" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
+                    <ColumnDefinition controls:PanelColumn.VisibleWidth="420"
+                                     controls:PanelColumn.IsVisible="{Binding IsSourcePanelVisible}" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=420}" />
+                    <ColumnDefinition controls:PanelColumn.VisibleWidth="420"
+                                     controls:PanelColumn.IsVisible="{Binding IsPreviewPanelVisible}" />
                 </Grid.ColumnDefinitions>
 
                 <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
