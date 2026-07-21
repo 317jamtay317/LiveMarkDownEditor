@@ -100,18 +100,9 @@ public static class PanelColumn
 
     private static void OnIsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not ColumnDefinition column)
+        if (d is ColumnDefinition column)
         {
-            return;
-        }
-
-        if (e.NewValue is true)
-        {
-            Show(column);
-        }
-        else
-        {
-            Hide(column);
+            Size(column, isShown: e.NewValue is true);
         }
     }
 
@@ -120,7 +111,7 @@ public static class PanelColumn
         // XAML may set the visible width after the visibility binding has already opened the panel.
         if (d is ColumnDefinition column && GetIsVisible(column) && column.GetValue(DraggedWidthProperty) is null)
         {
-            Show(column);
+            Size(column, isShown: true);
         }
     }
 
@@ -132,23 +123,20 @@ public static class PanelColumn
         }
     }
 
-    private static void Show(ColumnDefinition column)
-    {
-        var width = column.GetValue(DraggedWidthProperty) as double? ?? GetVisibleWidth(column);
-        column.MinWidth = GetMinimumWidth(column);
-        column.Width = new GridLength(width);
-    }
-
-    private static void Hide(ColumnDefinition column)
+    /// <summary>Sizes the column to its shown width, or to nothing at all when its panel is hidden.</summary>
+    private static void Size(ColumnDefinition column, bool isShown)
     {
         // Remember where the user dragged the panel to, so showing it again reopens it there.
-        if (column.Width.IsAbsolute && column.Width.Value > 0)
+        if (!isShown && column.Width.IsAbsolute && column.Width.Value > 0)
         {
             column.SetValue(DraggedWidthProperty, (double?)column.Width.Value);
         }
 
         // The minimum bounds the splitter, not the toggle — a hidden panel gives up all of its width.
-        column.MinWidth = 0;
-        column.Width = new GridLength(0);
+        column.MinWidth = isShown ? GetMinimumWidth(column) : 0;
+        column.Width = new GridLength(isShown ? DraggedOrVisibleWidth(column) : 0);
     }
+
+    private static double DraggedOrVisibleWidth(ColumnDefinition column) =>
+        column.GetValue(DraggedWidthProperty) as double? ?? GetVisibleWidth(column);
 }
