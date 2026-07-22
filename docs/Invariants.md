@@ -230,13 +230,40 @@ and tested.
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
   never corrupts the document — after it runs, the Visual Document and the Markdown Document still
   describe the same content.
-- **An emphasis delimiter hugs its text.** `**bold **` and `~~struck ~~` do not close in Markdown: a
-  closing delimiter preceded by whitespace is not right-flanking, so it emits literal asterisks or
-  tildes rather than emphasis. A user selecting a word by double-click or Ctrl+Shift+Right takes its
-  trailing space with it, so Capture hoists whitespace surrounding an emphasised span **outside** the
-  delimiters (`one ~~two~~ three`, never `one ~~two ~~three`). Whitespace alone carries no emphasis
-  and is emitted bare. Without this the Markdown would say "literal tildes" where the Visual Document
-  says "struck through" — the two would stop describing the same content.
+- **A delimiter hugs its text.** `**bold **` and `~~struck ~~` do not close in Markdown: a closing
+  delimiter preceded by whitespace is not right-flanking, so it emits literal asterisks or tildes
+  rather than emphasis. `` `fast `now `` and `[docs ](url)here` do close, but shade or link the
+  separator and leave the next word butted against it. A user selecting a word by double-click or
+  Ctrl+Shift+Right takes its trailing space with it, so the whitespace surrounding a delimited span is
+  kept **outside** the delimiters (`one ~~two~~ three`, never `one ~~two ~~three`). This holds in both
+  directions: Capture hoists such whitespace out when it emits, and Toggle Code, Insert Link and Insert
+  Image — which rebuild the selected text rather than setting a property on it — narrow the selection
+  to its non-whitespace core first, so the Visual Document does not show the space inside the markup
+  either. Whitespace alone carries no emphasis and is emitted bare; a Code Span, which may legitimately
+  hold nothing but whitespace, keeps its backticks. Without this the Markdown would say "literal
+  tildes" where the Visual Document says "struck through" — the two would stop describing the same
+  content.
+- **A fence replaces only whole top-level paragraphs.** Toggle Code makes a Code Block out of the
+  paragraphs the selection touches, and a fence can only stand where a top-level block does. Inside a
+  List, a Block Quote, or a Table the top-level block is the List, quote, or Table itself, so replacing
+  it would swallow every sibling item, line, and cell — along with the bullets and column separators
+  that hold them apart, which `TextRange.Text` hands back as literal `"•\t"` text. There Toggle Code
+  makes a Code Span instead: one per line it touches, since a Code Span may not straddle a line break.
+  The action is bounded by what Markdown can express, exactly as Toggle Block Quote is bounded to whole
+  blocks (INV-028).
+- **A selection that ends at the document's edge still ends in a block.** Select All leaves the
+  selection's end at the Visual Document's own edge, which is inside no block — its parent is the
+  `FlowDocument` itself. A block-spanning action (Toggle Code, Toggle Block Quote, Toggle Unordered /
+  Ordered List) that asks only "which block is this position in" reads that as "the selection ends
+  nowhere" and either declines to run or runs on the first block alone, so Ctrl+A followed by the
+  toolbar button silently does nothing — or, for Toggle Code, leaves backticked lines where a fence
+  belongs. A position between blocks is resolved to the block it borders: forward for the block a
+  selection starts in, backward for the one it ends in.
+- **Text is read from the runs, never from `TextRange.Text`, when it is about to be written back.** A
+  range that starts at a List Item's first insertion position reads that item's bullet back as literal
+  `"•\t"`, so an action that rebuilds the selected text would type the marker into the document as
+  content — a Code Span or Link that says `•\tbeta item`. `VisualDocumentTraversal.TextIn` walks the
+  range's own runs, taking only what the user really selected.
 - **Enforced by:** The Formatting Actions on `MarkdownRichEditor` composing the identical roles the
   Projector emits (`InlineSemantic.Code`, `InlineSemantic.Strikethrough`, `HeadingRole`,
   `BlockSemantic.Quote`, `LinkRole`, `ImageRole`, `CodeBlockRole`, `TableRole`, `TaskMarkerRole`)
@@ -246,14 +273,31 @@ and tested.
   its kind rides on the WPF `List`'s own `MarkerStyle` — so the Projector composes a List through
   `ListFormatting.ApplyList` and a Task Marker through `TaskMarkerEditing.CreateMarker`, the same
   seams the Formatting Actions use (mirroring `CodeFormatting.ApplyCodeSpan` / `TableEditing.WrapCell`).
-  The whitespace rule lives in the Capturer's `Emit`, so it holds for every emphasised span alike —
-  including the bold and italic actions that predate it.
+  The whitespace-hoisting half of the delimiter rule lives in the Capturer's `Hug`, so it holds for
+  every delimited span alike — including the bold and italic actions that predate it; the
+  narrow-the-selection half lives in `VisualDocumentTraversal.WithoutSurroundingWhitespace`, which
+  `CodeFormatting` and `LinkFormatting` both apply before they rebuild the selected text.
+  `CodeFormatting.Toggle` chooses its path from the paragraphs the selection touches, taking the fence
+  only when every one of them sits directly in the `FlowDocument` — and spanning the fence across
+  exactly those paragraphs, so a Select All fences the whole document and a selection that merely stops
+  at the next block's start does not reach into it. `VisualDocumentTraversal.TopLevelBlockOf` resolves
+  a position that lies between blocks to the one it borders in the direction asked for, which is what
+  lets `QuoteFormatting` and `ListFormatting` span a Select All too.
 - **Tested by:** `MarkdownRichEditorToggleCodeTests.*_INV018`,
   `MarkdownRichEditorTableTests.*_INV018`, `MarkdownRichEditorListTests.*_INV018`,
   `MarkdownRichEditorHeadingTests.*_INV018`, `MarkdownRichEditorQuoteTests.*_INV018`,
   `MarkdownRichEditorStrikethroughTests.*_INV018` — in particular
-  `ToggleStrikethrough_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018` and
-  `ToggleBold_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`.
+  `ToggleStrikethrough_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`,
+  `ToggleBold_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`,
+  `ToggleCode_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheDelimiters_INV018`,
+  `MarkdownRichEditorLinkTests.InsertLink_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheLink_INV018`,
+  `ToggleCode_WithSelectionInsideAListItem_MakesACodeSpan_AndLeavesTheListIntact_INV018` (and its
+  Block Quote and Table siblings),
+  `ToggleCode_WithTheWholeDocumentSelected_MakesCodeBlock_INV018`,
+  `ToggleCode_WithIndentedLines_KeepsTheIndentation_INV018`,
+  `ToggleBlockQuote_WithTheWholeDocumentSelected_QuotesEveryBlock_INV028`,
+  `ToggleUnorderedList_WithTheWholeDocumentSelected_MakesOneListItemPerParagraph_INV023`, and
+  `WysiwygRoundTripTests.Capture_CodeSpanWithSurroundingWhitespace_KeepsTheBackticksAgainstItsText_INV018`.
 
 ### INV-019 — A Table stays rectangular
 - **Statement:** Every row of a Table has exactly one cell per column, and the Table's per-column
@@ -766,13 +810,25 @@ and tested.
   - **HTML is converted to Markdown and pasted as formatted content.** HTML copied from a web page is
     converted to Markdown and projected into the Visual Document, so it lands formatted the same as any
     projected Markdown rather than as raw markup or plain text.
+- **Preformatted HTML pastes as a Code Block, indentation intact.** A `<pre>`, or any element
+  declaring `white-space: pre` — which is what a code editor puts on the clipboard, one element per
+  line — says its whitespace *is* content. HTML's ordinary rules would collapse a snippet's
+  indentation away and run its lines together, and a Markdown paragraph cannot carry leading spaces
+  either, so a fenced Code Block is the only place that indentation survives a Round-Trip (INV-005).
+  Its lines are read back from the elements the editor wrote them as, and a non-breaking space is read
+  as the space it stands for. `pre-wrap` is *not* preformatted: chat clients set it on ordinary prose,
+  which is not code.
 - **Enforced by:** `MarkdownRichEditor.SmartPaste` (hooked through `DataObject.Pasting`), which
   classifies the clipboard data and either handles it — through `LinkFormatting.WrapSelectionAsLink`,
   an image written and inserted through `LinkFormatting.InsertImageSource`, or `HtmlToMarkdown.Convert`
   (over `CfHtml.ExtractFragment`) projected in at the selection — or reports it unhandled so the
-  default paste proceeds.
+  default paste proceeds. `HtmlToMarkdown.Convert` rewrites each outermost run of Preformatted HTML as
+  a `<pre>` holding its lines verbatim before converting, and hands HTML with nothing preformatted in
+  it on untouched.
 - **Tested by:** `MarkdownRichEditorSmartPasteTests.*_INV041` (a URL over a selection becomes a Link;
-  HTML pastes as Markdown; plain text is left to the default paste), `HtmlToMarkdownTests.*`, and
+  HTML pastes as Markdown; plain text is left to the default paste), `HtmlToMarkdownTests.*` — in
+  particular `Convert_CodeCopiedFromACodeEditor_KeepsItsIndentation_INV041` and
+  `Convert_PreformattedHtmlHoldingOneElementPerLine_KeepsTheLinesApart_INV041` — and
   `CfHtmlTests.ExtractFragment_*`.
 
 ### INV-042 — A Folder Workspace is the pruned, ordered, Markdown-only tree of its root
@@ -1135,6 +1191,34 @@ and tested.
   `PanelColumnTests.TheSplitter_CannotCrushAShownPanel_INV056`, and
   `PanelColumnTests.AHiddenPanel_KeepsNoMinimumWidth_SoTheColumnTrulyCollapses_INV056` — each driving a
   real `GridSplitter` drag, so the tests exercise the very write that breaks a bound column.
+
+### INV-057 — Right-clicking a Misspelling reaches its Spelling Suggestions
+- **Statement:** Right-clicking a Misspelling opens the editor's **own** context menu, headed by that
+  Misspelling's Spelling Suggestions and Add to Dictionary, above the clipboard commands. Right-clicking
+  correctly-spelled text opens the same menu with the clipboard commands alone. The menu is the
+  editor's, never WPF's built-in text-editor menu: WPF's is driven by the framework's own
+  `SpellCheck`, which this editor replaces with the camelCase-aware [Spell Check](#inv-040) that marks
+  Misspellings through the `SpellCheckAdorner` — so WPF's menu can only ever show a right-click with
+  no suggestions on it.
+- **Why the menu must exist before it is opened.** WPF registers its text-editor context menu as a
+  **class handler** on `ContextMenuOpening`, and a class handler runs before any instance handler.
+  Finding the editor's `ContextMenu` null, it builds and opens its own menu and marks the event
+  handled — which means an instance handler that would have *assigned* a menu when the event fired is
+  never reached, and the assignment never happens on any later right-click either. Building the menu
+  on demand is right; creating the `ContextMenu` object on demand is not. The editor therefore owns a
+  `ContextMenu` from construction and only ever refills its `Items`, which is what makes WPF stand
+  aside and let the editor's own handler run.
+- **Enforced by:** `MarkdownRichEditor`, which creates its `ContextMenu` in its constructor and never
+  replaces it, and `EditorContextMenu.Fill`, which clears and refills that menu's items on each
+  opening from the Misspelling under the pointer (`SpellCheckAdorner.MisspellingAt`) and the Spelling
+  Suggestions the Dictionary offers for it (`SpellingSuggestions.For`).
+- **Tested by:** `EditorContextMenuTests.*` — in particular
+  `Editor_OwnsAContextMenuFromConstruction_SoWpfDoesNotPreemptIt` (the rule above),
+  `Fill_OverAMisspelling_OffersItsSpellingSuggestionsFirst`,
+  `Fill_OverAMisspelling_OffersAddToDictionary_INV040`,
+  `Fill_OverAMisspellingWithNoSuggestions_SaysSo`,
+  `Fill_AwayFromAMisspelling_OffersTheClipboardCommandsAlone`, and
+  `Fill_ReplacesWhatTheMenuHeldBefore`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

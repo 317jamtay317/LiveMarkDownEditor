@@ -37,7 +37,14 @@ segmentation. Two things follow that it cannot do:
 The adorner does not paint the squiggles interactively (`IsHitTestVisible = false`), but it does own
 the authoritative list of Misspelling ranges, so it answers one query for the editor:
 `MisspellingAt(TextPointer)` returns the Misspelling under a point, or `null`. On a right-click the
-[MarkdownRichEditor](MarkdownRichEditor.md) uses it to decide whether to head its context menu with
-Spelling Suggestions — `SpellingSuggestions.For(word, dictionary)` over the same `ISpellDictionary`.
-Choosing a suggestion replaces the Misspelling's span, which Captures back into the Markdown source
-like any other edit. Painting itself never changes the source.
+[MarkdownRichEditor](MarkdownRichEditor.md) uses it to decide whether to head the Editor Context Menu
+with Spelling Suggestions — `SpellingSuggestions.For(word, dictionary)` over the same
+`ISpellDictionary`, gathered into the menu by `EditorContextMenu.Fill`. Choosing a suggestion replaces
+the Misspelling's span, which Captures back into the Markdown source like any other edit. Painting
+itself never changes the source.
+
+The editor must own a `ContextMenu` object from construction for any of this to be reachable: WPF's
+built-in text-editor context menu is a **class handler** on `ContextMenuOpening`, so it runs before the
+editor's own handler, and finding no menu it opens its own and marks the event handled — leaving the
+Spelling Suggestions permanently unseen. The menu is therefore created once and only ever refilled
+(INV-057).

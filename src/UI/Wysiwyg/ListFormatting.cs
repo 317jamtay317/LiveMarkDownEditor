@@ -253,7 +253,7 @@ internal static class ListFormatting
         var document = editor.Document;
         var blocks = document.Blocks.ToList();
         var first = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start);
-        var last = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End);
+        var last = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End, LogicalDirection.Backward);
         var startIndex = first is null ? -1 : blocks.IndexOf(first);
         var endIndex = last is null ? -1 : blocks.IndexOf(last);
         if (startIndex < 0 || endIndex < 0)
