@@ -28,6 +28,22 @@ public sealed class MarkdownRichEditorQuoteTests
     }
 
     [Fact]
+    public void ToggleBlockQuote_WithTheWholeDocumentSelected_QuotesEveryBlock_INV028()
+    {
+        StaThread.Run(() =>
+        {
+            // Select All leaves the selection's end at the document's own edge, which is inside no
+            // block. Read as "the selection ends nowhere", the action would decline to run at all.
+            var editor = new MarkdownRichEditor { Markdown = "As they said.\n\nAnd then some." };
+            editor.SelectAll();
+
+            MarkdownEditingCommands.ToggleBlockQuote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("> As they said.\n>\n> And then some.");
+        });
+    }
+
+    [Fact]
     public void ToggleBlockQuote_WithPartialSelection_QuotesTheWholeBlock_INV028()
     {
         StaThread.Run(() =>

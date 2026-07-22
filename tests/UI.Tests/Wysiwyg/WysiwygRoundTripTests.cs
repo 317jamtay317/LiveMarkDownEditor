@@ -121,6 +121,29 @@ public sealed class WysiwygRoundTripTests
     }
 
     [Fact]
+    public void Capture_CodeSpanWithSurroundingWhitespace_KeepsTheBackticksAgainstItsText_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            // A Code Span's backticks hug their text for the same reason an emphasis delimiter does:
+            // `fast `now shades the space as code and leaves the next word with no separator, so the
+            // space is hoisted out from between them.
+            RoundTrip("make this `fast `now").ShouldBe("make this `fast` now");
+        });
+    }
+
+    [Fact]
+    public void Capture_CodeSpanOfWhitespaceAlone_KeepsItsBackticks_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            // Unlike emphasis, a Code Span *can* be nothing but whitespace — hoisting it out would
+            // leave empty backticks, so a blank span keeps the delimiters it came in with.
+            RoundTrip("a ` ` b").ShouldBe("a ` ` b");
+        });
+    }
+
+    [Fact]
     public void Project_BodyParagraph_UsesTightBlockSpacing()
     {
         StaThread.Run(() =>

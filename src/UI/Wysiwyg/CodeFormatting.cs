@@ -9,11 +9,18 @@ namespace UI.Wysiwyg;
 /// <summary>
 /// The Toggle Code Formatting Action, and the one shared definition of what "looks like code" in the
 /// Visual Document. A selection within a single line becomes a Code Span; a selection spanning
-/// multiple lines, or covering a whole line, becomes a Code Block; applied where the selection or
-/// caret already sits inside code, it removes that code formatting instead. The Projector applies
+/// multiple whole lines, or covering a whole line, becomes a Code Block; applied where the selection
+/// or caret already sits inside code, it removes that code formatting instead. The Projector applies
 /// the same formatting through <see cref="ApplyCodeSpan"/> / <see cref="ApplyCodeBlock"/>, so Capture
 /// treats user-applied code and code loaded from Markdown uniformly (INV-018).
 /// </summary>
+/// <remarks>
+/// A Code Block is made only out of whole top-level paragraphs, because that is all a fence can
+/// replace: inside a List, a Block Quote, or a Table the top-level block is the List, quote, or Table
+/// itself, and replacing it with a fence would swallow every sibling item, line, or cell along with
+/// the bullets and column separators that hold them apart. There the action makes a Code Span
+/// instead — one per line it touches, since a Code Span may not straddle a line break.
+/// </remarks>
 internal static class CodeFormatting
 {
     /// <summary>Applies the Toggle Code Formatting Action at the editor's current selection.</summary>
@@ -41,20 +48,17 @@ internal static class CodeFormatting
                 return;
             }
 
-            var start = editor.Selection.Start.Paragraph;
-            var end = editor.Selection.End.Paragraph;
-            if (start is null || end is null)
+            var paragraphs = ParagraphsIn(editor.Selection);
+            if (paragraphs.Count == 0)
             {
                 return;
             }
 
-            if (!ReferenceEquals(start, end) || CoversWholeParagraph(editor.Selection, start))
+            var fenceable = paragraphs.TrueForAll(IsTopLevel)
+                && (paragraphs.Count > 1 || CoversWholeParagraph(editor.Selection, paragraphs[0]));
+            if (!fenceable || !MakeCodeBlock(editor, paragraphs))
             {
-                MakeCodeBlock(editor);
-            }
-            else
-            {
-                MakeCodeSpan(editor.Selection);
+                MakeCodeSpans(editor, paragraphs);
             }
         }
         finally
@@ -98,29 +102,99 @@ internal static class CodeFormatting
         paragraph.Margin = BodySpacing;
     }
 
-    // Turns the (single-paragraph, partial) selection into a Code Span: the selected text is replaced
-    // by one Run carrying the Code role, so Capture emits `text`.
-    private static void MakeCodeSpan(TextSelection selection)
+    // Turns the selection into Code Spans, one per paragraph it touches: the selected text within each
+    // is replaced by one Run carrying the Code role, so Capture emits `text`. Later paragraphs are
+    // done first so the earlier ranges are still intact when their turn comes.
+    private static void MakeCodeSpans(RichTextBox editor, List<Paragraph> paragraphs)
     {
-        var text = selection.Text;
-        selection.Text = string.Empty;
+        var selection = editor.Selection;
+        var ranges = paragraphs
+            .Select(paragraph => new TextRange(
+                Later(selection.Start, paragraph.ContentStart),
+                Earlier(selection.End, paragraph.ContentEnd)))
+            .Where(range => !range.IsEmpty)
+            .ToList();
 
-        var run = new Run(text, selection.Start);
-        ApplyCodeSpan(run);
-        selection.Select(run.ContentEnd, run.ContentEnd);
+        Run? last = null;
+        for (var i = ranges.Count - 1; i >= 0; i--)
+        {
+            last = MakeCodeSpan(ranges[i]) ?? last;
+        }
+
+        if (last is not null)
+        {
+            editor.Selection.Select(last.ContentEnd, last.ContentEnd);
+        }
     }
+
+    // Replaces one range's non-whitespace core with Code Span runs, leaving the whitespace the user's
+    // double-click swept up outside them (INV-018). A range holding a line break becomes one run per
+    // line, the breaks kept between them, because a Code Span may not straddle one. Returns the last
+    // run made, or null when the range is whitespace alone.
+    private static Run? MakeCodeSpan(TextRange range)
+    {
+        var core = VisualDocumentTraversal.WithoutSurroundingWhitespace(range);
+        if (core.IsEmpty)
+        {
+            return null;
+        }
+
+        var lines = VisualDocumentTraversal.TextIn(core).Split('\n');
+        core.Text = string.Empty;
+
+        var position = core.Start;
+        Run? last = null;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Length > 0)
+            {
+                last = new Run(lines[i], position);
+                ApplyCodeSpan(last);
+                position = last.ElementEnd;
+            }
+
+            if (i < lines.Length - 1)
+            {
+                position = new LineBreak(position).ElementEnd;
+            }
+        }
+
+        return last;
+    }
+
+    private static TextPointer Later(TextPointer left, TextPointer right) =>
+        left.CompareTo(right) >= 0 ? left : right;
+
+    private static TextPointer Earlier(TextPointer left, TextPointer right) =>
+        left.CompareTo(right) <= 0 ? left : right;
 
     // Turns the selection into a Code Block: every top-level block the selection touches is replaced
     // by a single code paragraph whose lines are the blocks' text, so Capture emits a fenced block.
-    private static void MakeCodeBlock(RichTextBox editor)
+    // Reports whether it ran: a block a fence cannot absorb (a Mermaid Diagram, say) lying between the
+    // selected paragraphs sends the caller to Code Spans rather than let the fence swallow it.
+    //
+    // The fence spans the paragraphs the selection actually touches — the ones the caller has already
+    // checked are top-level — rather than whatever blocks its end points resolve to. A selection that
+    // merely stops at the start of the next block reaches no content in it, so that block is not the
+    // user's to fence; and Select All, whose end sits at the document's own edge rather than in any
+    // block, spans the whole document exactly as it reads.
+    private static bool MakeCodeBlock(RichTextBox editor, List<Paragraph> paragraphs)
     {
         var document = editor.Document;
         var blocks = document.Blocks.ToList();
-        var startIndex = blocks.IndexOf(VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start)!);
-        var endIndex = blocks.IndexOf(VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End)!);
+        var startIndex = blocks.IndexOf(paragraphs[0]);
+        var endIndex = blocks.IndexOf(paragraphs[^1]);
         if (startIndex < 0 || endIndex < 0)
         {
-            return;
+            return false;
+        }
+
+        for (var i = startIndex; i <= endIndex; i++)
+        {
+            if (blocks[i] is not Paragraph)
+            {
+                return false;
+            }
         }
 
         var lines = new List<string>();
@@ -148,6 +222,7 @@ internal static class CodeFormatting
         }
 
         editor.Selection.Select(codeParagraph.ContentEnd, codeParagraph.ContentEnd);
+        return true;
     }
 
     // Reverts a Code Block to a plain paragraph; its lines stay as the paragraph's inline content.
@@ -201,6 +276,28 @@ internal static class CodeFormatting
 
     private static bool CoversWholeParagraph(TextSelection selection, Paragraph paragraph) =>
         selection.Text == new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text;
+
+    // Every paragraph the selection touches, in document order. A position strictly inside the
+    // selection lies in each of them, so walking to (not through) the end never picks up the
+    // paragraph a selection merely stops at the start of.
+    private static List<Paragraph> ParagraphsIn(TextSelection selection)
+    {
+        var paragraphs = new List<Paragraph>();
+        for (var pointer = selection.Start;
+             pointer is not null && pointer.CompareTo(selection.End) < 0;
+             pointer = pointer.GetNextContextPosition(LogicalDirection.Forward))
+        {
+            if (pointer.Paragraph is { } paragraph && !paragraphs.Contains(paragraph))
+            {
+                paragraphs.Add(paragraph);
+            }
+        }
+
+        return paragraphs;
+    }
+
+    // Whether the paragraph sits directly in the document — the only place a fence can replace it.
+    private static bool IsTopLevel(Paragraph paragraph) => paragraph.Parent is FlowDocument;
 
     private static readonly FontFamily MonospaceFont = new("Consolas, Cascadia Mono, Courier New");
 

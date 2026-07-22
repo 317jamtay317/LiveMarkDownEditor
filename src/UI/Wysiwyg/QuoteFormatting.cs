@@ -71,7 +71,7 @@ internal static class QuoteFormatting
         var document = editor.Document;
         var blocks = document.Blocks.ToList();
         var start = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start);
-        var end = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End);
+        var end = VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.End, LogicalDirection.Backward);
         if (start is null || end is null)
         {
             return;

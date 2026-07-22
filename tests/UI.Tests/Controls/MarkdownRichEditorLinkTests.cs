@@ -34,6 +34,43 @@ public sealed class MarkdownRichEditorLinkTests
     }
 
     [Fact]
+    public void InsertLink_WithTrailingSpaceInSelection_KeepsTheSpaceOutsideTheLink_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            // Double-clicking "docs" selects "docs " — the trailing space belongs to the sentence,
+            // not to the Link's text, and left inside it swallows the separator before "here".
+            var editor = new MarkdownRichEditor
+            {
+                Markdown = "see the docs here",
+                LinkPrompt = new StubLinkPrompt(new LinkDetails("docs", "https://example.com")),
+            };
+            VisualDocumentText.SelectText(editor, "docs ");
+
+            MarkdownEditingCommands.InsertLink.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("see the [docs](https://example.com) here");
+        });
+    }
+
+    [Fact]
+    public void InsertLink_WithTrailingSpaceInSelection_SeedsThePromptWithTheWordAlone_INV030()
+    {
+        StaThread.Run(() =>
+        {
+            var prompt = new StubLinkPrompt(new LinkDetails("docs", "https://example.com"));
+            var editor = new MarkdownRichEditor { Markdown = "see the docs here", LinkPrompt = prompt };
+            VisualDocumentText.SelectText(editor, "docs ");
+
+            MarkdownEditingCommands.InsertLink.Execute(parameter: null, target: editor);
+
+            // The proposed text is what the user sees in the Link Prompt; a stray trailing space
+            // there reads as a typo they have to delete.
+            prompt.ProposedText.ShouldBe("docs");
+        });
+    }
+
+    [Fact]
     public void InsertLink_SeedsThePromptWithTheSelection_INV030()
     {
         StaThread.Run(() =>

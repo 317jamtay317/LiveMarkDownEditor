@@ -109,7 +109,8 @@ internal static class LinkFormatting
     /// <param name="url">The destination URL, already known (no prompt).</param>
     internal static void WrapSelectionAsLink(RichTextBox editor, string url)
     {
-        var text = editor.Selection.Text;
+        NarrowSelectionToItsCore(editor);
+        var text = VisualDocumentTraversal.TextIn(editor.Selection);
         if (text.Length == 0)
         {
             return;
@@ -156,7 +157,9 @@ internal static class LinkFormatting
     }
 
     // Asks the Link Prompt, seeded with the selection, and keeps only a usable answer: a dismissed
-    // prompt or a blank URL must leave the document untouched (INV-030).
+    // prompt or a blank URL must leave the document untouched (INV-030). The selection is narrowed to
+    // its non-whitespace core first, so the space a double-click swept up neither shows in the Link
+    // Prompt as a stray character nor ends up inside the Link's brackets (INV-018).
     private static LinkDetails? Ask(RichTextBox editor, ILinkPrompt? prompt, bool image)
     {
         if (prompt is null)
@@ -164,10 +167,24 @@ internal static class LinkFormatting
             return null;
         }
 
-        var proposed = editor.Selection.Text;
+        NarrowSelectionToItsCore(editor);
+        var proposed = VisualDocumentTraversal.TextIn(editor.Selection);
         var details = image ? prompt.AskForImage(proposed) : prompt.AskForLink(proposed);
 
         return details is not null && !string.IsNullOrWhiteSpace(details.Url) ? details : null;
+    }
+
+    // Trims the whitespace a double-click swept into the selection back out of it, leaving the caret
+    // where it was when there is nothing but whitespace to select.
+    private static void NarrowSelectionToItsCore(RichTextBox editor)
+    {
+        if (editor.Selection.IsEmpty)
+        {
+            return;
+        }
+
+        var core = VisualDocumentTraversal.WithoutSurroundingWhitespace(editor.Selection);
+        editor.Selection.Select(core.Start, core.End);
     }
 
     // Clears the selected text and returns the position the new inline goes at, so the Link replaces
