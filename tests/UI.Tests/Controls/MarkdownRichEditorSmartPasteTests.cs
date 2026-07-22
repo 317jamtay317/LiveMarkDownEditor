@@ -64,6 +64,30 @@ public sealed class MarkdownRichEditorSmartPasteTests
     }
 
     [Fact]
+    public void SmartPaste_CodeCopiedFromACodeEditor_PastesAsACodeBlockKeepingItsIndentation_INV041()
+    {
+        StaThread.Run(() =>
+        {
+            // The clipboard shape a code editor writes: a white-space:pre wrapper, one element per
+            // line. Pasted as prose the indentation would be collapsed away by HTML's own whitespace
+            // rules — and a Markdown paragraph could not carry it back out again either.
+            var editor = new MarkdownRichEditor { Markdown = string.Empty };
+            var data = new DataObject();
+            data.SetData(DataFormats.Html, CfHtml.Wrap(
+                "<div style=\"white-space: pre;\">" +
+                "<div><span>if (x) {</span></div>" +
+                "<div><span>    doThing();</span></div>" +
+                "<div><span>}</span></div>" +
+                "</div>"));
+
+            var handled = editor.SmartPaste(data);
+
+            handled.ShouldBeTrue();
+            editor.Markdown.ShouldBe("```\nif (x) {\n    doThing();\n}\n```");
+        });
+    }
+
+    [Fact]
     public void SmartPaste_PlainText_IsNotHandled_INV041()
     {
         StaThread.Run(() =>

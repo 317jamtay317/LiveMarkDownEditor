@@ -60,6 +60,22 @@ public sealed class MarkdownRichEditorListTests
     }
 
     [Fact]
+    public void ToggleUnorderedList_WithTheWholeDocumentSelected_MakesOneListItemPerParagraph_INV023()
+    {
+        StaThread.Run(() =>
+        {
+            // Select All leaves the selection's end at the document's own edge, which is inside no
+            // block — unlike a drag from the first block to the last, which ends inside one.
+            var editor = new MarkdownRichEditor { Markdown = "alpha\n\nbravo" };
+            editor.SelectAll();
+
+            MarkdownEditingCommands.ToggleUnorderedList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- alpha\n- bravo");
+        });
+    }
+
+    [Fact]
     public void ToggleUnorderedList_OnUnorderedList_RestoresOneParagraphPerListItem_INV023()
     {
         StaThread.Run(() =>

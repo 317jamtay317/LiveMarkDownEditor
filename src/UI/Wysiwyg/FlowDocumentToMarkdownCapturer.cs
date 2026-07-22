@@ -341,7 +341,9 @@ public sealed class FlowDocumentToMarkdownCapturer
 
         if (segment.Code)
         {
-            return "`" + segment.Text + "`";
+            // Unlike emphasis, a Code Span can legitimately be nothing but whitespace, so a blank one
+            // keeps the backticks it came in with rather than dissolving into a bare space.
+            return Hug(segment.Text, "`", "`", whenBlank: "`" + segment.Text + "`");
         }
 
         var prefix = (segment.Strike ? "~~" : string.Empty)
@@ -351,32 +353,29 @@ public sealed class FlowDocumentToMarkdownCapturer
             + (segment.Bold ? "**" : string.Empty)
             + (segment.Strike ? "~~" : string.Empty);
 
-        if (prefix.Length == 0)
-        {
-            return segment.Text;
-        }
-
-        // An emphasis delimiter must hug its text: `**bold **` and `~~struck ~~` do not close in
-        // Markdown, because a closing delimiter preceded by whitespace is not right-flanking. A user
-        // selecting a word by double-click or Ctrl+Shift+Right takes its trailing space with it, so
-        // the surrounding whitespace is hoisted outside the delimiters rather than emitted inside
-        // them — otherwise the Markdown would say "literal tildes" where the Visual Document says
-        // "struck through" (INV-018).
-        var core = segment.Text.AsSpan().Trim(WhitespaceChars);
-        if (core.Length == 0)
-        {
-            // Whitespace alone carries no emphasis, and `~~ ~~` would be nonsense.
-            return segment.Text;
-        }
-
-        var leadingLength = segment.Text.Length - segment.Text.AsSpan().TrimStart(WhitespaceChars).Length;
-        var leading = segment.Text[..leadingLength];
-        var trailing = segment.Text[(leadingLength + core.Length)..];
-
-        return leading + prefix + core.ToString() + suffix + trailing;
+        // Whitespace alone carries no emphasis, and `~~ ~~` would be nonsense.
+        return prefix.Length == 0 ? segment.Text : Hug(segment.Text, prefix, suffix, whenBlank: segment.Text);
     }
 
-    // The whitespace an emphasis delimiter must not sit against. Newlines included: a segment can
+    // A delimiter must hug its text: `**bold **` and `~~struck ~~` do not close in Markdown, because a
+    // closing delimiter preceded by whitespace is not right-flanking, and `` `fast `now `` shades the
+    // separator as code and leaves the next word butted against it. A user selecting a word by
+    // double-click or Ctrl+Shift+Right takes its trailing space with it, so the surrounding whitespace
+    // is hoisted outside the delimiters rather than emitted inside them — otherwise the Markdown would
+    // say "literal tildes" where the Visual Document says "struck through" (INV-018).
+    private static string Hug(string text, string prefix, string suffix, string whenBlank)
+    {
+        var core = text.AsSpan().Trim(WhitespaceChars);
+        if (core.Length == 0)
+        {
+            return whenBlank;
+        }
+
+        var leadingLength = text.Length - text.AsSpan().TrimStart(WhitespaceChars).Length;
+        return text[..leadingLength] + prefix + core.ToString() + suffix + text[(leadingLength + core.Length)..];
+    }
+
+    // The whitespace a delimiter must not sit against. Newlines included: a segment can
     // span a soft line break, and a delimiter left against one closes no better than against a space.
     private static readonly char[] WhitespaceChars = [' ', '\t', '\r', '\n'];
 

@@ -357,8 +357,11 @@ public sealed class MarkdownRichEditor : RichTextBox
             CurrentSectionChanged?.Invoke(this, EventArgs.Empty);
         };
 
-        // Right-clicking a Misspelling offers its Spelling Suggestions; the menu is built on demand so
-        // it reflects the current Misspellings and the word actually under the pointer.
+        // Right-clicking a Misspelling offers its Spelling Suggestions; the menu is refilled on demand
+        // so it reflects the current Misspellings and the word actually under the pointer. The menu
+        // instance itself is created here and never replaced — owning one from construction is what
+        // keeps WPF's own text-editor context menu from pre-empting this handler (INV-057).
+        ContextMenu = new ContextMenu();
         ContextMenuOpening += OnContextMenuOpening;
 
         // The Code Shading, the custom camelCase-aware spell checker, and the Find highlights all draw
@@ -1252,7 +1255,7 @@ public sealed class MarkdownRichEditor : RichTextBox
         RecomputeMatches();
     }
 
-    // Builds the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
+    // Refills the right-click menu on demand: when the pointer is over a Misspelling, its Spelling
     // Suggestions head the menu (choosing one replaces the word), followed by the usual clipboard
     // commands. Over correctly-spelled text it is just the clipboard commands.
     private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
@@ -1262,21 +1265,13 @@ public sealed class MarkdownRichEditor : RichTextBox
             : GetPositionFromPoint(Mouse.GetPosition(this), snapToText: true);
         var misspelling = _spellCheckAdorner?.MisspellingAt(clickPosition);
 
-        var menu = new ContextMenu();
-        if (misspelling is not null)
-        {
-            AddSuggestionItems(menu, misspelling);
-
-            var word = misspelling.Text;
-            var addToDictionary = new MenuItem { Header = "Add to Dictionary" };
-            addToDictionary.Click += (_, _) => AddToDictionary(word);
-            menu.Items.Add(addToDictionary);
-
-            menu.Items.Add(new Separator());
-        }
-
-        AddClipboardItems(menu);
-        ContextMenu = menu;
+        EditorContextMenu.Fill(
+            ContextMenu,
+            misspelling?.Text,
+            SharedDictionary.Value,
+            commandTarget: this,
+            onCorrect: replacement => ReplaceMisspelling(misspelling, replacement),
+            onAddToDictionary: AddToDictionary);
     }
 
     // Accepts a Misspelling into the User Dictionary and re-checks, so it stops being marked (INV-040).
@@ -1286,42 +1281,11 @@ public sealed class MarkdownRichEditor : RichTextBox
         _spellCheckAdorner?.Refresh();
     }
 
-    private void AddSuggestionItems(ContextMenu menu, TextRange misspelling)
-    {
-        var suggestions = SpellingSuggestions.For(misspelling.Text, SharedDictionary.Value);
-        if (suggestions.Count == 0)
-        {
-            menu.Items.Add(new MenuItem { Header = "No suggestions", IsEnabled = false });
-            return;
-        }
-
-        foreach (var suggestion in suggestions)
-        {
-            var replacement = suggestion;
-            var item = new MenuItem { Header = suggestion, FontWeight = FontWeights.SemiBold };
-            item.Click += (_, _) => ReplaceMisspelling(misspelling, replacement);
-            menu.Items.Add(item);
-        }
-    }
-
-    private void AddClipboardItems(ContextMenu menu)
-    {
-        menu.Items.Add(new MenuItem { Header = "Cut", Command = ApplicationCommands.Cut, CommandTarget = this });
-        menu.Items.Add(new MenuItem { Header = "Copy", Command = ApplicationCommands.Copy, CommandTarget = this });
-        menu.Items.Add(new MenuItem
-        {
-            Header = "Copy as Markdown",
-            Command = MarkdownEditingCommands.CopyAsMarkdown,
-            CommandTarget = this,
-        });
-        menu.Items.Add(new MenuItem { Header = "Paste", Command = ApplicationCommands.Paste, CommandTarget = this });
-    }
-
     // Swaps a Misspelling's span for the chosen Spelling Suggestion. Editing the Visual Document
     // Captures back into the Markdown source, so the correction flows through like any other edit.
-    private void ReplaceMisspelling(TextRange misspelling, string replacement)
+    private void ReplaceMisspelling(TextRange? misspelling, string replacement)
     {
-        if (misspelling.Start.HasValidLayout && misspelling.End.HasValidLayout)
+        if (misspelling is { Start.HasValidLayout: true, End.HasValidLayout: true })
         {
             misspelling.Text = replacement;
         }
