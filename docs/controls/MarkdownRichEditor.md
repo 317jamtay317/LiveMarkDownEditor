@@ -171,6 +171,10 @@ handling text-changed directly.
   update to `Markdown` from re-Projecting (which would reset the caret).
 - **Live external updates:** when the bound Editor Session replaces `Markdown` (e.g. the Watched
   File changed on disk), the Visual Document is re-Projected to match.
+- **Page View:** by default the Visual Document is laid out on a fixed-width Document Sheet floating on
+  a canvas (like a word processor), confining every element — tables included — to one page width. This
+  is the [PageView](PageView.md) behaviour, not this control: the editor exposes only a small
+  `RevealRectOverride` seam so find-match and heading jumps scroll the canvas in Page View (INV-058).
 
 ## Usage
 

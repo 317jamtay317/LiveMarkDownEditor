@@ -1220,6 +1220,32 @@ and tested.
   `Fill_AwayFromAMisspelling_OffersTheClipboardCommandsAlone`, and
   `Fill_ReplacesWhatTheMenuHeldBefore`.
 
+### INV-058 — Page View lays the Visual Document on a fixed-width Document Sheet
+- **Statement:** In **Page View** the Visual Document is laid out on a **Document Sheet** of a single
+  fixed width — the US Letter width — so every element it contains, **including tables**, is confined
+  to that width no matter how wide the editing surface is; the Sheet floats on the editing canvas and
+  scrolls as one piece. Page View is **on by default**. It is presentation-only: turning it on or off
+  never changes the Markdown Document or the result of a Capture.
+- **Why:** A `RichTextBox` lays its whole `FlowDocument` out at once — it does not virtualise — and a
+  projected GFM table is a WPF `Table` with no fixed width, so it fills whatever width it is given. On
+  an unbounded editing surface a table therefore spans the entire pane while prose wraps to a
+  comfortable measure — an inconsistent, un-page-like layout — and because the surface tracks the pane,
+  every widen (above all **maximising** the window) reflows and re-measures the entire document on the
+  UI thread before the enlarged area can paint, so the content visibly lags the window frame. Laying the
+  document out on a Document Sheet of one fixed width confines every element to the same page width and
+  makes the layout width independent of the window width, so a table can no longer outrun the prose and
+  maximising no longer reflows a single line.
+- **Enforced by:** `DocumentSheet`, the pure rule that gives the Sheet its fixed `Width` (the US Letter
+  width) and its page `PagePadding`; `PageView`, the behaviour that puts the editing surface into Page
+  View — fixing the Visual Document's width to the Sheet, floating it on the outer scrolling canvas, and
+  keeping the caret in view by driving that canvas — and restores the plain full-pane surface when
+  turned off; and `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by
+  default).
+- **Tested by:** `DocumentSheetTests` (the Sheet's `Width` is the US Letter width and its `PagePadding`
+  insets the content from every edge) and `WorkspaceViewModelPageViewTests` (Page View is on by default;
+  `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's Markdown Document
+  unchanged).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

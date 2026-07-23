@@ -650,6 +650,24 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
                 </Button>
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding TogglePageViewCommand}"
+                        AutomationProperties.Name="Toggle page view">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Page view"
+                                             Detail="Lay the document out on a fixed-width page, like a word processor." />
+                    </Button.ToolTip>
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPageViewEnabled}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePageView}" />
+                </Button>
                 <Rectangle Style="{StaticResource CommandSeparator}"
                            controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0" />
                 <Button Style="{StaticResource IconFormatButton}"
@@ -1052,7 +1070,6 @@
                      gives up every pixel to the Visual Document (INV-056). The editing area keeps a
                      minimum width so no drag can crush it away. -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" MinWidth="240" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition controls:PanelColumn.VisibleWidth="420"
@@ -1062,21 +1079,39 @@
                                      controls:PanelColumn.IsVisible="{Binding IsPreviewPanelVisible}" />
                 </Grid.ColumnDefinitions>
 
-                <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
-                <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
-                                             Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
-                                             BaseDirectory="{Binding ActiveSession.BaseDirectory}"
-                                             LinkPrompt="{Binding LinkPrompt}"
-                                             FlowchartBuilder="{Binding FlowchartBuilder}"
-                                             DiagramImageRenderer="{Binding DiagramImageRenderer}"
-                                             IsDarkTheme="{Binding Appearance.IsDarkTheme}"
-                                             DocumentPrinter="{Binding DocumentPrinter}"
-                                             Renderer="{Binding Renderer}"
-                                             FollowLinkCommand="{Binding FollowLinkCommand}"
-                                             controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
+                <!-- Editor canvas: the Editor Gutter and the WYSIWYG surface, hosted in a ScrollViewer so
+                     Page View can float the fixed-width Document Sheet on it and scroll the whole page as
+                     one piece (INV-058). In plain (non-page) mode the ScrollViewer does not scroll — the
+                     editor fills the pane and scrolls itself, exactly as before; PageView switches the two. -->
+                <ScrollViewer Grid.Column="0" x:Name="EditorScroller" Focusable="False"
+                              AutomationProperties.AutomationId="EditorCanvas"
+                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
+                    <Grid controls:PageView.IsEnabled="{Binding IsPageViewEnabled}"
+                          controls:PageView.Editor="{Binding ElementName=Editor}"
+                          controls:PageView.Canvas="{Binding ElementName=EditorScroller}"
+                          controls:PageView.Source="{Binding ElementName=SourcePanel}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+                        <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
+                                                     Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                                     BaseDirectory="{Binding ActiveSession.BaseDirectory}"
+                                                     LinkPrompt="{Binding LinkPrompt}"
+                                                     FlowchartBuilder="{Binding FlowchartBuilder}"
+                                                     DiagramImageRenderer="{Binding DiagramImageRenderer}"
+                                                     IsDarkTheme="{Binding Appearance.IsDarkTheme}"
+                                                     DocumentPrinter="{Binding DocumentPrinter}"
+                                                     Renderer="{Binding Renderer}"
+                                                     FollowLinkCommand="{Binding FollowLinkCommand}"
+                                                     controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
+                    </Grid>
+                </ScrollViewer>
 
                 <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
-                <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Center"
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center"
                               VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                               ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
                               Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -1085,7 +1120,7 @@
                      the same canonical Markdown as the Visual Document so the two stay in sync
                      (INV-013). It is the one surface that shows Markdown syntax. Hidden until toggled
                      on (INV-014). -->
-                <Border Grid.Column="3" Background="{DynamicResource EditorBackgroundBrush}"
+                <Border Grid.Column="2" Background="{DynamicResource EditorBackgroundBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
                         Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DockPanel>
@@ -1120,7 +1155,7 @@
 
                 <!-- Splitter between the Source Panel (or the Visual Document) and the Preview Panel.
                      Hidden with the panel. -->
-                <GridSplitter Grid.Column="4" Width="5" HorizontalAlignment="Center"
+                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center"
                               VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                               ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
                               Visibility="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -1128,7 +1163,7 @@
                 <!-- Preview Panel: the live Diagram Preview of the Mermaid Diagram at the caret,
                      rendered by the bundled Mermaid library in a WebView2. Presentation-only and hidden
                      until toggled on (INV-047, INV-048); it follows the app light/dark theme. -->
-                <Border Grid.Column="5" Background="{DynamicResource EditorBackgroundBrush}"
+                <Border Grid.Column="4" Background="{DynamicResource EditorBackgroundBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
                         Visibility="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DockPanel>

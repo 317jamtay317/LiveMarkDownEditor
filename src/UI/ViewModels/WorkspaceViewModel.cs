@@ -29,6 +29,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     private bool _isRestoring;
     private bool _isSourcePanelVisible;
     private bool _isPreviewPanelVisible;
+    private bool _isPageViewEnabled = true;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -88,6 +89,7 @@ public sealed class WorkspaceViewModel : ObservableObject
         FollowLinkCommand = new AsyncRelayCommand<string>(FollowMarkdownLinkAsync);
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
         TogglePreviewPanelCommand = new RelayCommand(TogglePreviewPanel);
+        TogglePageViewCommand = new RelayCommand(TogglePageView);
 
         New();
     }
@@ -207,6 +209,17 @@ public sealed class WorkspaceViewModel : ObservableObject
         private set => Set(ref _isPreviewPanelVisible, value);
     }
 
+    /// <summary>
+    /// Whether Page View is on — the Visual Document laid out on a fixed-width Document Sheet floating
+    /// on a canvas, confining every element (tables included) to one page width. On by default.
+    /// Presentation-only: toggling it never changes any Markdown Document (INV-058).
+    /// </summary>
+    public bool IsPageViewEnabled
+    {
+        get => _isPageViewEnabled;
+        private set => Set(ref _isPageViewEnabled, value);
+    }
+
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }
 
@@ -230,6 +243,9 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Shows the Preview Panel if hidden, or hides it if shown.</summary>
     public ICommand TogglePreviewPanelCommand { get; }
+
+    /// <summary>Turns Page View on if it is off, or off if it is on (INV-058).</summary>
+    public ICommand TogglePageViewCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -436,6 +452,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     private void ToggleSourcePanel() => IsSourcePanelVisible = !IsSourcePanelVisible;
 
     private void TogglePreviewPanel() => IsPreviewPanelVisible = !IsPreviewPanelVisible;
+
+    private void TogglePageView() => IsPageViewEnabled = !IsPageViewEnabled;
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);

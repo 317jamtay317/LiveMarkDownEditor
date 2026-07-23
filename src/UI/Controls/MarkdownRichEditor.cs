@@ -1441,6 +1441,14 @@ public sealed class MarkdownRichEditor : RichTextBox
             : $"{_currentMatch + 1} of {_matchRanges.Count}";
     }
 
+    /// <summary>
+    /// When set, an alternate way to bring a Visual Document rectangle into view — scrolling the outer
+    /// canvas rather than this control's own (Page-View-disabled) scroll. Left <see langword="null"/>,
+    /// the control scrolls itself. Set by <see cref="PageView"/> so the page-view concern stays out of
+    /// this control (INV-058).
+    /// </summary>
+    internal Action<Rect>? RevealRectOverride { get; set; }
+
     private void ScrollCurrentMatchIntoView()
     {
         if (_currentMatch < 0 || _currentMatch >= _matchRanges.Count)
@@ -1451,6 +1459,12 @@ public sealed class MarkdownRichEditor : RichTextBox
         var rect = _matchRanges[_currentMatch].Start.GetCharacterRect(LogicalDirection.Forward);
         if (rect == Rect.Empty)
         {
+            return;
+        }
+
+        if (RevealRectOverride is { } reveal)
+        {
+            reveal(rect);
             return;
         }
 
@@ -1777,6 +1791,12 @@ public sealed class MarkdownRichEditor : RichTextBox
         {
             // Layout after an Unfold can be pending; retry once it settles.
             Dispatcher.BeginInvoke(() => BringHeadingIntoView(paragraph), DispatcherPriority.Loaded);
+            return;
+        }
+
+        if (RevealRectOverride is { } reveal)
+        {
+            reveal(rect);
             return;
         }
 
