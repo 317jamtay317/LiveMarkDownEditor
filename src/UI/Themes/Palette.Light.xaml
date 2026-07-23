@@ -8,6 +8,9 @@
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F0F1F3" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FFFFFF" />
+    <!-- Editing canvas: the muted surround the Document Sheet floats on in Page View, darker than the
+         Sheet (EditorBackgroundBrush) so the page edge reads clearly (INV-058). -->
+    <SolidColorBrush x:Key="EditorCanvasBrush" Color="#D5D8DE" />
 
     <SolidColorBrush x:Key="TextBrush" Color="#1F2328" />
     <SolidColorBrush x:Key="MutedTextBrush" Color="#6E7781" />
