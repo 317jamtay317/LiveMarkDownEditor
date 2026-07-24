@@ -906,7 +906,9 @@
         <!-- Editing area. Shows the WYSIWYG surface (with the Editor Gutter and the toggleable
              Navigation Panel) while a Tab is open, or the Empty-Workspace Placeholder when every Tab
              has been closed (INV-008). -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="3"
+              controls:SizeObserver.Observe="True"
+              controls:SizeObserver.ObservedWidth="{Binding WorkspaceWidth, Mode=OneWayToSource}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />

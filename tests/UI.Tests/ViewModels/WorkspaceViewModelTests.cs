@@ -125,6 +125,42 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
+    public void NarrowWorkspaceWidth_HidesTheToggledSourceAndPreviewPanels_INV059()
+    {
+        var workspace = CreateWorkspace();
+        workspace.ToggleSourcePanelCommand.Execute(null);
+        workspace.TogglePreviewPanelCommand.Execute(null);
+
+        // Wide enough for both beside the editor: both shown as toggled.
+        workspace.WorkspaceWidth = 1400;
+        workspace.IsSourcePanelVisible.ShouldBeTrue();
+        workspace.IsPreviewPanelVisible.ShouldBeTrue();
+
+        // Too narrow for either: Compact Layout auto-collapses both so the editor keeps its width (INV-059).
+        workspace.WorkspaceWidth = 300;
+        workspace.IsSourcePanelVisible.ShouldBeFalse();
+        workspace.IsPreviewPanelVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WideningTheWorkspaceAgain_RestoresThePanels_AsTheyWereToggled_INV059()
+    {
+        var workspace = CreateWorkspace();
+        workspace.ActiveSession!.Markdown = "# Title";
+        var sourceBefore = workspace.ActiveSession.Markdown;
+        workspace.ToggleSourcePanelCommand.Execute(null);
+
+        workspace.WorkspaceWidth = 300;   // auto-collapsed while narrow
+        workspace.IsSourcePanelVisible.ShouldBeFalse();
+
+        workspace.WorkspaceWidth = 1400;  // room again → restored to the user's toggle intent
+        workspace.IsSourcePanelVisible.ShouldBeTrue();
+
+        // Compact Layout is view-only: the Markdown Document is untouched (INV-059).
+        workspace.ActiveSession.Markdown.ShouldBe(sourceBefore);
+    }
+
+    [Fact]
     public void New_AddsEmptySession_AndActivatesIt()
     {
         var workspace = CreateWorkspace();
