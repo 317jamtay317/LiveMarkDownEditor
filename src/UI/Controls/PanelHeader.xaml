@@ -1,0 +1,83 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:UI.Controls">
+
+    <!-- Default style for the Panel Header (INV-062). Authored as the control's ResourceDictionary
+         alongside the PanelHeader class, per the project's Control conventions. Self-contained: the
+         header button style lives here rather than leaning on the app-level command styles, and every
+         colour is a DynamicResource lookup so the header follows the light/dark theme. -->
+    <Style x:Key="PanelHeaderButton" TargetType="Button">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Margin" Value="2,0,0,0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="4"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+            </Trigger>
+            <!-- The Document Pane rule surfaces here: an unavailable close/unpin greys out (INV-063). -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.35" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type controls:PanelHeader}">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:PanelHeader}">
+                    <DockPanel Margin="14,8,8,2" LastChildFill="True">
+                        <!-- Close Button: sets the panel Closed; its View-menu toggle reopens it. -->
+                        <Button DockPanel.Dock="Right" Style="{StaticResource PanelHeaderButton}"
+                                Command="{TemplateBinding CloseCommand}"
+                                CommandParameter="{TemplateBinding CommandParameter}"
+                                AutomationProperties.Name="Close panel">
+                            <Button.ToolTip>
+                                <controls:CommandTip Heading="Close"
+                                                     Detail="Close this panel. Reopen it any time from the command bar's view controls." />
+                            </Button.ToolTip>
+                            <Path Width="11" Height="11" Stretch="Uniform" Fill="{x:Null}"
+                                  Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="1.8"
+                                  StrokeLineJoin="Round" Data="{StaticResource Icon.Close}" />
+                        </Button>
+
+                        <!-- Pin Toggle: upright pin while Docked, sideways while Auto-Hidden. -->
+                        <Button DockPanel.Dock="Right" Style="{StaticResource PanelHeaderButton}"
+                                Command="{TemplateBinding PinCommand}"
+                                CommandParameter="{TemplateBinding CommandParameter}"
+                                AutomationProperties.Name="Pin or unpin panel">
+                            <Button.ToolTip>
+                                <controls:CommandTip Heading="Pin"
+                                                     Detail="Unpin the panel to slide it away to the window's edge; pin it to dock it in place again." />
+                            </Button.ToolTip>
+                            <Path x:Name="PinIcon" Width="13" Height="13" Stretch="Uniform" Fill="{x:Null}"
+                                  Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="1.8"
+                                  StrokeLineJoin="Round" Data="{StaticResource Icon.Pin}" />
+                        </Button>
+
+                        <TextBlock Text="{TemplateBinding Title}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsPinned" Value="False">
+                            <Setter TargetName="PinIcon" Property="Data" Value="{StaticResource Icon.PinOff}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

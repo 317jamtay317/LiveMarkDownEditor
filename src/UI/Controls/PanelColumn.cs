@@ -58,6 +58,19 @@ public static class PanelColumn
         typeof(PanelColumn),
         new PropertyMetadata(DefaultMinimumWidth, OnMinimumWidthChanged));
 
+    /// <summary>
+    /// Identifies the <c>Fill</c> attached property — whether the column, while its panel is shown,
+    /// takes the editing area's remaining width (star-sized) instead of a remembered pixel width. This
+    /// is the primary Document Pane's column: the Editor Pane's always, and the Source Panel's exactly
+    /// while the Editor Pane is not Docked (INV-063). Hidden, a fill column takes no width like any
+    /// other Panel Column (INV-056).
+    /// </summary>
+    public static readonly DependencyProperty FillProperty = DependencyProperty.RegisterAttached(
+        "Fill",
+        typeof(bool),
+        typeof(PanelColumn),
+        new PropertyMetadata(false, OnFillChanged));
+
     /// <summary>The width the user last dragged the panel to; unset until it has been dragged.</summary>
     private static readonly DependencyProperty DraggedWidthProperty = DependencyProperty.RegisterAttached(
         "DraggedWidth",
@@ -98,6 +111,16 @@ public static class PanelColumn
     /// <returns>The minimum width in device-independent pixels.</returns>
     public static double GetMinimumWidth(DependencyObject column) => (double)column.GetValue(MinimumWidthProperty);
 
+    /// <summary>Makes <paramref name="column"/> the fill column — taking the remaining width while shown (INV-063).</summary>
+    /// <param name="column">The Panel Column to size.</param>
+    /// <param name="value"><see langword="true"/> while the column's panel is the primary Document Pane.</param>
+    public static void SetFill(DependencyObject column, bool value) => column.SetValue(FillProperty, value);
+
+    /// <summary>Gets whether <paramref name="column"/> is the fill column (INV-063).</summary>
+    /// <param name="column">The Panel Column to query.</param>
+    /// <returns><see langword="true"/> while the column takes the remaining width when shown.</returns>
+    public static bool GetFill(DependencyObject column) => (bool)column.GetValue(FillProperty);
+
     private static void OnIsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ColumnDefinition column)
@@ -123,18 +146,31 @@ public static class PanelColumn
         }
     }
 
+    private static void OnFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // Becoming (or ceasing to be) the primary Document Pane resizes a shown column in place; a
+        // hidden one stays at nothing either way (INV-056, INV-063).
+        if (d is ColumnDefinition column && GetIsVisible(column))
+        {
+            Size(column, isShown: true);
+        }
+    }
+
     /// <summary>Sizes the column to its shown width, or to nothing at all when its panel is hidden.</summary>
     private static void Size(ColumnDefinition column, bool isShown)
     {
-        // Remember where the user dragged the panel to, so showing it again reopens it there.
-        if (!isShown && column.Width.IsAbsolute && column.Width.Value > 0)
+        // Remember where the user dragged the panel to, so showing it again — or handing the fill role
+        // back — reopens it there. A star width is never remembered: only a real drag sets pixels.
+        if (column.Width.IsAbsolute && column.Width.Value > 0 && (!isShown || GetFill(column)))
         {
             column.SetValue(DraggedWidthProperty, (double?)column.Width.Value);
         }
 
         // The minimum bounds the splitter, not the toggle — a hidden panel gives up all of its width.
         column.MinWidth = isShown ? GetMinimumWidth(column) : 0;
-        column.Width = new GridLength(isShown ? DraggedOrVisibleWidth(column) : 0);
+        column.Width = !isShown ? new GridLength(0)
+            : GetFill(column) ? new GridLength(1, GridUnitType.Star)
+            : new GridLength(DraggedOrVisibleWidth(column));
     }
 
     private static double DraggedOrVisibleWidth(ColumnDefinition column) =>

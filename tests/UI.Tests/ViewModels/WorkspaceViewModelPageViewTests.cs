@@ -54,7 +54,10 @@ public sealed class WorkspaceViewModelPageViewTests
                 new FakeMermaidScriptSource()),
             folder,
             new SideDockViewModel(folder),
-            _stateStore);
+            _stateStore,
+            new FakePageSetupStore(),
+            new StubCustomMarginsPrompt(answer: null),
+            new FakePrintPreview());
     }
 
     [Fact]

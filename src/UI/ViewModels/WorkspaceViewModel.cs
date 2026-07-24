@@ -17,22 +17,19 @@ namespace UI.ViewModels;
 /// Session), INV-009 (a file is open in at most one Tab), and INV-010 (closing with unsaved edits is
 /// never silent).
 /// </summary>
-public sealed class WorkspaceViewModel : ObservableObject
+public sealed partial class WorkspaceViewModel : ObservableObject
 {
     private readonly EditorSessionFactory _createSession;
     private readonly IFilePicker _filePicker;
     private readonly IUnsavedEditsPrompt _unsavedEditsPrompt;
     private readonly IWorkspaceStateStore _stateStore;
+    private readonly IPageSetupStore _pageSetupStore;
+    private readonly ICustomMarginsPrompt _customMarginsPrompt;
     private readonly ObservableCollection<EditorSessionViewModel> _sessions = [];
 
     private EditorSessionViewModel? _activeSession;
     private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
     private bool _isRestoring;
-    private bool _isSourcePanelRequested;
-    private bool _isPreviewPanelRequested;
-    private bool _isPageViewEnabled = true;
-    private double _workspaceWidth;
-    private PanelVisibility _resolved;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -48,6 +45,9 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
     /// <param name="sideDock">The Side Dock — the tabbed left panel hosting the Folder and Navigation panels (INV-046).</param>
     /// <param name="stateStore">Persists and restores the Workspace across runs — open Tabs, Recent Files, and the Folder Workspace (INV-037, INV-045).</param>
+    /// <param name="pageSetupStore">Persists and restores the editor-wide Page Setup across runs (INV-061).</param>
+    /// <param name="customMarginsPrompt">Asks the user for custom Print Margins (INV-061).</param>
+    /// <param name="printPreview">Shows the Print Preview for Print Preview (INV-061).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
@@ -61,14 +61,20 @@ public sealed class WorkspaceViewModel : ObservableObject
         ExportViewModel export,
         FolderWorkspaceViewModel folder,
         SideDockViewModel sideDock,
-        IWorkspaceStateStore stateStore)
+        IWorkspaceStateStore stateStore,
+        IPageSetupStore pageSetupStore,
+        ICustomMarginsPrompt customMarginsPrompt,
+        IPrintPreview printPreview)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
         _stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
+        _pageSetupStore = pageSetupStore ?? throw new ArgumentNullException(nameof(pageSetupStore));
+        _customMarginsPrompt = customMarginsPrompt ?? throw new ArgumentNullException(nameof(customMarginsPrompt));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
+        PrintPreview = printPreview ?? throw new ArgumentNullException(nameof(printPreview));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
         DiagramImageRenderer = diagramImageRenderer ?? throw new ArgumentNullException(nameof(diagramImageRenderer));
@@ -90,14 +96,17 @@ public sealed class WorkspaceViewModel : ObservableObject
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
         OpenRecentCommand = new AsyncRelayCommand<string>(OpenRecentAsync);
         FollowLinkCommand = new AsyncRelayCommand<string>(FollowMarkdownLinkAsync);
-        ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
-        TogglePreviewPanelCommand = new RelayCommand(TogglePreviewPanel);
         TogglePageViewCommand = new RelayCommand(TogglePageView);
+        SetPageOrientationCommand = new AsyncRelayCommand<PageOrientation>(SetPageOrientationAsync);
+        SetMarginPresetCommand = new AsyncRelayCommand<MarginPreset>(SetMarginPresetAsync);
+        EditCustomMarginsCommand = new AsyncRelayCommand(EditCustomMarginsAsync);
 
-        // The Side Dock's tab intent feeds the responsive layout: opening or closing a tab can make the
-        // dock or a right panel no longer fit, so re-resolve Compact Layout when it changes (INV-059).
-        SideDock.PropertyChanged += OnSideDockPropertyChanged;
-        Recompute();
+        // The one editor-wide Page Setup, exactly as the last run left it (INV-061).
+        _pageSetup = _pageSetupStore.Load();
+
+        // The Panel Chrome: every panel's placement, the pin/close/flyout commands, and the responsive
+        // Compact Layout recomputation over the Docked panels (INV-059, INV-062, INV-063).
+        InitializePanelChrome();
 
         New();
     }
@@ -175,6 +184,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     public IDocumentPrinter DocumentPrinter { get; }
 
     /// <summary>
+    /// The Print Preview the editing surface shows the re-projected document in (INV-061). Exposed so
+    /// the View can hand it to the <c>MarkdownRichEditor</c>, which owns Print Preview but is composed
+    /// in XAML rather than by the container — the same reason <see cref="DocumentPrinter"/> is exposed.
+    /// </summary>
+    public IPrintPreview PrintPreview { get; }
+
+    /// <summary>
     /// The renderer the editing surface uses to render a copied selection to HTML for the clipboard's
     /// HTML flavor (INV-035). Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which
     /// owns Copy but is composed in XAML rather than by the container — as with <see cref="LinkPrompt"/>.
@@ -195,52 +211,6 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// </summary>
     public IMermaidImageRenderer DiagramImageRenderer { get; }
 
-    /// <summary>
-    /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown
-    /// alongside the Visual Document — is visible. Hidden until the user toggles it on, and auto-collapsed
-    /// while the Workspace is too narrow to show it beside the editor (Compact Layout), reappearing as the
-    /// user toggled it once there is room. Presentation-only: neither toggling nor collapsing it changes
-    /// any Markdown Document (INV-014, INV-059).
-    /// </summary>
-    public bool IsSourcePanelVisible => _resolved.Source;
-
-    /// <summary>
-    /// Whether the Preview Panel — the live Diagram Preview of the Mermaid Diagram at the caret, shown
-    /// beside the Visual Document — is visible. Hidden until the user toggles it on, and auto-collapsed
-    /// while the Workspace is too narrow to show it beside the editor (Compact Layout), reappearing as the
-    /// user toggled it once there is room. Presentation-only: neither toggling nor collapsing it changes
-    /// any Markdown Document (INV-048, INV-059).
-    /// </summary>
-    public bool IsPreviewPanelVisible => _resolved.Preview;
-
-    /// <summary>
-    /// The width available to the editing row, fed by the View through the <c>SizeObserver</c> behaviour.
-    /// Compact Layout resolves which side panels fit from it, collapsing the Preview Panel, then the
-    /// Source Panel, then the Side Dock until the Visual Document keeps its minimum width (INV-059).
-    /// </summary>
-    public double WorkspaceWidth
-    {
-        get => _workspaceWidth;
-        set
-        {
-            if (Set(ref _workspaceWidth, value))
-            {
-                Recompute();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Whether Page View is on — the Visual Document laid out on a fixed-width Document Sheet floating
-    /// on a canvas, confining every element (tables included) to one page width. On by default.
-    /// Presentation-only: toggling it never changes any Markdown Document (INV-058).
-    /// </summary>
-    public bool IsPageViewEnabled
-    {
-        get => _isPageViewEnabled;
-        private set => Set(ref _isPageViewEnabled, value);
-    }
-
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }
 
@@ -258,15 +228,6 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Opens a followed Markdown Link's file in a new Tab. Parameter: the absolute path (INV-038).</summary>
     public ICommand FollowLinkCommand { get; }
-
-    /// <summary>Shows the Source Panel if hidden, or hides it if shown.</summary>
-    public ICommand ToggleSourcePanelCommand { get; }
-
-    /// <summary>Shows the Preview Panel if hidden, or hides it if shown.</summary>
-    public ICommand TogglePreviewPanelCommand { get; }
-
-    /// <summary>Turns Page View on if it is off, or off if it is on (INV-058).</summary>
-    public ICommand TogglePageViewCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -468,46 +429,6 @@ public sealed class WorkspaceViewModel : ObservableObject
 
         RemoveSession(session);
         await PersistStateAsync().ConfigureAwait(true);
-    }
-
-    private void ToggleSourcePanel()
-    {
-        _isSourcePanelRequested = !_isSourcePanelRequested;
-        Recompute();
-    }
-
-    private void TogglePreviewPanel()
-    {
-        _isPreviewPanelRequested = !_isPreviewPanelRequested;
-        Recompute();
-    }
-
-    private void TogglePageView() => IsPageViewEnabled = !IsPageViewEnabled;
-
-    // Resolves which side panels fit the current width (INV-059) and pushes the result to the effective
-    // visibility properties and the Side Dock's width-collapse. Each panel's toggle intent is kept, so a
-    // panel collapsed only for width returns exactly as toggled once the Workspace is wide enough again.
-    private void Recompute()
-    {
-        var intent = new PanelIntent(SideDock.HasVisibleTab, _isSourcePanelRequested, _isPreviewPanelRequested);
-        var resolved = CompactLayout.Resolve(_workspaceWidth, intent);
-
-        SideDock.SetWidthCollapsed(intent.Dock && !resolved.Dock);
-
-        if (resolved != _resolved)
-        {
-            _resolved = resolved;
-            Raise(nameof(IsSourcePanelVisible));
-            Raise(nameof(IsPreviewPanelVisible));
-        }
-    }
-
-    private void OnSideDockPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SideDockViewModel.HasVisibleTab))
-        {
-            Recompute();
-        }
     }
 
     private bool CanSaveActive() =>

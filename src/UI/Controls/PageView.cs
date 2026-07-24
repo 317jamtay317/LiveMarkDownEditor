@@ -3,15 +3,18 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Core;
 
 namespace UI.Controls;
 
 /// <summary>
-/// The Page View behaviour: it lays the WYSIWYG editing surface out on a fixed-width
-/// <see cref="DocumentSheet"/> floating on a scrolling canvas, so every element — tables included — is
-/// confined to one page width, and it keeps the caret in view by driving that canvas. Turning Page View
-/// off restores the plain, full-pane editing surface (INV-058).
+/// The Page View behaviour: it lays the WYSIWYG editing surface out on a <see cref="DocumentSheet"/> of
+/// whole 8.5 × 11 Pages floating on a scrolling canvas, so every element — tables included — is confined
+/// to one page width, the Sheet grows a Page as soon as the content needs it, and the caret is kept in
+/// view by driving that canvas. Turning Page View off restores the plain, full-pane editing surface
+/// (INV-058).
 /// </summary>
 /// <remarks>
 /// Authored as an attached behaviour — the sanctioned home for view-interaction logic outside a
@@ -59,6 +62,17 @@ public static class PageView
     public static readonly DependencyProperty SourceProperty = DependencyProperty.RegisterAttached(
         "Source",
         typeof(TextBoxBase),
+        typeof(PageView),
+        new PropertyMetadata(null, OnConfigurationChanged));
+
+    /// <summary>
+    /// Identifies the <c>Setup</c> attached property: the Page Setup the Sheet is laid out under — its
+    /// oriented Page size and its Print Margins. Left unset, the default (Portrait, Normal margins)
+    /// applies; changing it while in Page View re-lays the Sheet out (INV-061).
+    /// </summary>
+    public static readonly DependencyProperty SetupProperty = DependencyProperty.RegisterAttached(
+        "Setup",
+        typeof(PageSetup),
         typeof(PageView),
         new PropertyMetadata(null, OnConfigurationChanged));
 
@@ -110,6 +124,21 @@ public static class PageView
     public static TextBoxBase? GetSource(DependencyObject surface) =>
         (TextBoxBase?)surface.GetValue(SourceProperty);
 
+    /// <summary>Sets the Page Setup the Sheet is laid out under for <paramref name="surface"/> (INV-061).</summary>
+    /// <param name="surface">The surface whose Sheet the setup shapes.</param>
+    /// <param name="value">The Page Setup, or <see langword="null"/> for the default.</param>
+    public static void SetSetup(DependencyObject surface, PageSetup? value) =>
+        surface.SetValue(SetupProperty, value);
+
+    /// <summary>Gets the Page Setup the Sheet is laid out under for <paramref name="surface"/> (INV-061).</summary>
+    /// <param name="surface">The surface to query.</param>
+    /// <returns>The Page Setup, or <see langword="null"/> when the default applies.</returns>
+    public static PageSetup? GetSetup(DependencyObject surface) =>
+        (PageSetup?)surface.GetValue(SetupProperty);
+
+    // The setup every layout decision reads: the one set on the surface, or the default when none is.
+    private static PageSetup SetupFor(DependencyObject surface) => GetSetup(surface) ?? PageSetup.Default;
+
     private static void OnConfigurationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         Apply(d);
 
@@ -126,6 +155,7 @@ public static class PageView
         {
             oldEditor.TextChanged -= state.OnCaretMoved;
             oldEditor.SelectionChanged -= state.OnCaretMoved;
+            oldEditor.SizeChanged -= state.OnSheetResized;
         }
 
         if (e.NewValue is MarkdownRichEditor newEditor)
@@ -133,6 +163,10 @@ public static class PageView
             state.Bind(surface, newEditor);
             newEditor.TextChanged += state.OnCaretMoved;
             newEditor.SelectionChanged += state.OnCaretMoved;
+
+            // The Sheet is sized in whole Pages, so every change to how tall the content lays out — a
+            // typed line, a reload, a fold — is re-checked against the Page boundary.
+            newEditor.SizeChanged += state.OnSheetResized;
         }
 
         Apply(surface);
@@ -151,26 +185,36 @@ public static class PageView
 
         if (GetIsEnabled(surface))
         {
-            EnterPageView(surface, editor, canvas);
+            EnterPageView(surface, editor, canvas, state);
         }
         else
         {
-            ExitPageView(surface, editor, canvas);
+            ExitPageView(surface, editor, canvas, state);
         }
     }
 
-    private static void EnterPageView(Grid surface, MarkdownRichEditor editor, ScrollViewer? canvas)
+    private static void EnterPageView(Grid surface, MarkdownRichEditor editor, ScrollViewer? canvas, SurfaceState state)
     {
         // The editor stops scrolling itself and grows to the full height of its content.
         editor.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
         editor.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
 
-        // A fixed-width page with word-processor margins and a visible edge.
-        editor.Width = DocumentSheet.Width;
+        // A fixed-width page — the width the Page Setup's orientation gives the US Letter Page — with
+        // its Print Margins and a visible edge (INV-061)...
+        editor.Width = SetupFor(surface).PageWidth;
         editor.VerticalAlignment = VerticalAlignment.Top;
-        editor.Padding = DocumentSheet.PagePadding;
         editor.BorderThickness = new Thickness(1d);
         editor.SetResourceReference(Control.BorderBrushProperty, "BorderBrush");
+
+        // ...made a whole number of 8.5 x 11 Pages tall, so a short document still shows a full page and
+        // a long one gains its next Page as soon as the content needs it. The Sheet is snapped to its
+        // Pages once it has been laid out at the plain page margins, not from a stale height.
+        state.ResetPageMargins();
+        state.QueueSnapToWholePages();
+
+        // The paper and the Page Break rules are drawn by the DocumentSheetBackdrop behind the editing
+        // surface, so a break passes under the text; the surface itself goes transparent to let it show.
+        editor.Background = Brushes.Transparent;
 
         // The surface hugs [gutter | Sheet] and is centred on the canvas with equal margins, a band of
         // canvas kept above and below it. Centring is native: the canvas does not scroll horizontally, so
@@ -200,9 +244,12 @@ public static class PageView
         }
     }
 
-    private static void ExitPageView(Grid surface, MarkdownRichEditor editor, ScrollViewer? canvas)
+    private static void ExitPageView(Grid surface, MarkdownRichEditor editor, ScrollViewer? canvas, SurfaceState state)
     {
-        // Back to a plain surface that fills the pane and scrolls itself.
+        // The whole-Page filler goes with the Sheet.
+        state.ForgetPageFiller();
+
+        // Back to a plain surface that fills the pane, paints its own background, and scrolls itself.
         editor.ClearValue(TextBoxBase.VerticalScrollBarVisibilityProperty);
         editor.ClearValue(TextBoxBase.HorizontalScrollBarVisibilityProperty);
         editor.ClearValue(FrameworkElement.WidthProperty);
@@ -210,6 +257,7 @@ public static class PageView
         editor.ClearValue(Control.PaddingProperty);
         editor.ClearValue(Control.BorderThicknessProperty);
         editor.ClearValue(Control.BorderBrushProperty);
+        editor.ClearValue(Control.BackgroundProperty);
         editor.RevealRectOverride = null;
 
         surface.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
@@ -260,11 +308,14 @@ public static class PageView
         }
     }
 
-    // Per-surface state: the caret-follow debounce and the handlers bound to this surface's editor and
-    // canvas, kept so they can be removed when Page View is turned off or the editor is detached.
+    // Per-surface state: the caret-follow debounce, the Sheet's whole-Page filler, and the handlers
+    // bound to this surface's editor and canvas, kept so they can be removed when Page View is turned
+    // off or the editor is detached.
     private sealed class SurfaceState
     {
         private bool _caretFollowQueued;
+        private bool _pageSnapQueued;
+        private double _trailingSpace;
         private Grid? _surface;
         private MarkdownRichEditor? _editor;
 
@@ -273,6 +324,73 @@ public static class PageView
             _surface = surface;
             _editor = editor;
         }
+
+        // The Sheet grew or shrank — check whether the content still ends on a Page boundary.
+        public void OnSheetResized(object? sender, EventArgs e) => QueueSnapToWholePages();
+
+        // Puts the Sheet back to the Page Setup's plain Print Margins, with no whole-Page filler on
+        // them. Paired with a queued snap, which measures the filler afresh once the Sheet has laid
+        // out at these margins.
+        public void ResetPageMargins()
+        {
+            _trailingSpace = 0d;
+            if (_surface is { } surface && _editor is { } editor)
+            {
+                editor.Padding = SetupFor(surface).Margins.ToThickness();
+            }
+        }
+
+        // Snaps the Sheet to whole Pages after the current layout pass. Coalesced to one snap per
+        // dispatcher cycle: setting the filler resizes the Sheet, which lands back here.
+        public void QueueSnapToWholePages()
+        {
+            if (_pageSnapQueued || _surface is not { } surface || _editor is not { } editor || !GetIsEnabled(surface))
+            {
+                return;
+            }
+
+            _pageSnapQueued = true;
+            editor.Dispatcher.BeginInvoke(
+                DispatcherPriority.Loaded,
+                () =>
+                {
+                    _pageSnapQueued = false;
+                    SnapToWholePages();
+                });
+        }
+
+        // Fills out the rest of the last Page with blank Sheet, so the Sheet is always a whole number of
+        // Pages tall and gains its next Page the moment the content outgrows the last one. The filler
+        // rides on the Sheet's bottom page margin, so the Sheet's own height stays the measure of the
+        // content — subtracting the filler back off gives the height the content actually laid out to.
+        private void SnapToWholePages()
+        {
+            if (_surface is not { } surface || _editor is not { } editor || !GetIsEnabled(surface))
+            {
+                return;
+            }
+
+            var sheetHeight = editor.ActualHeight;
+            if (sheetHeight <= 0d)
+            {
+                return;
+            }
+
+            var setup = SetupFor(surface);
+            var trailingSpace = DocumentSheet.TrailingSpaceFor(sheetHeight - _trailingSpace, setup.PageHeight);
+            if (Math.Abs(trailingSpace - _trailingSpace) < 0.5d)
+            {
+                return;
+            }
+
+            _trailingSpace = trailingSpace;
+            var margins = setup.Margins.ToThickness();
+            editor.Padding = new Thickness(margins.Left, margins.Top, margins.Right, margins.Bottom + trailingSpace);
+        }
+
+        // Forgets the whole-Page filler; the caller clears the page margins it rode on with the rest of
+        // the non-page surface.
+        public void ForgetPageFiller() => _trailingSpace = 0d;
 
         // Coalesces caret moves (typing, navigation) to one canvas scroll per dispatcher cycle, and only
         // follows the caret while the user is actually editing this surface in Page View.

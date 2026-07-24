@@ -1,0 +1,63 @@
+<Window x:Class="UI.Views.CustomMarginsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:UI.Controls"
+        Title="Custom margins"
+        controls:DialogCloser.DialogResult="{Binding DialogResult}"
+        Width="340" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SurfaceBrush}"
+        Foreground="{DynamicResource TextBrush}">
+
+    <!-- The Custom Margins Prompt: the four Print Margins, in inches. Apply is disabled while any
+         value is not one a margin may hold, and dismissing changes nothing (INV-061). -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,0,0,10"
+                   Text="Margins are in inches, applied on screen and in print alike."
+                   Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Top" VerticalAlignment="Center" Margin="0,0,8,8" />
+        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,12,8" Padding="4"
+                 AutomationProperties.Name="Top margin"
+                 controls:FocusOnVisible.Enabled="True"
+                 Text="{Binding Top, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Grid.Row="1" Grid.Column="2" Text="Bottom" VerticalAlignment="Center" Margin="0,0,8,8" />
+        <TextBox Grid.Row="1" Grid.Column="3" Margin="0,0,0,8" Padding="4"
+                 AutomationProperties.Name="Bottom margin"
+                 Text="{Binding Bottom, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Left" VerticalAlignment="Center" Margin="0,0,8,8" />
+        <TextBox Grid.Row="2" Grid.Column="1" Margin="0,0,12,8" Padding="4"
+                 AutomationProperties.Name="Left margin"
+                 Text="{Binding Left, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Grid.Row="2" Grid.Column="2" Text="Right" VerticalAlignment="Center" Margin="0,0,8,8" />
+        <TextBox Grid.Row="2" Grid.Column="3" Margin="0,0,0,8" Padding="4"
+                 AutomationProperties.Name="Right margin"
+                 Text="{Binding Right, UpdateSourceTrigger=PropertyChanged}" />
+
+        <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Cancel" IsCancel="True" Margin="0,0,8,0"
+                    Style="{StaticResource DialogButton}"
+                    AutomationProperties.Name="Cancel"
+                    Command="{Binding CancelCommand}" />
+            <Button Content="Apply" IsDefault="True"
+                    Style="{StaticResource PrimaryDialogButton}"
+                    AutomationProperties.Name="Apply"
+                    Command="{Binding AcceptCommand}" />
+        </StackPanel>
+    </Grid>
+</Window>

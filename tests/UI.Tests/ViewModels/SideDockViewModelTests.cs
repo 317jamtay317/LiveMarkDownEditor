@@ -157,6 +157,65 @@ public sealed class SideDockViewModelTests
     }
 
     [Fact]
+    public void SetAutoHidden_TakesTheTabOutOfTheStrip_WithoutClosingThePanel_INV062()
+    {
+        var sideDock = new SideDockViewModel(CreateFolder());
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+
+        // Unpinned: the tab leaves the strip for the Auto-Hide Bar, but the panel stays open.
+        sideDock.SetAutoHidden(SideDockTab.Navigation, true);
+
+        sideDock.IsNavigationPanelOpen.ShouldBeTrue();
+        sideDock.IsNavigationTabVisible.ShouldBeFalse();
+        sideDock.HasVisibleTab.ShouldBeFalse();
+        sideDock.IsVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SetAutoHidden_OnTheSelectedTab_FallsBackToTheOtherShownTab_INV046()
+    {
+        var folder = CreateFolder();
+        var sideDock = new SideDockViewModel(folder);
+        ShowFolderPanel(folder);
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+        sideDock.SelectedTab.ShouldBe(SideDockTab.Navigation);
+
+        sideDock.SetAutoHidden(SideDockTab.Navigation, true);
+
+        sideDock.SelectedTab.ShouldBe(SideDockTab.Folder);
+        sideDock.IsVisible.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SetAutoHidden_PinningBack_ReturnsTheTabShownAndSelected_INV062()
+    {
+        var folder = CreateFolder();
+        var sideDock = new SideDockViewModel(folder);
+        ShowFolderPanel(folder);
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+        sideDock.SetAutoHidden(SideDockTab.Navigation, true);
+
+        sideDock.SetAutoHidden(SideDockTab.Navigation, false);
+
+        sideDock.IsNavigationTabVisible.ShouldBeTrue();
+        sideDock.SelectedTab.ShouldBe(SideDockTab.Navigation);
+    }
+
+    [Fact]
+    public void CloseNavigationPanel_ClosesIt_WhereverItStands_INV062()
+    {
+        var sideDock = new SideDockViewModel(CreateFolder());
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+        sideDock.SetAutoHidden(SideDockTab.Navigation, true);
+
+        // Closed from its Panel Flyout's Close Button: open state ends even while Auto-Hidden.
+        sideDock.CloseNavigationPanel();
+
+        sideDock.IsNavigationPanelOpen.ShouldBeFalse();
+        sideDock.IsNavigationTabVisible.ShouldBeFalse();
+    }
+
+    [Fact]
     public void WidthCollapse_HidesTheDock_WithoutLosingItsTabOrSelection_INV059()
     {
         var sideDock = new SideDockViewModel(CreateFolder());

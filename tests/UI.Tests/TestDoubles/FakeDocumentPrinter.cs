@@ -19,13 +19,17 @@ public sealed class FakeDocumentPrinter : IDocumentPrinter
     /// <summary>The job description of the last Print call.</summary>
     public string? Description { get; private set; }
 
+    /// <summary>The Page Setup of the last Print call, or <see langword="null"/> if never (INV-061).</summary>
+    public PageSetup? PrintedSetup { get; private set; }
+
     /// <inheritdoc />
-    public void Print(FlowDocument document, string description)
+    public void Print(FlowDocument document, string description, PageSetup pageSetup)
     {
         ArgumentNullException.ThrowIfNull(document);
 
         PrintCount++;
         Description = description;
+        PrintedSetup = pageSetup;
         PrintedText = new TextRange(document.ContentStart, document.ContentEnd).Text;
     }
 }

@@ -912,11 +912,16 @@ and tested.
   the Side Dock hidden. Docking a panel, selecting a tab, and showing or hiding the Side Dock are
   presentation-only — none changes any Markdown Document, any Editor Session, or any Fold, Outline, or
   Folder-Tree state (the Side-Dock counterpart of INV-012/INV-014/INV-043).
-- **Enforced by:** `SideDockViewModel`, which owns the Navigation Panel's tab visibility
-  (`IsNavigationTabVisible` and `ToggleNavigationPanelCommand`) and the `SelectedTab`, observes the
+- **Note (INV-062):** "Toggled on" means the panel is open; the strip shows a tab only while the
+  panel is also **Docked**. An Auto-Hidden panel keeps its toggle on but leaves the strip for the
+  left Auto-Hide Bar, returning — shown and Selected — when it is Pinned back.
+- **Enforced by:** `SideDockViewModel`, which owns the Navigation Panel's open state
+  (`IsNavigationPanelOpen` and `ToggleNavigationPanelCommand`) and the `SelectedTab`, observes the
   Folder Panel's visibility on the `FolderWorkspaceViewModel` it coordinates with (so opening a Folder
-  Workspace shows and selects its tab), and derives `IsVisible` as "at least one tab is shown". It
-  holds no document and drives only presentation state, so coordinating the two panels edits nothing.
+  Workspace shows and selects its tab), derives each tab's strip visibility as "open and not
+  Auto-Hidden" (`SetAutoHidden`, pushed by the Workspace — INV-062), and derives `IsVisible` as "at
+  least one tab is shown". It holds no document and drives only presentation state, so coordinating
+  the two panels edits nothing.
 - **Tested by:** `SideDockViewModelTests.*_INV046` (toggling a panel on shows and selects its tab;
   toggling the Selected panel off falls back to the other or hides the dock; the dock is hidden when
   neither panel is on; and coordinating the tabs opens or edits no document).
@@ -1176,11 +1181,18 @@ and tested.
   stops a drag from reducing it to a sliver; it must not survive into the hidden state, or hiding the
   panel would leave exactly the gap this invariant forbids. Hiding therefore gives up the minimum
   along with the width.
+- **Note (INV-062/063):** "Hidden" means not Docked — an Auto-Hidden panel's column collapses
+  exactly as a Closed one's does; only its Panel Flyout ever shows it, and a flyout overlays rather
+  than takes a column. The **primary Document Pane**'s column (the Editor Pane's, or the Source
+  Panel's while the Editor Pane is not Docked) is a *fill* Panel Column: shown, it takes the
+  editing area's remaining width at the editor's minimum instead of a remembered dragged width;
+  hidden, it too takes nothing.
 - **Enforced by:** `PanelColumn`, the attached behaviour that owns a Panel Column's width — it sizes
   the column to the remembered dragged width (or the panel's visible width) with its minimum applied
   when the panel is shown, and to zero with no minimum when it is hidden, remembering the dragged
-  width across the toggle; and the editing column's own `MinWidth` in `MainWindow.xaml`, which bounds
-  how far a Panel Splitter can be dragged towards the Visual Document.
+  width across the toggle; its `Fill` attached property, which stars a shown primary pane's column
+  instead (INV-063); and the editor column's `PanelColumn`-owned minimum, which bounds how far a
+  Panel Splitter can be dragged towards the Visual Document.
 - **Tested by:** `PanelColumnTests.AHiddenPanel_TakesNoWidth_INV056`,
   `PanelColumnTests.AShownPanel_TakesItsVisibleWidth_INV056`,
   `PanelColumnTests.Hiding_AfterTheSplitterResizedThePanel_StillTakesNoWidth_INV056`,
@@ -1220,12 +1232,22 @@ and tested.
   `Fill_AwayFromAMisspelling_OffersTheClipboardCommandsAlone`, and
   `Fill_ReplacesWhatTheMenuHeldBefore`.
 
-### INV-058 — Page View lays the Visual Document on a fixed-width Document Sheet
+### INV-058 — Page View lays the Visual Document on a Document Sheet of whole US Letter Pages
 - **Statement:** In **Page View** the Visual Document is laid out on a **Document Sheet** of a single
-  fixed width — the US Letter width — so every element it contains, **including tables**, is confined
-  to that width no matter how wide the editing surface is; the Sheet floats on the editing canvas and
-  scrolls as one piece. Page View is **on by default**. It is presentation-only: turning it on or off
-  never changes the Markdown Document or the result of a Capture.
+  fixed width — the width the Page Setup's Page Orientation gives the US Letter Page (INV-061) — so
+  every element it contains, **including tables**, is confined to that width no matter how wide the
+  editing surface is; the Sheet floats on the editing canvas and scrolls as one piece. Page View is
+  **on by default**. It is presentation-only: turning it on or off never changes the Markdown Document
+  or the result of a Capture. Two further rules bound the Sheet:
+  - **The Sheet is always a whole number of Pages.** A **Page** is US Letter, turned by the Page
+    Orientation — 8.5 × 11 inches portrait, 11 × 8.5 landscape — so a Visual Document shorter than one
+    Page still shows a full Page, and the Sheet gains its next Page the moment the content outgrows
+    the last one, whether that content arrives by typing, a reload, or an Unfold. The Sheet never ends
+    partway down a Page.
+  - **A Page Break marks where a Page ends; it does not repaginate.** The boundary between Pages is
+    drawn as a rule across the Sheet, behind the Visual Document so it never strikes through text.
+    Content flows continuously across it: a Page Break moves nothing onto the next Page, and like the
+    Sheet itself it changes no Markdown Document and no Capture.
 - **Why:** A `RichTextBox` lays its whole `FlowDocument` out at once — it does not virtualise — and a
   projected GFM table is a WPF `Table` with no fixed width, so it fills whatever width it is given. On
   an unbounded editing surface a table therefore spans the entire pane while prose wraps to a
@@ -1235,16 +1257,22 @@ and tested.
   document out on a Document Sheet of one fixed width confines every element to the same page width and
   makes the layout width independent of the window width, so a table can no longer outrun the prose and
   maximising no longer reflows a single line.
-- **Enforced by:** `DocumentSheet`, the pure rule that gives the Sheet its fixed `Width` (the US Letter
-  width) and its page `PagePadding`; `PageView`, the behaviour that puts the editing surface into Page
-  View — fixing the Visual Document's width to the Sheet, floating it on the outer scrolling canvas, and
-  keeping the caret in view by driving that canvas — and restores the plain full-pane surface when
-  turned off; and `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by
-  default).
-- **Tested by:** `DocumentSheetTests` (the Sheet's `Width` is the US Letter width and its `PagePadding`
-  insets the content from every edge) and `WorkspaceViewModelPageViewTests` (Page View is on by default;
-  `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's Markdown Document
-  unchanged).
+- **Enforced by:** `DocumentSheet`, the pure rule that holds the US Letter page's `Width` and
+  `PageHeight` and the whole-Page arithmetic — `PageCount`, `HeightFor`, and the `TrailingSpaceFor`
+  filler that carries the Sheet down to the end of its last Page — each parameterized by the page
+  height the Page Setup's orientation yields (INV-061); `PageView`, the behaviour that puts the editing
+  surface into Page View — fixing the Visual Document's width to the Sheet at the Page Setup's oriented
+  width and Print Margins, snapping the Sheet to whole Pages whenever its content's height changes,
+  floating it on the outer scrolling canvas, and keeping the caret in view by driving that canvas — and
+  restores the plain full-pane surface when turned off; `DocumentSheetBackdrop`, which draws the Sheet's
+  paper and its Page Breaks behind the (then-transparent) editing surface, so a break passes under the
+  text; and `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by default).
+- **Tested by:** `DocumentSheetTests` (the `Width` and `PageHeight` are the US Letter page; content that
+  fits is one Page and content that overflows adds the next; `HeightFor` is always a whole number of
+  Pages; `TrailingSpaceFor` fills out the rest of the last Page without ever going negative; and the
+  arithmetic holds at the landscape page height too) and `WorkspaceViewModelPageViewTests` (Page
+  View is on by default; `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's
+  Markdown Document unchanged).
 
 ### INV-059 — Compact Layout is width-driven, view-only, and reversible
 - **Statement:** When the Workspace's available width is too small to show the Visual Document at its
@@ -1266,9 +1294,14 @@ and tested.
 - **Note:** The fit decision uses each side panel's nominal width, not a user-dragged Source/Preview
   width, so it decides whether an arrangement *fits* rather than laying it out pixel-exactly; a hidden
   panel's own column still gives back its exact space (INV-056).
+- **Note (INV-062/063):** "Toggled on" means **Docked**: an Auto-Hidden or Closed panel takes no
+  width, so it neither enters the fit decision nor is width-collapsed. And the last Docked Document
+  Pane is never collapsed: while the Editor Pane is not Docked the Source Panel is the protected
+  primary pane, kept at the editor's minimum width, with the collapse order running over the
+  remaining panels (Preview, then the Side Dock).
 - **Enforced by:** The pure static `CompactLayout.Resolve` (Domain-style pure logic — no I/O, no state —
   mapping an available width and the set of toggled-on panels to the set that stay visible, collapsing
-  Preview → Source → Side Dock until the Visual Document keeps `CompactLayout.EditorMinWidth`);
+  Preview → Source → Side Dock until the primary Document Pane keeps `CompactLayout.EditorMinWidth`);
   `WorkspaceViewModel`, which feeds it the measured `WorkspaceWidth` reported by the `SizeObserver`
   behaviour, gates the effective `IsSourcePanelVisible` / `IsPreviewPanelVisible` on the result, and
   drives the Side Dock's width-collapse; and `SideDockViewModel`, whose `IsVisible` combines its tab
@@ -1322,6 +1355,108 @@ and tested.
   records its source line range), and `EditorSessionViewModelTests.*_INV060` (a clean reload publishes
   the Change Highlight; resolving a Conflict by reloading publishes it; an edit, a load, and a save
   clear it; a content-free change publishes nothing).
+
+### INV-061 — One Page Setup shapes the Sheet, the Print Preview, and the printout alike
+- **Statement:** The **Page Setup** — a Page Orientation together with Print Margins — is a single,
+  editor-wide choice, and every paged surface obeys it: the Document Sheet in Page View lays out at
+  the oriented Page size with the Print Margins as its page margins; the Print Preview paginates at
+  that size and those margins; and Print asks the printer for the same orientation and lays the
+  printed page out with the same margins. Five rules bound it:
+  - **One setup, every surface.** The Sheet, the Print Preview, and the printout never disagree about
+    the Page's orientation or margins — what the user sees on screen is the page that prints.
+  - **A Page is US Letter, whichever way it turns.** Portrait is 8.5 × 11 inches (816 × 1056
+    device-independent units at 96 dpi); Landscape is 11 × 8.5 (1056 × 816). No other page size is
+    reachable.
+  - **Margins always leave room to write.** Each Print Margin is non-negative, and the four together
+    always leave a positive writable area on the Page in either orientation — a Page Setup that would
+    leave none cannot be constructed. The Margin Presets are Normal (1 inch all around, the default),
+    Narrow (0.5 inch), Moderate (1 inch top and bottom, 0.75 inch left and right), and Wide (1 inch
+    top and bottom, 2 inches left and right); Custom takes the user's own values through the Custom
+    Margins Prompt, which changes nothing when dismissed (the INV-030 discipline).
+  - **Changing the Page Setup is presentation-and-output only.** It never changes any Markdown
+    Document or the result of a Capture. It is remembered across runs as an editor-wide preference
+    (the Workspace State discipline of INV-037), and a missing or unreadable persisted setup loads as
+    the default — Portrait with Normal margins — never stopping the app from starting.
+  - **Previewing is not an edit.** The Print Preview re-projects the whole Markdown source the way
+    Print does (INV-034) — a Folded Section's hidden Section Body is previewed too — and changes
+    nothing: not the Markdown Document, the Watched File, nor the unsaved-edits state.
+- **Enforced by:** `PageSetup`, the value object composing a `PageOrientation` with `PrintMargins`
+  (whose guards refuse a negative margin and margins that leave no writable area) and yielding the
+  oriented `PageWidth`/`PageHeight` from `DocumentSheet`'s US Letter dimensions; `MarginPreset`, the
+  named margin choices; `WorkspaceViewModel.PageSetup` with `SetPageOrientationCommand` and
+  `SetMarginPresetCommand`, loading through and persisting through the `IPageSetupStore` port
+  (`JsonPageSetupStore`, which loads a missing or corrupt file as the default) and asking custom
+  values through the `ICustomMarginsPrompt` port; `PageView`/`DocumentSheetBackdrop` laying the Sheet
+  out at the setup's size and margins (INV-058); `PrintDialogDocumentPrinter` setting the print
+  ticket's orientation and the document's page size and margins from the same setup; and
+  `PrintPreviewViewModel` paginating the re-projected document under the same setup and printing
+  through the same `IDocumentPrinter`.
+- **Tested by:** `PageSetupTests.*_INV061` (the oriented Page sizes; the margin guards; the preset
+  values; the default), `WorkspaceViewModelPageSetupTests.*_INV061` (the default setup; setting the
+  orientation and a preset persists and never changes the Active Session's Markdown; a dismissed
+  Custom Margins Prompt changes nothing; a stored setup is restored), `JsonPageSetupStoreTests.*_INV061`
+  (a round-trip preserves the setup; a missing or corrupt file loads the default), and
+  `PrintPreviewViewModelTests.*_INV061` (the preview paginates at the setup's size and margins;
+  printing sends the same document and setup; previewing changes no document).
+
+### INV-062 — A Dockable Panel's Placement is presentation-only, and never strands the panel
+- **Statement:** Every Dockable Panel — the Editor Pane, the Source Panel, the Preview Panel, the
+  Folder Panel, and the Navigation Panel — stands in exactly one Panel Placement: **Docked**,
+  **Auto-Hidden**, or **Closed**. Five rules bound the Panel Chrome that moves a panel between them:
+  - **Every Placement is reachable, and none is a dead end.** The Close Button sets a panel Closed;
+    its Command Bar View Menu toggle reopens it **Docked** (and closes an open one, wherever it
+    stands). The Pin Toggle sends a Docked panel to Auto-Hidden and an Auto-Hidden one back to
+    Docked. A Closed panel therefore always has its toggle on the Command Bar, and an Auto-Hidden
+    panel always has its Auto-Hide Tab — no Placement strands a panel out of reach.
+  - **The Auto-Hide Bars list exactly the Auto-Hidden panels.** The left bar carries the Editor
+    Pane, the Folder Panel, and the Navigation Panel; the right bar the Source Panel and the
+    Preview Panel; each bar is shown only while it has tabs. A panel Pinned, Closed, or reopened
+    leaves its bar in the same motion.
+  - **A Panel Flyout is transient presentation.** Activating an Auto-Hide Tab shows its Auto-Hidden
+    panel over the editing area; dismissing the flyout — by the tab, by Escape, or by clicking
+    elsewhere — changes no Placement. At most one Panel Flyout is open at a time, and a flyout
+    whose panel stops being Auto-Hidden closes with the change. Pinning from the flyout re-docks
+    the panel; closing from it closes the panel — the flyout's header is the same Panel Header.
+  - **Only a Docked panel takes width.** An Auto-Hidden or Closed panel's Panel Column gives every
+    pixel back (INV-056), only Docked panels enter the Compact Layout fit decision (INV-059), and
+    the Side Dock's strip shows exactly the Docked tabs — an Auto-Hidden tab leaves the strip for
+    the left Auto-Hide Bar and returns when Pinned (INV-046).
+  - **All of it is presentation-only.** Closing, reopening, Pinning, Unpinning, and opening or
+    dismissing a Panel Flyout never change any Markdown Document, Editor Session, Fold, Outline,
+    Folder-Tree, or Find state, or the result of a Capture — the discipline of INV-014/046/048,
+    extended over every Placement.
+- **Enforced by:** The pure static `PanelChrome` (placement derivation, the `CanClose` / `CanUnpin`
+  guards, and the two Auto-Hide Bar projections — no I/O, no state), the `WorkspaceViewModel`
+  panel-chrome surface (the pin and flyout state, `ClosePanelCommand`, `TogglePinCommand`,
+  `ToggleFlyoutCommand`, `DismissFlyoutCommand`, and `ToggleEditorPaneCommand`), and
+  `SideDockViewModel.SetAutoHidden`, which takes an Auto-Hidden tab out of the strip without
+  touching the panel's own toggle.
+- **Tested by:** `PanelChromeTests.*_INV062`, `WorkspaceViewModelPanelChromeTests.*_INV062`, and
+  `SideDockViewModelTests.*_INV062`.
+
+### INV-063 — A Document Pane is always Docked
+- **Statement:** At least one Document Pane — the Editor Pane or the Source Panel — is Docked at
+  every moment, so the user always has a docked surface that edits the Markdown Document. Three
+  rules bound it:
+  - **Close and Unpin stop short of the last Docked Document Pane.** Closing or Unpinning a Docked
+    Document Pane is unavailable while the other Document Pane is not Docked — the command is
+    greyed out rather than refused after the fact (the `CanExecute` discipline of INV-019's
+    shrinking actions). To close the Editor Pane, dock the Source Panel first; and vice versa.
+  - **Width pressure cannot take the last one either.** Compact Layout never collapses the last
+    Docked Document Pane: while the Editor Pane is Docked it is the protected primary pane (as it
+    always was, INV-059); while it is not, the Source Panel is — kept at the editor's minimum
+    width, with the collapse order running over the remaining panels (Preview, then the Side Dock).
+  - **The primary Document Pane fills the Workspace.** Whichever Document Pane is the primary one
+    takes the editing area's remaining width, so closing or unpinning the Editor Pane leaves the
+    Source Panel filling the space it vacated, not a fixed-width strip beside a hole.
+- **Enforced by:** `PanelChrome.CanClose` / `CanUnpin`, which simulate the operation and refuse one
+  that would leave no Document Pane Docked — the single seam every close/unpin command's
+  `CanExecute` runs through; `CompactLayout.Resolve`, which takes whether the Editor Pane is Docked
+  and protects the primary Document Pane's minimum width; and the `PanelColumn.Fill` attached
+  property, which stars the primary pane's column (the Source Panel's exactly while the Editor
+  Pane is not Docked).
+- **Tested by:** `PanelChromeTests.*_INV063`, `WorkspaceViewModelPanelChromeTests.*_INV063`,
+  `CompactLayoutTests.*_INV063`, and `PanelColumnTests.*_INV063`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

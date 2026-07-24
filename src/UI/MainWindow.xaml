@@ -4,6 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:UI.Controls"
+        xmlns:core="clr-namespace:UI.Core"
+        xmlns:viewModels="clr-namespace:UI.ViewModels"
         mc:Ignorable="d"
         Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor', FallbackValue='LiveMarkDownEditor'}"
         Icon="pack://application:,,,/Assets/app.ico"
@@ -20,9 +22,52 @@
                     CommandParameter="{Binding ActiveSession}" />
         <KeyBinding Modifiers="Ctrl" Key="P" Command="controls:MarkdownEditingCommands.Print"
                     CommandTarget="{Binding ElementName=Editor}" />
+        <KeyBinding Modifiers="Ctrl+Shift" Key="P" Command="controls:MarkdownEditingCommands.PrintPreview"
+                    CommandTarget="{Binding ElementName=Editor}" />
         <KeyBinding Modifiers="Ctrl" Key="F" Command="controls:MarkdownEditingCommands.ShowFind"
                     CommandTarget="{Binding ElementName=Editor}" />
+        <!-- Escape dismisses the open Panel Flyout (INV-062). The editor handles Escape itself while
+             the Find Bar is open, and with no flyout the command cannot execute, so the key falls
+             through untouched everywhere else. -->
+        <KeyBinding Key="Escape" Command="{Binding DismissFlyoutCommand}" />
     </Window.InputBindings>
+
+    <Window.Resources>
+        <!-- An Auto-Hide Tab: the sideways button an Auto-Hide Bar shows for one Auto-Hidden panel.
+             Activating it opens (or dismisses) that panel's Panel Flyout (INV-062). -->
+        <DataTemplate x:Key="AutoHideTabButton">
+            <Button Margin="0,0,0,8" Padding="4,10" Background="Transparent" Focusable="False"
+                    Command="{Binding DataContext.ToggleFlyoutCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Panel}"
+                    AutomationProperties.Name="{Binding Title, StringFormat='Open the {0} panel'}">
+                <Button.ToolTip>
+                    <controls:CommandTip Heading="{Binding Title}"
+                                         Detail="Slide the panel out over the editor. Pin it there to dock it again." />
+                </Button.ToolTip>
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TabChrome" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabChrome" Property="Background"
+                                        Value="{DynamicResource HoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock Text="{Binding Title}" FontSize="12"
+                           Foreground="{DynamicResource MutedTextBrush}">
+                    <TextBlock.LayoutTransform>
+                        <RotateTransform Angle="90" />
+                    </TextBlock.LayoutTransform>
+                </TextBlock>
+            </Button>
+        </DataTemplate>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -148,6 +193,20 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print preview"
+                                  Command="controls:MarkdownEditingCommands.PrintPreview"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Print preview"
+                                                     Detail="See the document laid out into the pages Print would produce." Gesture="Ctrl+Shift+P" />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.PrintPreview}" />
+                                    <TextBlock Text="Print preview…  (Ctrl+Shift+P)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print"
                                   Command="controls:MarkdownEditingCommands.Print"
                                   CommandTarget="{Binding ElementName=Editor}">
@@ -606,7 +665,7 @@
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding SideDock.IsNavigationTabVisible}" Value="True">
+                                <DataTrigger Binding="{Binding SideDock.IsNavigationPanelOpen}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -624,7 +683,7 @@
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsSourcePanelVisible}" Value="True">
+                                <DataTrigger Binding="{Binding IsSourcePanelOpen}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -642,13 +701,31 @@
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsPreviewPanelVisible}" Value="True">
+                                <DataTrigger Binding="{Binding IsPreviewPanelOpen}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
+                </Button>
+                <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
+                        Command="{Binding ToggleEditorPaneCommand}"
+                        AutomationProperties.Name="Toggle the editor pane">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Editor pane"
+                                             Detail="Show or hide the WYSIWYG editor. The source panel must be docked before the editor can close." />
+                    </Button.ToolTip>
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconFormatButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditorPaneOpen}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleEditorPane}" />
                 </Button>
                 <Button controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0"
                         Command="{Binding TogglePageViewCommand}"
@@ -668,6 +745,105 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePageView}" />
                 </Button>
+                <!-- Page Setup: the one editor-wide orientation and Print Margins, obeyed by the
+                     Document Sheet, the Print Preview, and the printout alike (INV-061). Always a
+                     dropdown (like the Export Menu), so it never joins the View group's overflow. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              AutomationProperties.Name="Page setup">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Page setup"
+                                                 Detail="Choose the page's orientation and print margins — on screen and in print alike." />
+                        </MenuItem.ToolTip>
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.PageSetup}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Portrait orientation"
+                                  IsChecked="{Binding DataContext.PageSetup.Orientation, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Portrait, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetPageOrientationCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:PageOrientation.Portrait}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Portrait"
+                                                     Detail="The page upright: 8.5 × 11 inches." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Portrait" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Landscape orientation"
+                                  IsChecked="{Binding DataContext.PageSetup.Orientation, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Landscape, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetPageOrientationCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:PageOrientation.Landscape}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Landscape"
+                                                     Detail="The page on its side: 11 × 8.5 inches." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Landscape" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Normal margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Normal, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Normal}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Normal margins"
+                                                     Detail="One inch on every side." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Normal margins (1&quot;)" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Narrow margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Narrow, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Narrow}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Narrow margins"
+                                                     Detail="Half an inch on every side." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Narrow margins (0.5&quot;)" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Moderate margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Moderate, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Moderate}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Moderate margins"
+                                                     Detail="One inch top and bottom, three-quarters of an inch left and right." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Moderate margins" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Wide margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Wide, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Wide}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Wide margins"
+                                                     Detail="One inch top and bottom, two inches left and right." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Wide margins" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Custom margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Custom, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.EditCustomMarginsCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Custom margins"
+                                                     Detail="Enter the four margins yourself, in inches. Cancelling changes nothing." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Custom margins…" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
                 <Rectangle Style="{StaticResource CommandSeparator}"
                            controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0" />
                 <Button Style="{StaticResource IconFormatButton}"
@@ -722,7 +898,7 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the navigation panel"
-                                  IsChecked="{Binding DataContext.SideDock.IsNavigationTabVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  IsChecked="{Binding DataContext.SideDock.IsNavigationPanelOpen, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.SideDock.ToggleNavigationPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
                             <MenuItem.ToolTip>
                                 <controls:CommandTip Heading="Navigation panel"
@@ -736,7 +912,7 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the raw Markdown source panel"
-                                  IsChecked="{Binding DataContext.IsSourcePanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  IsChecked="{Binding DataContext.IsSourcePanelOpen, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.ToggleSourcePanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
                             <MenuItem.ToolTip>
                                 <controls:CommandTip Heading="Source panel"
@@ -750,7 +926,7 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the diagram preview panel"
-                                  IsChecked="{Binding DataContext.IsPreviewPanelVisible, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  IsChecked="{Binding DataContext.IsPreviewPanelOpen, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
                                   Command="{Binding DataContext.TogglePreviewPanelCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
                             <MenuItem.ToolTip>
                                 <controls:CommandTip Heading="Diagram preview"
@@ -760,6 +936,20 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePreviewPanel}" />
                                     <TextBlock Text="Preview panel" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Toggle the editor pane"
+                                  IsChecked="{Binding DataContext.IsEditorPaneOpen, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.ToggleEditorPaneCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Editor pane"
+                                                     Detail="Show or hide the WYSIWYG editor. The source panel must be docked before the editor can close." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleEditorPane}" />
+                                    <TextBlock Text="Editor pane" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>
@@ -911,20 +1101,97 @@
               controls:SizeObserver.ObservedWidth="{Binding WorkspaceWidth, Mode=OneWayToSource}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+
+            <!-- Left Auto-Hide Bar: one tab per Auto-Hidden left panel — Editor Pane, Folder Panel,
+                 Navigation Panel — shown only while it has tabs. Activating a tab opens that panel's
+                 Panel Flyout over the editing area (INV-062). -->
+            <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
+                    Visibility="{Binding HasLeftAutoHideTabs, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ItemsControl ItemsSource="{Binding LeftAutoHideTabs}" Focusable="False" Margin="2,10,2,0"
+                              ItemTemplate="{StaticResource AutoHideTabButton}" />
+            </Border>
 
             <!-- Side Dock: the outer-left, workspace-wide panel that hosts the Folder Panel and the
                  Navigation Panel as tabs (INV-046), so the two need not each take a column. It is not
                  gated on an Active Session — the Folder tab stays browsable even when every Tab has been
-                 closed (INV-043) — and is shown only while at least one of its tabs is (INV-046). -->
-            <Border Grid.Column="0" Width="260" Background="{DynamicResource SurfaceBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
-                    Visibility="{Binding SideDock.IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                 closed (INV-043) — and is shown while at least one of its tabs is Docked (INV-046), or
+                 as the Panel Flyout of an Auto-Hidden Folder or Navigation Panel, overhanging the
+                 editing area (INV-062). -->
+            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="Width" Value="260" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SideDock.IsVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <!-- Flyout mode: the dock presents the Auto-Hidden panel over the editing
+                                 area — wider, above everything, and dismissed without a layout change. -->
+                            <DataTrigger Binding="{Binding IsSideDockFlyoutOpen}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Setter Property="Grid.ColumnSpan" Value="2" />
+                                <Setter Property="Panel.ZIndex" Value="40" />
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                                <Setter Property="Width" Value="300" />
+                                <Setter Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#000000" Opacity="0.25" BlurRadius="16" ShadowDepth="3" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <DockPanel>
-                    <!-- Tab strip: one header per shown panel; the Selected one is highlighted. -->
+                    <!-- Tab strip: one header per Docked panel, the Selected one highlighted, with the
+                         presented panel's Pin Toggle and Close Button at the right (INV-062). -->
                     <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                        <StackPanel Orientation="Horizontal" Margin="6,6,6,0">
+                        <DockPanel Margin="6,6,6,0" LastChildFill="False">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource IconButton}"
+                                        Command="{Binding TogglePinCommand}"
+                                        CommandParameter="{Binding DisplayedSideDockPanel}"
+                                        AutomationProperties.Name="Pin or unpin panel">
+                                    <Button.ToolTip>
+                                        <controls:CommandTip Heading="Pin"
+                                                             Detail="Unpin the panel to slide it away to the window's edge; pin it to dock it in place again." />
+                                    </Button.ToolTip>
+                                    <Path Width="13" Height="13" Stretch="Uniform" Fill="{x:Null}"
+                                          Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="1.8"
+                                          StrokeLineJoin="Round">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Setter Property="Data" Value="{StaticResource Icon.Pin}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSideDockPanelPinned}" Value="False">
+                                                        <Setter Property="Data" Value="{StaticResource Icon.PinOff}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </Button>
+                                <Button Style="{StaticResource IconButton}"
+                                        Command="{Binding ClosePanelCommand}"
+                                        CommandParameter="{Binding DisplayedSideDockPanel}"
+                                        AutomationProperties.Name="Close panel">
+                                    <Button.ToolTip>
+                                        <controls:CommandTip Heading="Close"
+                                                             Detail="Close this panel. Reopen it any time from the command bar's view controls." />
+                                    </Button.ToolTip>
+                                    <Path Width="11" Height="11" Stretch="Uniform" Fill="{x:Null}"
+                                          Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="1.8"
+                                          StrokeLineJoin="Round" Data="{StaticResource Icon.Close}" />
+                                </Button>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
                             <Button Command="{Binding SideDock.SelectFolderTabCommand}"
                                     Visibility="{Binding SideDock.IsFolderTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     AutomationProperties.Name="Folder tab">
@@ -979,10 +1246,12 @@
                                     <TextBlock Text="Outline" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12" />
                                 </StackPanel>
                             </Button>
-                        </StackPanel>
+                            </StackPanel>
+                        </DockPanel>
                     </Border>
 
-                    <!-- Content: the Selected tab's panel (only one is shown at a time). -->
+                    <!-- Content: the presented tab's panel — the Selected tab, or the panel whose
+                         Panel Flyout is open (only one is shown at a time; INV-046, INV-062). -->
                     <Grid>
                         <!-- Folder tab: the Folder Tree, or a prompt to open a folder. -->
                         <DockPanel>
@@ -990,7 +1259,7 @@
                                 <Style TargetType="DockPanel">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Folder">
+                                        <DataTrigger Binding="{Binding SideDockDisplayedTab}" Value="Folder">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -1042,7 +1311,7 @@
                                 <Style TargetType="Grid">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SideDock.SelectedTab}" Value="Navigation">
+                                        <DataTrigger Binding="{Binding SideDockDisplayedTab}" Value="Navigation">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -1060,7 +1329,7 @@
             </Border>
 
             <!-- The editing area proper (editor, placeholder, Find Bar, Difference Overlay). -->
-            <Grid Grid.Column="1">
+            <Grid Grid.Column="2">
 
             <!-- The WYSIWYG editing surface, bound to the Active Session, with the Editor Gutter (line
                  numbers + fold chevrons) alongside it and the toggleable Source Panel (raw Markdown
@@ -1072,32 +1341,85 @@
                      gives up every pixel to the Visual Document (INV-056). The editing area keeps a
                      minimum width so no drag can crush it away. -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="240" />
+                    <!-- The Editor Pane's column is a fill Panel Column: shown it takes the remaining
+                         width at the editor's minimum, hidden (Closed or Auto-Hidden) it takes none —
+                         and the Source Panel's column fills in its stead while it is the primary
+                         Document Pane (INV-056, INV-062, INV-063). -->
+                    <ColumnDefinition controls:PanelColumn.Fill="True"
+                                     controls:PanelColumn.MinimumWidth="240"
+                                     controls:PanelColumn.IsVisible="{Binding IsEditorPaneVisible}" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition controls:PanelColumn.VisibleWidth="420"
+                                     controls:PanelColumn.Fill="{Binding IsSourcePanelPrimary}"
                                      controls:PanelColumn.IsVisible="{Binding IsSourcePanelVisible}" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition controls:PanelColumn.VisibleWidth="420"
                                      controls:PanelColumn.IsVisible="{Binding IsPreviewPanelVisible}" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Editor canvas: the Editor Gutter and the WYSIWYG surface, hosted in a ScrollViewer so
-                     Page View can float the fixed-width Document Sheet on it and scroll the whole page as
-                     one piece (INV-058). In plain (non-page) mode the ScrollViewer does not scroll — the
-                     editor fills the pane and scrolls itself, exactly as before; PageView switches the two. -->
-                <ScrollViewer Grid.Column="0" x:Name="EditorScroller" Focusable="False"
+                <!-- Editor Pane: the Panel Header (pin, close — INV-062) over the editor canvas: the
+                     Editor Gutter and the WYSIWYG surface, hosted in a ScrollViewer so Page View can
+                     float the fixed-width Document Sheet on it and scroll the whole page as one piece
+                     (INV-058). In plain (non-page) mode the ScrollViewer does not scroll — the editor
+                     fills the pane and scrolls itself, exactly as before; PageView switches the two.
+                     While Auto-Hidden the pane collapses with its column and reappears as a full-width
+                     Panel Flyout from the left Auto-Hide Bar (INV-062). -->
+                <Border Grid.Column="0" Background="{DynamicResource EditorBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditorPaneVisible}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsEditorPaneFlyoutOpen}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Grid.ColumnSpan" Value="5" />
+                                    <Setter Property="Panel.ZIndex" Value="30" />
+                                    <Setter Property="BorderThickness" Value="0,0,1,0" />
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#000000" Opacity="0.25" BlurRadius="16" ShadowDepth="3" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <DockPanel>
+                        <controls:PanelHeader DockPanel.Dock="Top" Title="EDITOR"
+                                              IsPinned="{Binding IsEditorPanePinned}"
+                                              PinCommand="{Binding TogglePinCommand}"
+                                              CloseCommand="{Binding ClosePanelCommand}"
+                                              CommandParameter="{x:Static viewModels:DockablePanel.EditorPane}" />
+                <ScrollViewer x:Name="EditorScroller" Focusable="False"
                               AutomationProperties.AutomationId="EditorCanvas"
                               VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
                     <Grid controls:PageView.IsEnabled="{Binding IsPageViewEnabled}"
                           controls:PageView.Editor="{Binding ElementName=Editor}"
                           controls:PageView.Canvas="{Binding ElementName=EditorScroller}"
-                          controls:PageView.Source="{Binding ElementName=SourcePanel}">
+                          controls:PageView.Source="{Binding ElementName=SourcePanel}"
+                          controls:PageView.Setup="{Binding PageSetup}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
                         <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+
+                        <!-- The Document Sheet's paper and the Page Break rule where each Page ends,
+                             drawn behind the editing surface (which Page View makes transparent) so a
+                             break passes under the text rather than striking through it. Sized to the
+                             editor, which Page View grows in whole Pages, at the Page Setup's oriented
+                             page height (INV-058, INV-061). -->
+                        <controls:DocumentSheetBackdrop Grid.Column="1"
+                                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                        Width="{Binding ActualWidth, ElementName=Editor}"
+                                                        Height="{Binding ActualHeight, ElementName=Editor}"
+                                                        PageHeight="{Binding PageSetup.PageHeight}"
+                                                        Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
                         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
                                                      Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                                      ChangedRegions="{Binding ActiveSession.ChangeHighlight}"
@@ -1107,28 +1429,61 @@
                                                      DiagramImageRenderer="{Binding DiagramImageRenderer}"
                                                      IsDarkTheme="{Binding Appearance.IsDarkTheme}"
                                                      DocumentPrinter="{Binding DocumentPrinter}"
+                                                     PrintPreview="{Binding PrintPreview}"
+                                                     PageSetup="{Binding PageSetup}"
                                                      Renderer="{Binding Renderer}"
                                                      FollowLinkCommand="{Binding FollowLinkCommand}"
                                                      controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />
                     </Grid>
                 </ScrollViewer>
+                    </DockPanel>
+                </Border>
 
-                <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel. -->
+                <!-- Splitter between the Visual Document and the Source Panel. Hidden with the panel,
+                     and while the Source Panel is the primary Document Pane with no editor beside it
+                     (INV-063). -->
                 <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center"
                               VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                               ResizeDirection="Columns" Background="{DynamicResource BorderBrush}"
-                              Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                              Visibility="{Binding IsSourceSplitterVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                 <!-- Source Panel: the Active Session's raw, editable Markdown source, two-way bound to
                      the same canonical Markdown as the Visual Document so the two stay in sync
                      (INV-013). It is the one surface that shows Markdown syntax. Hidden until toggled
-                     on (INV-014). -->
-                <Border Grid.Column="2" Background="{DynamicResource EditorBackgroundBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
-                        Visibility="{Binding IsSourcePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                     on (INV-014); while Auto-Hidden it reappears as a Panel Flyout from the right
+                     Auto-Hide Bar (INV-062). -->
+                <Border Background="{DynamicResource EditorBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Grid.Column" Value="2" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSourcePanelVisible}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSourcePanelFlyoutOpen}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Grid.Column" Value="0" />
+                                    <Setter Property="Grid.ColumnSpan" Value="5" />
+                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                    <Setter Property="Width" Value="420" />
+                                    <Setter Property="Panel.ZIndex" Value="30" />
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#000000" Opacity="0.25" BlurRadius="16" ShadowDepth="3" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="SOURCE" Margin="14,12,14,6"
-                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                        <controls:PanelHeader DockPanel.Dock="Top" Title="SOURCE"
+                                              IsPinned="{Binding IsSourcePanelPinned}"
+                                              PinCommand="{Binding TogglePinCommand}"
+                                              CloseCommand="{Binding ClosePanelCommand}"
+                                              CommandParameter="{x:Static viewModels:DockablePanel.SourcePanel}" />
                         <!-- The Source Gutter (Line Numbers) mirrors the source TextBox's line layout.
                              The TextBox does not wrap, so each source line is a single row aligned to
                              its Line Number. -->
@@ -1165,17 +1520,54 @@
 
                 <!-- Preview Panel: the live Diagram Preview of the Mermaid Diagram at the caret,
                      rendered by the bundled Mermaid library in a WebView2. Presentation-only and hidden
-                     until toggled on (INV-047, INV-048); it follows the app light/dark theme. -->
-                <Border Grid.Column="4" Background="{DynamicResource EditorBackgroundBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
-                        Visibility="{Binding IsPreviewPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                     until toggled on (INV-047, INV-048); it follows the app light/dark theme. While
+                     Auto-Hidden it reappears as a Panel Flyout from the right Auto-Hide Bar (INV-062). -->
+                <Border Background="{DynamicResource EditorBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Grid.Column" Value="4" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPreviewPanelVisible}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsPreviewPanelFlyoutOpen}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Grid.Column" Value="0" />
+                                    <Setter Property="Grid.ColumnSpan" Value="5" />
+                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                    <Setter Property="Width" Value="420" />
+                                    <Setter Property="Panel.ZIndex" Value="30" />
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#000000" Opacity="0.25" BlurRadius="16" ShadowDepth="3" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="DIAGRAM PREVIEW" Margin="14,12,14,6"
-                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
+                        <controls:PanelHeader DockPanel.Dock="Top" Title="DIAGRAM PREVIEW"
+                                              IsPinned="{Binding IsPreviewPanelPinned}"
+                                              PinCommand="{Binding TogglePinCommand}"
+                                              CloseCommand="{Binding ClosePanelCommand}"
+                                              CommandParameter="{x:Static viewModels:DockablePanel.PreviewPanel}" />
                         <controls:MermaidPreview AutomationProperties.AutomationId="DiagramPreview"
                                                  DiagramSource="{Binding CurrentDiagramSource, ElementName=Editor}"
                                                  IsDark="{Binding Appearance.IsDarkTheme}" />
                     </DockPanel>
+                </Border>
+
+                <!-- Flyout backdrop: a click anywhere in the editing area outside the open Panel
+                     Flyout dismisses it — dismissal is presentation-only (INV-062). Sits above the
+                     docked panels (ZIndex 20) and below every flyout (ZIndex 30+). -->
+                <Border Grid.Column="0" Grid.ColumnSpan="5" Panel.ZIndex="20" Background="Transparent"
+                        Visibility="{Binding HasOpenFlyout, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding DismissFlyoutCommand}" />
+                    </Border.InputBindings>
                 </Border>
             </Grid>
 
@@ -1355,6 +1747,15 @@
                 </DockPanel>
             </Border>
             </Grid>
+
+            <!-- Right Auto-Hide Bar: one tab per Auto-Hidden right panel — Source Panel, Preview
+                 Panel — shown only while it has tabs (INV-062). -->
+            <Border Grid.Column="3" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
+                    Visibility="{Binding HasRightAutoHideTabs, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ItemsControl ItemsSource="{Binding RightAutoHideTabs}" Focusable="False" Margin="2,10,2,0"
+                              ItemTemplate="{StaticResource AutoHideTabButton}" />
+            </Border>
         </Grid>
 
         <!-- Slim status bar: the Watched File path and an unsaved-changes hint. -->
