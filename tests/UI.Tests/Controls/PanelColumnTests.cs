@@ -159,18 +159,114 @@ public sealed class PanelColumnTests
         });
     }
 
+    [Fact]
+    public void AFillColumn_WhenShown_TakesTheRemainingWidth_INV063()
+    {
+        StaThread.Run(() =>
+        {
+            var workspace = BuildWorkspace(isPanelVisible: true, editorIsFillColumn: true);
+
+            // The fill column (the primary Document Pane) takes what the pixel-sized panel leaves.
+            workspace.Editor.ActualWidth.ShouldBe(WorkspaceWidth - SplitterWidth - VisibleWidth);
+        });
+    }
+
+    [Fact]
+    public void AFillColumn_WhenHidden_TakesNoWidth_AndTheOtherPaneCanFillInstead_INV063()
+    {
+        StaThread.Run(() =>
+        {
+            var workspace = BuildWorkspace(isPanelVisible: true, editorIsFillColumn: true);
+
+            // The Editor Pane leaves the layout; the Source Panel becomes the primary pane and fills.
+            PanelColumn.SetIsVisible(workspace.Editor, false);
+            PanelColumn.SetFill(workspace.Panel, true);
+            Layout(workspace.Grid);
+
+            workspace.Editor.ActualWidth.ShouldBe(0);
+            workspace.Editor.MinWidth.ShouldBe(0);
+            workspace.Panel.ActualWidth.ShouldBe(WorkspaceWidth - SplitterWidth);
+        });
+    }
+
+    [Fact]
+    public void AFillColumn_KeepsItsMinimumWhileShown_INV063()
+    {
+        StaThread.Run(() =>
+        {
+            var workspace = BuildWorkspace(isPanelVisible: true, editorIsFillColumn: true);
+
+            workspace.Editor.MinWidth.ShouldBe(EditingMinimumWidth);
+        });
+    }
+
+    [Fact]
+    public void TurningFillOff_ReturnsTheColumnToItsPanelWidth_INV063()
+    {
+        StaThread.Run(() =>
+        {
+            var workspace = BuildWorkspace(isPanelVisible: true, editorIsFillColumn: true);
+
+            // The Source Panel fills while the Editor Pane is away, then returns to its panel width
+            // the moment the editor is docked back.
+            PanelColumn.SetIsVisible(workspace.Editor, false);
+            PanelColumn.SetFill(workspace.Panel, true);
+            Layout(workspace.Grid);
+
+            PanelColumn.SetFill(workspace.Panel, false);
+            PanelColumn.SetIsVisible(workspace.Editor, true);
+            Layout(workspace.Grid);
+
+            workspace.Panel.ActualWidth.ShouldBe(VisibleWidth);
+            workspace.Editor.ActualWidth.ShouldBe(WorkspaceWidth - SplitterWidth - VisibleWidth);
+        });
+    }
+
+    [Fact]
+    public void TurningFillOn_AfterASplitterDrag_ThenOffAgain_RestoresTheDraggedWidth_INV063()
+    {
+        StaThread.Run(() =>
+        {
+            var workspace = BuildWorkspace(isPanelVisible: true, editorIsFillColumn: true);
+            Drag(workspace, horizontalChange: -150);
+            var dragged = workspace.Panel.ActualWidth;
+            dragged.ShouldBeGreaterThan(VisibleWidth);
+
+            PanelColumn.SetIsVisible(workspace.Editor, false);
+            PanelColumn.SetFill(workspace.Panel, true);
+            Layout(workspace.Grid);
+
+            PanelColumn.SetFill(workspace.Panel, false);
+            PanelColumn.SetIsVisible(workspace.Editor, true);
+            Layout(workspace.Grid);
+
+            // The width the user dragged the panel to survives its spell as the fill column.
+            workspace.Panel.ActualWidth.ShouldBe(dragged);
+        });
+    }
+
     /// <summary>
     /// A Workspace of the shape MainWindow uses: a star-sized editing area that never shrinks below its
-    /// minimum, a Panel Splitter, and the Panel Column the behaviour drives.
+    /// minimum, a Panel Splitter, and the Panel Column the behaviour drives. With
+    /// <paramref name="editorIsFillColumn"/> the editing column is itself a fill Panel Column (the
+    /// closeable Editor Pane of INV-063) rather than a plain star column.
     /// </summary>
-    private static Workspace BuildWorkspace(bool isPanelVisible)
+    private static Workspace BuildWorkspace(bool isPanelVisible, bool editorIsFillColumn = false)
     {
         var grid = new Grid { Width = WorkspaceWidth, Height = 400 };
-        var editor = new ColumnDefinition
+        var editor = new ColumnDefinition();
+        if (editorIsFillColumn)
         {
-            Width = new GridLength(1, GridUnitType.Star),
-            MinWidth = EditingMinimumWidth,
-        };
+            PanelColumn.SetMinimumWidth(editor, EditingMinimumWidth);
+            PanelColumn.SetFill(editor, true);
+            PanelColumn.SetIsVisible(editor, true);
+        }
+        else
+        {
+            editor.Width = new GridLength(1, GridUnitType.Star);
+            editor.MinWidth = EditingMinimumWidth;
+        }
+
         var splitterColumn = new ColumnDefinition { Width = GridLength.Auto };
         var panel = new ColumnDefinition();
         grid.ColumnDefinitions.Add(editor);

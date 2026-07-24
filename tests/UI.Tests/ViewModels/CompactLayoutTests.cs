@@ -96,4 +96,48 @@ public sealed class CompactLayoutTests
         // The shown panels plus the editor's minimum never exceed the width available to them.
         (shown + CompactLayout.EditorMinWidth).ShouldBeLessThanOrEqualTo(availableWidth);
     }
+
+    [Fact]
+    public void Resolve_WithTheEditorPaneDocked_MatchesTheTwoArgumentOverload_INV059()
+    {
+        foreach (var width in new[] { 1400d, 1000d, 700d, 400d, 0d })
+        {
+            CompactLayout.Resolve(width, All, editorIsDocked: true).ShouldBe(CompactLayout.Resolve(width, All));
+        }
+    }
+
+    [Fact]
+    public void Resolve_WhenTheEditorPaneIsNotDocked_ShowsEverythingThatFitsBesideThePrimarySource_INV063()
+    {
+        // The Source Panel is the primary pane at the editor's minimum: 240 + 260 dock + 420 preview = 920.
+        var visible = CompactLayout.Resolve(availableWidth: 920, All, editorIsDocked: false);
+
+        visible.ShouldBe(new PanelVisibility(Dock: true, Source: true, Preview: true));
+    }
+
+    [Fact]
+    public void Resolve_WhenTheEditorPaneIsNotDocked_CollapsesThePreviewFirst_AndNeverTheSource_INV063()
+    {
+        // 920 does not fit 500; dropping the Preview (240 + 260 = 500) does — the primary Source survives.
+        var visible = CompactLayout.Resolve(availableWidth: 500, All, editorIsDocked: false);
+
+        visible.ShouldBe(new PanelVisibility(Dock: true, Source: true, Preview: false));
+    }
+
+    [Fact]
+    public void Resolve_WhenTheEditorPaneIsNotDocked_CollapsesTheDockNext_AndStillKeepsTheSource_INV063()
+    {
+        // Even the Side Dock must go; the primary Source Panel alone (240) is left — never collapsed.
+        var visible = CompactLayout.Resolve(availableWidth: 400, All, editorIsDocked: false);
+
+        visible.ShouldBe(new PanelVisibility(Dock: false, Source: true, Preview: false));
+    }
+
+    [Fact]
+    public void Resolve_WhenTheEditorPaneIsNotDocked_AnUnmeasuredWidthLeavesTheIntent_INV063()
+    {
+        var visible = CompactLayout.Resolve(availableWidth: 0, All, editorIsDocked: false);
+
+        visible.ShouldBe(new PanelVisibility(Dock: true, Source: true, Preview: true));
+    }
 }
