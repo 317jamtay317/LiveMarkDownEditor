@@ -80,6 +80,12 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
         private set => Set(ref _isFolderPanelVisible, value);
     }
 
+    /// <summary>
+    /// Closes the Folder Panel — the Panel Header's Close Button path, reached from the Workspace's
+    /// <c>ClosePanelCommand</c> wherever the panel stands (INV-062). Its Command Bar toggle reopens it.
+    /// </summary>
+    public void CloseFolderPanel() => IsFolderPanelVisible = false;
+
     /// <summary>Prompts for a folder and opens it as a Folder Workspace, showing the Folder Panel.</summary>
     public ICommand OpenFolderCommand { get; }
 
