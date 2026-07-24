@@ -24,6 +24,12 @@
          (not as the code's own background, so a theme recolour never re-formats the document). -->
     <SolidColorBrush x:Key="CodeShadingBrush" Color="#18000000" />
 
+    <!-- Change Highlight: the brief shade the ChangeHighlightAdorner draws behind what a live reload
+         changed, and the stronger accent for a changed Block's leading edge and a deletion seam's
+         tick. Translucent, so it tints the page rather than hiding what it marks (INV-060). -->
+    <SolidColorBrush x:Key="ChangeHighlightBrush" Color="#2E4F46E5" />
+    <SolidColorBrush x:Key="ChangeHighlightMarkerBrush" Color="#4F46E5" />
+
     <!-- Scrollbar thumb: the accent colour, muted at rest and full-strength on hover/drag. -->
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#4F46E5" Opacity="0.55" />
 

@@ -187,12 +187,13 @@ public sealed partial class MarkdownRichEditor : RichTextBox
         ContextMenu = new ContextMenu();
         ContextMenuOpening += OnContextMenuOpening;
 
-        // The Code Shading, the custom camelCase-aware spell checker, and the Find highlights all draw
-        // through adorners, which need the editor's AdornerLayer — available only once it is in the
-        // visual tree. Code Shading is attached first so its panels sit beneath the squiggles and
-        // Find highlights.
+        // The Change Highlight, the Code Shading, the custom camelCase-aware spell checker, and the
+        // Find highlights all draw through adorners, which need the editor's AdornerLayer — available
+        // only once it is in the visual tree. They are attached bottom-up: the Change Highlight's
+        // shade beneath the Code Shading's panels, and both beneath the squiggles and Find highlights.
         Loaded += (_, _) =>
         {
+            AttachChangeHighlight();
             AttachCodeShading();
             AttachSpellCheck();
             AttachFind();

@@ -35,4 +35,44 @@ public sealed class MarkdownToFlowDocumentProjectorTests
             codeSpan.ReadLocalValue(TextElement.BackgroundProperty).ShouldBe(DependencyProperty.UnsetValue);
         });
     }
+
+    [Fact]
+    public void Project_RecordsEachBlocksSourceLineRange_INV060()
+    {
+        StaThread.Run(() =>
+        {
+            //     0: # Title
+            //     1:
+            //     2: Body paragraph.
+            //     3:
+            //     4: ```
+            //     5: code
+            //     6: ```
+            var document = Projector.Project("# Title\n\nBody paragraph.\n\n```\ncode\n```");
+
+            var ranges = document.Blocks.Select(SourceLines.GetRange).ToList();
+
+            ranges.ShouldAllBe(range => range != null);
+            ranges.Select(range => range!.StartLine).ShouldBe([0, 2, 4]);
+
+            // A single-line block ends where it starts; the fenced Code Block spans its fences.
+            ranges[0]!.EndLine.ShouldBe(0);
+            ranges[1]!.EndLine.ShouldBe(2);
+            ranges[2]!.EndLine.ShouldBeGreaterThanOrEqualTo(5);
+        });
+    }
+
+    [Fact]
+    public void Project_GivenTheSameSource_RecordsTheSameSourceLineRanges_INV060()
+    {
+        StaThread.Run(() =>
+        {
+            const string Markdown = "alpha\n\n- one\n- two\n\n> quoted";
+
+            var first = Projector.Project(Markdown).Blocks.Select(SourceLines.GetRange).ToList();
+            var second = Projector.Project(Markdown).Blocks.Select(SourceLines.GetRange).ToList();
+
+            second.ShouldBe(first);
+        });
+    }
 }

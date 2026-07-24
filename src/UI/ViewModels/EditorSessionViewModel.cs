@@ -33,6 +33,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private string _conflictingDiskText = string.Empty;
     private bool _isDifferenceVisible;
     private IReadOnlyList<DifferenceLine> _differenceLines = [];
+    private IReadOnlyList<ChangedRegion> _changeHighlight = [];
 
     /// <summary>Creates a new, empty Editor Session over the given store, watcher, dispatcher, and Round-Trip.</summary>
     /// <param name="store">The port used to load and save the Watched File.</param>
@@ -69,6 +70,10 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             if (Set(ref _markdown, value))
             {
                 HasUnsavedEdits = true;
+
+                // The user has taken over the text, so a Change Highlight would no longer describe
+                // what is on screen (INV-060).
+                ChangeHighlight = [];
                 RefreshDifferenceIfVisible();
             }
         }
@@ -145,6 +150,18 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         private set => Set(ref _differenceLines, value);
     }
 
+    /// <summary>
+    /// The Change Highlight: the Changed Regions of the live reload that has just happened, for the
+    /// editor to shade briefly so the reader can see what another user or an AI changed (INV-060).
+    /// Empty whenever there is nothing to show — no reload has happened, or an edit, a load, or a
+    /// save has since made the last one stale.
+    /// </summary>
+    public IReadOnlyList<ChangedRegion> ChangeHighlight
+    {
+        get => _changeHighlight;
+        private set => Set(ref _changeHighlight, value);
+    }
+
     /// <summary>The Watched File's name, or "Untitled" when unsaved. Shown on the session's Tab.</summary>
     public string Name => FilePath is null ? "Untitled" : Path.GetFileName(FilePath);
 
@@ -171,6 +188,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         SetSourceText(document.Source.Text);
         FilePath = path;
         HasUnsavedEdits = false;
+        ChangeHighlight = [];
         ClearConflict();
         _watcher.Watch(path);
     }
@@ -182,6 +200,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         await _store.SaveAsync(path, new MarkdownDocument(Markdown)).ConfigureAwait(true);
         FilePath = path;
         HasUnsavedEdits = false;
+        ChangeHighlight = [];
         ClearConflict();
         _watcher.Watch(path);
     }
@@ -217,8 +236,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
         if (ExternalChangeReconciler.Reconcile(HasUnsavedEdits) == ExternalChangeResolution.ReloadFromDisk)
         {
-            SetSourceText(disk.Source.Text);
-            HasUnsavedEdits = false;
+            ReloadInto(disk.Source.Text);
         }
         else
         {
@@ -247,9 +265,23 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     private void ReloadFromDisk()
     {
-        SetSourceText(_conflictingDiskText);
-        HasUnsavedEdits = false;
+        var disk = _conflictingDiskText;
         ClearConflict();
+        ReloadInto(disk);
+    }
+
+    /// <summary>
+    /// Replaces the session's source text with what arrived from disk and publishes the Change
+    /// Highlight describing what that did (INV-060). The new text is set <em>first</em>: the Changed
+    /// Regions are numbered within it, so the editor must already be showing it when they arrive.
+    /// </summary>
+    /// <param name="diskText">The Watched File's contents, which become the session's text.</param>
+    private void ReloadInto(string diskText)
+    {
+        var replaced = Markdown;
+        SetSourceText(diskText);
+        HasUnsavedEdits = false;
+        ChangeHighlight = ReloadDifference.Compute(new MarkdownSource(replaced), new MarkdownSource(diskText));
     }
 
     /// <summary>Shows the Conflict Difference, or hides it when already shown (INV-021).</summary>

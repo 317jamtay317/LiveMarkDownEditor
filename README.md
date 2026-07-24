@@ -55,6 +55,10 @@ person or tool.
 - The file is **watched**, so an edit made by another person or tool reloads into the editor
   as you watch. Conflicting edits are surfaced with a difference view — neither side is ever
   silently lost.
+- **You see what changed.** A live reload briefly highlights the paragraphs the other writer
+  touched, and marks where anything was deleted, so an edit by a colleague or an AI is something
+  you can *see* rather than something that lands invisibly. It fades on its own, and it never
+  moves your cursor or scrolls the page out from under you.
 
 ### Get content in and out
 

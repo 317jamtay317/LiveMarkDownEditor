@@ -45,8 +45,14 @@ public sealed class MarkdownToFlowDocumentProjector
     /// <returns>A <see cref="FlowDocument"/> presenting the formatted content.</returns>
     public FlowDocument Project(string markdown, string? baseDirectory = null)
     {
+        var text = markdown ?? string.Empty;
         var pipeline = GfmPipeline.Create();
-        var ast = Markdig.Markdown.Parse(markdown ?? string.Empty, pipeline);
+        var ast = Markdig.Markdown.Parse(text, pipeline);
+
+        // Where each block came from in the source, recorded on the block itself. It is what lets a
+        // line-based comparison of source text — the Reload Difference behind the Change Highlight —
+        // be shown against the Visual Document (INV-060).
+        var lines = new SourceLineIndex(text);
 
         var document = new FlowDocument();
         foreach (var block in ast)
@@ -54,6 +60,7 @@ public sealed class MarkdownToFlowDocumentProjector
             var projected = ProjectBlock(block, baseDirectory);
             if (projected is not null)
             {
+                SourceLines.SetRange(projected, lines.RangeOf(block.Line, block.Span.End));
                 document.Blocks.Add(projected);
             }
         }

@@ -106,6 +106,140 @@ public sealed class EditorSessionViewModelTests
     }
 
     [Fact]
+    public async Task ExternalChange_WhenSessionClean_PublishesTheChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo\n\ncharlie");
+
+        _store.Seed(Path, "alpha\n\nBRAVO\n\ncharlie");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ChangeHighlight.ShouldHaveSingleItem()
+            .ShouldBe(new ChangedRegion(ChangedRegionKind.Changed, 2, 1));
+    }
+
+    [Fact]
+    public async Task ExternalChange_ThatDeletesContent_PublishesTheSeam_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo\n\ncharlie");
+
+        _store.Seed(Path, "alpha\n\ncharlie");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ChangeHighlight.ShouldHaveSingleItem()
+            .ShouldBe(new ChangedRegion(ChangedRegionKind.Removed, 2, 0));
+    }
+
+    [Fact]
+    public async Task ExternalChange_ThatChangesNoContent_PublishesNoChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("# Same");
+
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ChangeHighlight.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveConflict_ReloadFromDisk_PublishesTheChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        session.Markdown = "alpha\n\nmy unsaved edit";
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.ReloadFromDiskCommand.Execute(null);
+
+        // The highlight compares what was on screen — the unsaved edits the user has just given up —
+        // with the disk contents that replaced them.
+        session.ChangeHighlight.ShouldHaveSingleItem()
+            .ShouldBe(new ChangedRegion(ChangedRegionKind.Changed, 2, 1));
+    }
+
+    [Fact]
+    public async Task ResolveConflict_KeepMyEdits_PublishesNoChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        session.Markdown = "alpha\n\nmy unsaved edit";
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.KeepMyEditsCommand.Execute(null);
+
+        // Nothing was reloaded, so there is nothing on screen for a highlight to refer to.
+        session.ChangeHighlight.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task EditingMarkdown_ClearsTheChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+        session.ChangeHighlight.ShouldNotBeEmpty();
+
+        session.Markdown = "alpha\n\nBRAVO and my own edit";
+
+        session.ChangeHighlight.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task LoadAsync_ClearsTheChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+        session.ChangeHighlight.ShouldNotBeEmpty();
+
+        _store.Seed(Path, "something else entirely");
+        await session.LoadAsync(Path);
+
+        session.ChangeHighlight.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveAsync_ClearsTheChangeHighlight_INV060()
+    {
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+        session.ChangeHighlight.ShouldNotBeEmpty();
+
+        await session.SaveAsync(Path);
+
+        session.ChangeHighlight.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExternalChange_PublishesTheChangeHighlightAfterTheNewSource_INV060()
+    {
+        // The highlight's line numbers index the reloaded text, so the editor must already hold that
+        // text when the regions arrive — otherwise they would be resolved against the old document.
+        var session = await LoadedSessionAsync("alpha\n\nbravo");
+        var markdownWhenHighlightArrived = (string?)null;
+        session.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(EditorSessionViewModel.ChangeHighlight))
+            {
+                markdownWhenHighlightArrived = session.Markdown;
+            }
+        };
+
+        _store.Seed(Path, "alpha\n\nBRAVO");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        markdownWhenHighlightArrived.ShouldBe("alpha\n\nBRAVO");
+    }
+
+    [Fact]
     public async Task ExternalChange_WithUnsavedEdits_RaisesConflict_AndKeepsEdits_INV006()
     {
         var session = await LoadedSessionAsync("# Original");

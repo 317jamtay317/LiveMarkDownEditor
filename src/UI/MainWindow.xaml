@@ -1100,6 +1100,7 @@
                         <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
                         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
                                                      Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
+                                                     ChangedRegions="{Binding ActiveSession.ChangeHighlight}"
                                                      BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                                      LinkPrompt="{Binding LinkPrompt}"
                                                      FlowchartBuilder="{Binding FlowchartBuilder}"

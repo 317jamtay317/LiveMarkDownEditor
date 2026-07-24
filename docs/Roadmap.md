@@ -66,11 +66,15 @@ work that is still in review, noted inline.
 
 ## Bigger swings
 
-- [ ] **Highlight what changed on a live reload.** The clearest expression of what makes this editor
-  different: INV-007 already reloads the Visual Document when the Watched File changes under a
-  clean Editor Session, but the change lands invisibly. Briefly highlighting the changed Sections
-  would make "another user or an AI just edited your file" something the user can *see*.
-  *(The Conflict Difference, in review, supplies the comparison this needs.)*
+- [x] **Highlight what changed on a live reload.** The clearest expression of what makes this editor
+  different: INV-007 already reloaded the Visual Document when the Watched File changed under a
+  clean Editor Session, but the change landed invisibly. **Done** (INV-060): a reload now computes a
+  **Reload Difference** — the Conflict Difference's line comparison, kept down to what changed and
+  numbered within the reloaded text — and briefly shades the Blocks it touched, with a thin tick at
+  the seam of anything deleted. It lands at **Block** rather than Section granularity: a one-word
+  edit lighting up a whole page reads as noise, not as information. It holds ~2s and fades, and it
+  deliberately moves neither caret nor scroll — the reload is someone else's action, and taking the
+  reader's place away mid-read is not something they asked for.
 - [ ] **Syntax highlighting inside a Code Block.** The language tag already survives a Round-Trip.
   Coloring is view-only, so it fits the read-only overlay pattern Code Shading established.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
@@ -82,3 +86,4 @@ work that is still in review, noted inline.
   parse/emit strategy and shape set (a new `DiagramKind`). Non-graph kinds (sequence, gantt, pie) are
   not node/arrow graphs and stay text-authored with the live preview.
 - [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
+- [ ] **Alternate color Rows on tables:** The rows should have alternate colors so its easier to read and see.
