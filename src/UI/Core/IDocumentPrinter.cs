@@ -13,8 +13,13 @@ namespace UI.Core;
 /// </remarks>
 public interface IDocumentPrinter
 {
-    /// <summary>Prints the given Visual Document, prompting the user for a printer.</summary>
+    /// <summary>
+    /// Prints the given Visual Document, prompting the user for a printer. The printed page obeys the
+    /// given Page Setup — its orientation and its Print Margins — so what the user sees on screen is
+    /// the page that prints (INV-061).
+    /// </summary>
     /// <param name="document">The self-contained document to print.</param>
     /// <param name="description">A short job description shown in the print queue.</param>
-    void Print(FlowDocument document, string description);
+    /// <param name="pageSetup">The Page Setup the printed page is laid out under.</param>
+    void Print(FlowDocument document, string description, PageSetup pageSetup);
 }

@@ -25,6 +25,28 @@ public sealed partial class MarkdownRichEditor
         new PropertyMetadata(defaultValue: null));
 
     /// <summary>
+    /// Identifies the <see cref="PageSetup"/> dependency property. Print lays the printed page out
+    /// under it, so the printout matches the Document Sheet on screen; left unset, the default
+    /// (Portrait, Normal margins) applies (INV-061).
+    /// </summary>
+    public static readonly DependencyProperty PageSetupProperty = DependencyProperty.Register(
+        nameof(PageSetup),
+        typeof(PageSetup),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
+    /// Identifies the <see cref="PrintPreview"/> dependency property. Print Preview shows the
+    /// re-projected document through it; the composition root supplies the real window, and a test
+    /// supplies a fake. Left unset, Print Preview does nothing (INV-061).
+    /// </summary>
+    public static readonly DependencyProperty PrintPreviewProperty = DependencyProperty.Register(
+        nameof(PrintPreview),
+        typeof(IPrintPreview),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(defaultValue: null));
+
+    /// <summary>
     /// Identifies the <see cref="FollowLinkCommand"/> dependency property. Ctrl+Clicking a Link to a
     /// Markdown file invokes it with the file's absolute path so the shell opens it in a new Tab; a
     /// web Link is opened in the browser without it (INV-038).
@@ -43,6 +65,26 @@ public sealed partial class MarkdownRichEditor
     {
         get => (IDocumentPrinter?)GetValue(DocumentPrinterProperty);
         set => SetValue(DocumentPrinterProperty, value);
+    }
+
+    /// <summary>
+    /// The Page Setup the printed page is laid out under — the same one the Document Sheet shows, so
+    /// the printout matches the screen. When <see langword="null"/>, Print uses the default (INV-061).
+    /// </summary>
+    public PageSetup? PageSetup
+    {
+        get => (PageSetup?)GetValue(PageSetupProperty);
+        set => SetValue(PageSetupProperty, value);
+    }
+
+    /// <summary>
+    /// The Print Preview the re-projected document is shown in. Supplied by the composition root;
+    /// when <see langword="null"/>, Print Preview does nothing (INV-061).
+    /// </summary>
+    public IPrintPreview? PrintPreview
+    {
+        get => (IPrintPreview?)GetValue(PrintPreviewProperty);
+        set => SetValue(PrintPreviewProperty, value);
     }
 
     /// <summary>
@@ -92,7 +134,25 @@ public sealed partial class MarkdownRichEditor
         }
 
         var document = _projector.Project(Markdown, BaseDirectory);
-        DocumentPrinter.Print(document, "LiveMarkDownEditor document");
+        DocumentPrinter.Print(document, "LiveMarkDownEditor document", PageSetup ?? PageSetup.Default);
+    }
+
+    /// <summary>
+    /// Shows the Print Preview: the whole document laid out into the very pages Print would produce.
+    /// Like Print, the document is re-projected from the current <see cref="Markdown"/> source, so a
+    /// Folded Section's hidden Section Body is previewed too and the live editing surface is left
+    /// undisturbed (INV-034). Previewing reads the document and changes nothing (INV-061). Does
+    /// nothing when no <see cref="PrintPreview"/> is set.
+    /// </summary>
+    public void ShowPrintPreview()
+    {
+        if (PrintPreview is null)
+        {
+            return;
+        }
+
+        var document = _projector.Project(Markdown, BaseDirectory);
+        PrintPreview.Show(document, PageSetup ?? PageSetup.Default, "LiveMarkDownEditor document");
     }
 
     private void OnRequestNavigate(object sender, RequestNavigateEventArgs e)

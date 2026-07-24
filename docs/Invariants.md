@@ -1222,14 +1222,16 @@ and tested.
 
 ### INV-058 — Page View lays the Visual Document on a Document Sheet of whole US Letter Pages
 - **Statement:** In **Page View** the Visual Document is laid out on a **Document Sheet** of a single
-  fixed width — the US Letter width — so every element it contains, **including tables**, is confined
-  to that width no matter how wide the editing surface is; the Sheet floats on the editing canvas and
-  scrolls as one piece. Page View is **on by default**. It is presentation-only: turning it on or off
-  never changes the Markdown Document or the result of a Capture. Two further rules bound the Sheet:
-  - **The Sheet is always a whole number of Pages.** A **Page** is US Letter — 8.5 × 11 inches — so a
-    Visual Document shorter than one Page still shows a full Page, and the Sheet gains its next Page
-    the moment the content outgrows the last one, whether that content arrives by typing, a reload, or
-    an Unfold. The Sheet never ends partway down a Page.
+  fixed width — the width the Page Setup's Page Orientation gives the US Letter Page (INV-061) — so
+  every element it contains, **including tables**, is confined to that width no matter how wide the
+  editing surface is; the Sheet floats on the editing canvas and scrolls as one piece. Page View is
+  **on by default**. It is presentation-only: turning it on or off never changes the Markdown Document
+  or the result of a Capture. Two further rules bound the Sheet:
+  - **The Sheet is always a whole number of Pages.** A **Page** is US Letter, turned by the Page
+    Orientation — 8.5 × 11 inches portrait, 11 × 8.5 landscape — so a Visual Document shorter than one
+    Page still shows a full Page, and the Sheet gains its next Page the moment the content outgrows
+    the last one, whether that content arrives by typing, a reload, or an Unfold. The Sheet never ends
+    partway down a Page.
   - **A Page Break marks where a Page ends; it does not repaginate.** The boundary between Pages is
     drawn as a rule across the Sheet, behind the Visual Document so it never strikes through text.
     Content flows continuously across it: a Page Break moves nothing onto the next Page, and like the
@@ -1243,19 +1245,20 @@ and tested.
   document out on a Document Sheet of one fixed width confines every element to the same page width and
   makes the layout width independent of the window width, so a table can no longer outrun the prose and
   maximising no longer reflows a single line.
-- **Enforced by:** `DocumentSheet`, the pure rule that gives the Sheet its fixed `Width` and `PageHeight`
-  (the US Letter page), its page `PagePadding`, and the whole-Page arithmetic — `PageCount`, `HeightFor`,
-  and the `TrailingSpaceFor` filler that carries the Sheet down to the end of its last Page; `PageView`,
-  the behaviour that puts the editing surface into Page View — fixing the Visual Document's width to the
-  Sheet, snapping the Sheet to whole Pages whenever its content's height changes, floating it on the
-  outer scrolling canvas, and keeping the caret in view by driving that canvas — and restores the plain
-  full-pane surface when turned off; `DocumentSheetBackdrop`, which draws the Sheet's paper and its Page
-  Breaks behind the (then-transparent) editing surface, so a break passes under the text; and
-  `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by default).
-- **Tested by:** `DocumentSheetTests` (the Sheet's `Width` and `PageHeight` are the US Letter page; its
-  `PagePadding` insets the content from every edge; content that fits is one Page and content that
-  overflows adds the next; `HeightFor` is always a whole number of Pages; and `TrailingSpaceFor` fills
-  out the rest of the last Page without ever going negative) and `WorkspaceViewModelPageViewTests` (Page
+- **Enforced by:** `DocumentSheet`, the pure rule that holds the US Letter page's `Width` and
+  `PageHeight` and the whole-Page arithmetic — `PageCount`, `HeightFor`, and the `TrailingSpaceFor`
+  filler that carries the Sheet down to the end of its last Page — each parameterized by the page
+  height the Page Setup's orientation yields (INV-061); `PageView`, the behaviour that puts the editing
+  surface into Page View — fixing the Visual Document's width to the Sheet at the Page Setup's oriented
+  width and Print Margins, snapping the Sheet to whole Pages whenever its content's height changes,
+  floating it on the outer scrolling canvas, and keeping the caret in view by driving that canvas — and
+  restores the plain full-pane surface when turned off; `DocumentSheetBackdrop`, which draws the Sheet's
+  paper and its Page Breaks behind the (then-transparent) editing surface, so a break passes under the
+  text; and `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by default).
+- **Tested by:** `DocumentSheetTests` (the `Width` and `PageHeight` are the US Letter page; content that
+  fits is one Page and content that overflows adds the next; `HeightFor` is always a whole number of
+  Pages; `TrailingSpaceFor` fills out the rest of the last Page without ever going negative; and the
+  arithmetic holds at the landscape page height too) and `WorkspaceViewModelPageViewTests` (Page
   View is on by default; `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's
   Markdown Document unchanged).
 
@@ -1335,6 +1338,49 @@ and tested.
   records its source line range), and `EditorSessionViewModelTests.*_INV060` (a clean reload publishes
   the Change Highlight; resolving a Conflict by reloading publishes it; an edit, a load, and a save
   clear it; a content-free change publishes nothing).
+
+### INV-061 — One Page Setup shapes the Sheet, the Print Preview, and the printout alike
+- **Statement:** The **Page Setup** — a Page Orientation together with Print Margins — is a single,
+  editor-wide choice, and every paged surface obeys it: the Document Sheet in Page View lays out at
+  the oriented Page size with the Print Margins as its page margins; the Print Preview paginates at
+  that size and those margins; and Print asks the printer for the same orientation and lays the
+  printed page out with the same margins. Five rules bound it:
+  - **One setup, every surface.** The Sheet, the Print Preview, and the printout never disagree about
+    the Page's orientation or margins — what the user sees on screen is the page that prints.
+  - **A Page is US Letter, whichever way it turns.** Portrait is 8.5 × 11 inches (816 × 1056
+    device-independent units at 96 dpi); Landscape is 11 × 8.5 (1056 × 816). No other page size is
+    reachable.
+  - **Margins always leave room to write.** Each Print Margin is non-negative, and the four together
+    always leave a positive writable area on the Page in either orientation — a Page Setup that would
+    leave none cannot be constructed. The Margin Presets are Normal (1 inch all around, the default),
+    Narrow (0.5 inch), Moderate (1 inch top and bottom, 0.75 inch left and right), and Wide (1 inch
+    top and bottom, 2 inches left and right); Custom takes the user's own values through the Custom
+    Margins Prompt, which changes nothing when dismissed (the INV-030 discipline).
+  - **Changing the Page Setup is presentation-and-output only.** It never changes any Markdown
+    Document or the result of a Capture. It is remembered across runs as an editor-wide preference
+    (the Workspace State discipline of INV-037), and a missing or unreadable persisted setup loads as
+    the default — Portrait with Normal margins — never stopping the app from starting.
+  - **Previewing is not an edit.** The Print Preview re-projects the whole Markdown source the way
+    Print does (INV-034) — a Folded Section's hidden Section Body is previewed too — and changes
+    nothing: not the Markdown Document, the Watched File, nor the unsaved-edits state.
+- **Enforced by:** `PageSetup`, the value object composing a `PageOrientation` with `PrintMargins`
+  (whose guards refuse a negative margin and margins that leave no writable area) and yielding the
+  oriented `PageWidth`/`PageHeight` from `DocumentSheet`'s US Letter dimensions; `MarginPreset`, the
+  named margin choices; `WorkspaceViewModel.PageSetup` with `SetPageOrientationCommand` and
+  `SetMarginPresetCommand`, loading through and persisting through the `IPageSetupStore` port
+  (`JsonPageSetupStore`, which loads a missing or corrupt file as the default) and asking custom
+  values through the `ICustomMarginsPrompt` port; `PageView`/`DocumentSheetBackdrop` laying the Sheet
+  out at the setup's size and margins (INV-058); `PrintDialogDocumentPrinter` setting the print
+  ticket's orientation and the document's page size and margins from the same setup; and
+  `PrintPreviewViewModel` paginating the re-projected document under the same setup and printing
+  through the same `IDocumentPrinter`.
+- **Tested by:** `PageSetupTests.*_INV061` (the oriented Page sizes; the margin guards; the preset
+  values; the default), `WorkspaceViewModelPageSetupTests.*_INV061` (the default setup; setting the
+  orientation and a preset persists and never changes the Active Session's Markdown; a dismissed
+  Custom Margins Prompt changes nothing; a stored setup is restored), `JsonPageSetupStoreTests.*_INV061`
+  (a round-trip preserves the setup; a missing or corrupt file loads the default), and
+  `PrintPreviewViewModelTests.*_INV061` (the preview paginates at the setup's size and margins;
+  printing sends the same document and setup; previewing changes no document).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

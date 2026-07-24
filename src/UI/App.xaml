@@ -1,6 +1,7 @@
 <Application x:Class="UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UI.Controls"
              ShutdownMode="OnMainWindowClose">
     <!-- Quit when the editor window closes, not when the last window does. The Mermaid image renderer
          (WebView2MermaidImageRenderer) keeps a hidden, off-screen host Window alive for the life of the
@@ -28,6 +29,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <controls:EqualityConverter x:Key="EqualityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

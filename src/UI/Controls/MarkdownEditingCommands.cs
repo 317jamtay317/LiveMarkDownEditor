@@ -23,6 +23,17 @@ public static class MarkdownEditingCommands
         [new KeyGesture(Key.P, ModifierKeys.Control)]);
 
     /// <summary>
+    /// Opens the Print Preview (Ctrl+Shift+P): the whole document — re-projected from the current
+    /// Markdown source, exactly as <see cref="Print"/> re-projects it — laid out into the very pages
+    /// Print would produce under the one editor-wide Page Setup. Previewing is not an edit (INV-061).
+    /// </summary>
+    public static RoutedUICommand PrintPreview { get; } = new(
+        "Print preview",
+        nameof(PrintPreview),
+        typeof(MarkdownEditingCommands),
+        [new KeyGesture(Key.P, ModifierKeys.Control | ModifierKeys.Shift)]);
+
+    /// <summary>
     /// Copies the selection's Markdown source to the clipboard (Ctrl+Shift+C), for pasting into a
     /// Markdown-aware target. A partial selection copies the whole blocks it spans. Copying is not an
     /// edit (INV-035).

@@ -1,17 +1,20 @@
 # PageView
 
 **Page View**: the presentation mode that lays the [MarkdownRichEditor](MarkdownRichEditor.md)'s Visual
-Document out on a **Document Sheet** of whole 8.5 × 11 **Pages** floating on a scrolling canvas — the
+Document out on a **Document Sheet** of whole US Letter **Pages** floating on a scrolling canvas — the
 way a word processor shows a page — so every element, **tables included**, is confined to one page width
 instead of stretching to the pane, and the Sheet gains its next Page as soon as the content needs it.
-Page View is **on by default**; turned off, the editor fills the pane as a plain editing surface. It is
-presentation-only: turning it on or off never changes the Markdown Document or the result of a Capture
-(INV-058).
+The Page is turned and inset by the one editor-wide **Page Setup**: its **Page Orientation** (8.5 × 11
+portrait, 11 × 8.5 landscape) and its **Print Margins** — the same setup the Print Preview and the
+printout obey (INV-061). Page View is **on by default**; turned off, the editor fills the pane as a
+plain editing surface. It is presentation-only: turning it on or off never changes the Markdown
+Document or the result of a Capture (INV-058).
 
 - **Class:** `UI.Controls.PageView` (a `static` attached behaviour)
-- **Rule:** `UI.Controls.DocumentSheet` — the Page's `Width` (816) and `PageHeight` (1056), the US Letter
-  page at 96 dpi; the page `PagePadding`; and the whole-Page arithmetic (`PageCount`, `HeightFor`,
-  `TrailingSpaceFor`)
+- **Rule:** `UI.Controls.DocumentSheet` — the US Letter page's `Width` (816) and `PageHeight` (1056) at
+  96 dpi, and the whole-Page arithmetic (`PageCount`, `HeightFor`, `TrailingSpaceFor`), each
+  parameterized by the page height the Page Setup's orientation yields
+- **Setup:** `UI.Core.PageSetup` — the orientation and margins the Sheet is laid out under (INV-061)
 - **Sheet:** [DocumentSheetBackdrop](DocumentSheetBackdrop.md) — the paper and the Page Break rules,
   drawn behind the editor
 - **Canvas colour:** `EditorCanvasBrush` (in `Palette.Light.xaml` / `Palette.Dark.xaml`)
@@ -34,11 +37,13 @@ editor, inside an outer `ScrollViewer` (the canvas). On enter it:
 
 - **stops the editor scrolling itself** (`VerticalScrollBarVisibility = Disabled`) so it grows to its
   content's full height and the whole Sheet moves as one piece when the canvas scrolls;
-- **fixes the editor to the Sheet** — `Width = DocumentSheet.Width`, page `Padding`, a 1px edge — and
-  its Grid column to `Auto`, so `[gutter | Sheet]` hugs its content;
-- **snaps the Sheet to whole Pages**: the filler `DocumentSheet.TrailingSpaceFor` asks for is added to
-  the Sheet's bottom page margin, so a short document still shows a full 8.5 × 11 Page and the Sheet
-  gains its next Page the moment the content outgrows the last. It re-snaps on the editor's
+- **fixes the editor to the Sheet** — `Width` at the Page Setup's oriented page width, its Print
+  Margins as the page `Padding`, a 1px edge — and its Grid column to `Auto`, so `[gutter | Sheet]`
+  hugs its content. Changing the `Setup` while in Page View re-lays the Sheet out (INV-061);
+- **snaps the Sheet to whole Pages**: the filler `DocumentSheet.TrailingSpaceFor` asks for — at the
+  Page Setup's oriented page height — is added to the Sheet's bottom page margin, so a short document
+  still shows a full Page and the Sheet gains its next Page the moment the content outgrows the last.
+  It re-snaps on the editor's
   `SizeChanged` — the one signal that covers every way the content's height can change (typing, a
   reload, an Unfold) — coalesced to one snap per dispatcher cycle, since setting the filler resizes the
   Sheet and lands straight back there. Because the filler rides on the page margin, the Sheet's own
@@ -68,6 +73,7 @@ Set these on the surface `Grid`:
 | `Editor` | `MarkdownRichEditor` | The editing surface laid out as a Document Sheet. |
 | `Canvas` | `ScrollViewer` | The outer scroller the Sheet floats on and that follows the caret. |
 | `Source` | `TextBoxBase` | The Source Panel to keep Scroll-Synced with the page. |
+| `Setup` | `PageSetup` | The Page Setup the Sheet is laid out under — orientation and Print Margins. Bind to `WorkspaceViewModel.PageSetup`; left unset, the default (Portrait, Normal margins) applies (INV-061). |
 
 ## Usage
 
@@ -77,7 +83,8 @@ Set these on the surface `Grid`:
     <Grid controls:PageView.IsEnabled="{Binding IsPageViewEnabled}"
           controls:PageView.Editor="{Binding ElementName=Editor}"
           controls:PageView.Canvas="{Binding ElementName=EditorScroller}"
-          controls:PageView.Source="{Binding ElementName=SourcePanel}">
+          controls:PageView.Source="{Binding ElementName=SourcePanel}"
+          controls:PageView.Setup="{Binding PageSetup}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />

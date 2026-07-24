@@ -1,9 +1,10 @@
 # DocumentSheetBackdrop
 
 The **DocumentSheetBackdrop** draws the **Document Sheet** itself in [Page View](PageView.md): the paper
-the Visual Document is laid out on, and the **Page Break** rule where each 8.5 × 11 **Page** ends and the
-next begins. It is the visible half of the Sheet; how tall the Sheet is — always a whole number of Pages
-— is decided by the pure [`DocumentSheet`](../../src/UI/Controls/DocumentSheet.cs) rule and applied by
+the Visual Document is laid out on, and the **Page Break** rule where each US Letter **Page** — turned
+by the **Page Setup**'s **Page Orientation** (INV-061) — ends and the next begins. It is the visible
+half of the Sheet; how tall the Sheet is — always a whole number of Pages — is decided by the pure
+[`DocumentSheet`](../../src/UI/Controls/DocumentSheet.cs) rule and applied by
 [PageView](PageView.md) (INV-058).
 
 - **Class:** `UI.Controls.DocumentSheetBackdrop` (derives from `System.Windows.FrameworkElement`)
@@ -33,9 +34,10 @@ Page ends; it does not push the line that straddles it onto the next Page (INV-0
   stretched taller than the Sheet by the canvas it sits in, so stretching to the cell would paint paper
   below the Sheet's own bottom edge.
 - **A rule per Page boundary.** `OnRender` fills its whole area with `SheetBrush`, then draws a one-unit
-  rule at each multiple of `DocumentSheet.PageHeight` below the bottom edge — half-pixel offset so it
-  lands on a device pixel instead of blurring across two. The Sheet's own bottom is a page edge already,
-  so it gets no rule.
+  rule at each multiple of `PageHeight` below the bottom edge — half-pixel offset so it lands on a
+  device pixel instead of blurring across two. The Sheet's own bottom is a page edge already, so it
+  gets no rule. `PageHeight` is bound to the Page Setup's oriented page height (1056 units upright,
+  816 turned), so the rules follow the Page Orientation (INV-061).
 - **Recolour is free.** Both brushes are resource references (`EditorBackgroundBrush`, `PageBreakBrush`)
   declared `AffectsRender`, so a theme switch repaints the Sheet and never reflows the document.
 - **Invisible outside Page View.** Its `Visibility` is bound to `WorkspaceViewModel.IsPageViewEnabled`;
@@ -49,6 +51,7 @@ Page ends; it does not push the line that straddles it onto the next Page (INV-0
 | --- | --- | --- |
 | `SheetBrush` | `Brush` | The paper the Visual Document is laid out on. Defaults to the `EditorBackgroundBrush` of the active palette. |
 | `PageBreakBrush` | `Brush` | The rule drawn where one Page ends and the next begins. Defaults to the `PageBreakBrush` of the active palette. |
+| `PageHeight` | `double` | One Page's height in device-independent units — where the Page Break rules fall. Bind to `WorkspaceViewModel.PageSetup.PageHeight` so the rules follow the Page Orientation (INV-061). Defaults to the upright US Letter page (1056). |
 
 ## Usage
 
@@ -58,6 +61,7 @@ Page ends; it does not push the line that straddles it onto the next Page (INV-0
                                 HorizontalAlignment="Left" VerticalAlignment="Top"
                                 Width="{Binding ActualWidth, ElementName=Editor}"
                                 Height="{Binding ActualHeight, ElementName=Editor}"
+                                PageHeight="{Binding PageSetup.PageHeight}"
                                 Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
 <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1" ... />
 ```

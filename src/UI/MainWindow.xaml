@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:UI.Controls"
+        xmlns:core="clr-namespace:UI.Core"
         mc:Ignorable="d"
         Title="{Binding ActiveSession.Title, StringFormat='{}{0} — LiveMarkDownEditor', FallbackValue='LiveMarkDownEditor'}"
         Icon="pack://application:,,,/Assets/app.ico"
@@ -19,6 +20,8 @@
         <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
                     CommandParameter="{Binding ActiveSession}" />
         <KeyBinding Modifiers="Ctrl" Key="P" Command="controls:MarkdownEditingCommands.Print"
+                    CommandTarget="{Binding ElementName=Editor}" />
+        <KeyBinding Modifiers="Ctrl+Shift" Key="P" Command="controls:MarkdownEditingCommands.PrintPreview"
                     CommandTarget="{Binding ElementName=Editor}" />
         <KeyBinding Modifiers="Ctrl" Key="F" Command="controls:MarkdownEditingCommands.ShowFind"
                     CommandTarget="{Binding ElementName=Editor}" />
@@ -148,6 +151,20 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print preview"
+                                  Command="controls:MarkdownEditingCommands.PrintPreview"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Print preview"
+                                                     Detail="See the document laid out into the pages Print would produce." Gesture="Ctrl+Shift+P" />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.PrintPreview}" />
+                                    <TextBlock Text="Print preview…  (Ctrl+Shift+P)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
                         <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Print"
                                   Command="controls:MarkdownEditingCommands.Print"
                                   CommandTarget="{Binding ElementName=Editor}">
@@ -668,6 +685,105 @@
                     </Button.Style>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.TogglePageView}" />
                 </Button>
+                <!-- Page Setup: the one editor-wide orientation and Print Margins, obeyed by the
+                     Document Sheet, the Print Preview, and the printout alike (INV-061). Always a
+                     dropdown (like the Export Menu), so it never joins the View group's overflow. -->
+                <Menu DockPanel.Dock="Left" Style="{StaticResource CommandMenu}">
+                    <MenuItem Style="{StaticResource CommandMenuItem}"
+                              AutomationProperties.Name="Page setup">
+                        <MenuItem.ToolTip>
+                            <controls:CommandTip Heading="Page setup"
+                                                 Detail="Choose the page's orientation and print margins — on screen and in print alike." />
+                        </MenuItem.ToolTip>
+                        <MenuItem.Header>
+                            <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.PageSetup}" />
+                        </MenuItem.Header>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Portrait orientation"
+                                  IsChecked="{Binding DataContext.PageSetup.Orientation, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Portrait, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetPageOrientationCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:PageOrientation.Portrait}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Portrait"
+                                                     Detail="The page upright: 8.5 × 11 inches." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Portrait" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Landscape orientation"
+                                  IsChecked="{Binding DataContext.PageSetup.Orientation, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Landscape, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetPageOrientationCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:PageOrientation.Landscape}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Landscape"
+                                                     Detail="The page on its side: 11 × 8.5 inches." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Landscape" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Normal margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Normal, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Normal}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Normal margins"
+                                                     Detail="One inch on every side." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Normal margins (1&quot;)" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Narrow margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Narrow, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Narrow}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Narrow margins"
+                                                     Detail="Half an inch on every side." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Narrow margins (0.5&quot;)" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Moderate margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Moderate, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Moderate}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Moderate margins"
+                                                     Detail="One inch top and bottom, three-quarters of an inch left and right." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Moderate margins" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Wide margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Wide, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.SetMarginPresetCommand, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  CommandParameter="{x:Static core:MarginPreset.Wide}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Wide margins"
+                                                     Detail="One inch top and bottom, two inches left and right." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Wide margins" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuToggleEntry}" AutomationProperties.Name="Custom margins"
+                                  IsChecked="{Binding DataContext.MarginPreset, Mode=OneWay, Converter={StaticResource EqualityConverter}, ConverterParameter=Custom, RelativeSource={RelativeSource AncestorType=Menu}}"
+                                  Command="{Binding DataContext.EditCustomMarginsCommand, RelativeSource={RelativeSource AncestorType=Menu}}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Custom margins"
+                                                     Detail="Enter the four margins yourself, in inches. Cancelling changes nothing." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <TextBlock Text="Custom margins…" VerticalAlignment="Center" />
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
                 <Rectangle Style="{StaticResource CommandSeparator}"
                            controls:CommandBarPanel.OverflowGroup="View" controls:CommandBarPanel.CollapseOrder="0" />
                 <Button Style="{StaticResource IconFormatButton}"
@@ -1091,7 +1207,8 @@
                     <Grid controls:PageView.IsEnabled="{Binding IsPageViewEnabled}"
                           controls:PageView.Editor="{Binding ElementName=Editor}"
                           controls:PageView.Canvas="{Binding ElementName=EditorScroller}"
-                          controls:PageView.Source="{Binding ElementName=SourcePanel}">
+                          controls:PageView.Source="{Binding ElementName=SourcePanel}"
+                          controls:PageView.Setup="{Binding PageSetup}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -1099,14 +1216,16 @@
 
                         <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
 
-                        <!-- The Document Sheet's paper and the Page Break rule where each 8.5 x 11 Page
-                             ends, drawn behind the editing surface (which Page View makes transparent)
-                             so a break passes under the text rather than striking through it. Sized to
-                             the editor, which Page View grows in whole Pages (INV-058). -->
+                        <!-- The Document Sheet's paper and the Page Break rule where each Page ends,
+                             drawn behind the editing surface (which Page View makes transparent) so a
+                             break passes under the text rather than striking through it. Sized to the
+                             editor, which Page View grows in whole Pages, at the Page Setup's oriented
+                             page height (INV-058, INV-061). -->
                         <controls:DocumentSheetBackdrop Grid.Column="1"
                                                         HorizontalAlignment="Left" VerticalAlignment="Top"
                                                         Width="{Binding ActualWidth, ElementName=Editor}"
                                                         Height="{Binding ActualHeight, ElementName=Editor}"
+                                                        PageHeight="{Binding PageSetup.PageHeight}"
                                                         Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
@@ -1118,6 +1237,8 @@
                                                      DiagramImageRenderer="{Binding DiagramImageRenderer}"
                                                      IsDarkTheme="{Binding Appearance.IsDarkTheme}"
                                                      DocumentPrinter="{Binding DocumentPrinter}"
+                                                     PrintPreview="{Binding PrintPreview}"
+                                                     PageSetup="{Binding PageSetup}"
                                                      Renderer="{Binding Renderer}"
                                                      FollowLinkCommand="{Binding FollowLinkCommand}"
                                                      controls:ScrollSync.SyncPartner="{Binding ElementName=SourcePanel}" />

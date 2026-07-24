@@ -1,5 +1,6 @@
 using Shouldly;
 using UI.Controls;
+using UI.Core;
 using UI.Tests.TestDoubles;
 using UI.Tests.Wysiwyg;
 using Xunit;
@@ -86,6 +87,46 @@ public sealed class MarkdownRichEditorPrintTests
             MarkdownEditingCommands.Print.Execute(parameter: null, target: editor);
 
             editor.Markdown.ShouldBe("# Title\n\nBody text");
+        });
+    }
+
+    [Fact]
+    public void Print_SendsThePageSetupToThePrinter_INV061()
+    {
+        StaThread.Run(() =>
+        {
+            var printer = new FakeDocumentPrinter();
+            var setup = new PageSetup(PageOrientation.Landscape, PrintMargins.For(MarginPreset.Narrow));
+            var editor = new MarkdownRichEditor
+            {
+                Markdown = "# Title\n\nBody text",
+                DocumentPrinter = printer,
+                PageSetup = setup,
+            };
+
+            MarkdownEditingCommands.Print.Execute(parameter: null, target: editor);
+
+            // One Page Setup shapes the Sheet and the printout alike — the printer is asked for
+            // exactly the setup the user sees on screen.
+            printer.PrintedSetup.ShouldBe(setup);
+        });
+    }
+
+    [Fact]
+    public void Print_WithNoPageSetup_SendsTheDefault_INV061()
+    {
+        StaThread.Run(() =>
+        {
+            var printer = new FakeDocumentPrinter();
+            var editor = new MarkdownRichEditor
+            {
+                Markdown = "# Title\n\nBody text",
+                DocumentPrinter = printer,
+            };
+
+            MarkdownEditingCommands.Print.Execute(parameter: null, target: editor);
+
+            printer.PrintedSetup.ShouldBe(PageSetup.Default);
         });
     }
 }

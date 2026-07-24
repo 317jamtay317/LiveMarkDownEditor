@@ -71,6 +71,8 @@ public sealed partial class MarkdownRichEditor : RichTextBox
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.Print, (_, _) => PrintVisualDocument()));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.PrintPreview, (_, _) => ShowPrintPreview()));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.CopyAsMarkdown,
             (_, _) => CopySelectionAsMarkdown(),
             (_, e) => e.CanExecute = !Selection.IsEmpty));

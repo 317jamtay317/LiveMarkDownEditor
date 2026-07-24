@@ -25,17 +25,6 @@ public sealed class DocumentSheetTests
         DocumentSheet.PageHeight.ShouldBe(1056d);
     }
 
-    [Fact]
-    public void PagePadding_InsetsTheContentFromEverySheetEdge_INV058()
-    {
-        var padding = DocumentSheet.PagePadding;
-
-        padding.Left.ShouldBeGreaterThan(0d);
-        padding.Top.ShouldBeGreaterThan(0d);
-        padding.Right.ShouldBeGreaterThan(0d);
-        padding.Bottom.ShouldBeGreaterThan(0d);
-    }
-
     [Theory]
     [InlineData(0d)]
     [InlineData(1d)]
@@ -87,5 +76,37 @@ public sealed class DocumentSheetTests
         // A content height a hair over the Page — within the sub-pixel tolerance that keeps a rounding
         // overshoot from adding a whole empty Page — must still leave the Sheet a non-negative filler.
         DocumentSheet.TrailingSpaceFor(1056.4d).ShouldBe(0d);
+    }
+
+    // The Page Setup's orientation turns the Page (INV-061), so the whole-Page arithmetic takes the
+    // oriented page height: 816 units when the US Letter Page lies landscape.
+
+    [Theory]
+    [InlineData(0d, 1)]
+    [InlineData(816d, 1)]
+    [InlineData(817d, 2)]
+    [InlineData(1632d, 2)]
+    [InlineData(1633d, 3)]
+    public void PageCount_AtTheLandscapePageHeight_CountsLandscapePages_INV058(double contentHeight, int expected)
+    {
+        DocumentSheet.PageCount(contentHeight, pageHeight: 816d).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(0d, 816d)]
+    [InlineData(400d, 816d)]
+    [InlineData(1000d, 1632d)]
+    public void HeightFor_AtTheLandscapePageHeight_IsAlwaysAWholeNumberOfLandscapePages_INV058(
+        double contentHeight, double expected)
+    {
+        DocumentSheet.HeightFor(contentHeight, pageHeight: 816d).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void TrailingSpaceFor_AtTheLandscapePageHeight_FillsOutTheRestOfTheLastPage_INV058()
+    {
+        DocumentSheet.TrailingSpaceFor(400d, pageHeight: 816d).ShouldBe(416d);
+        DocumentSheet.TrailingSpaceFor(816d, pageHeight: 816d).ShouldBe(0d);
+        DocumentSheet.TrailingSpaceFor(double.NaN, pageHeight: 816d).ShouldBe(816d);
     }
 }

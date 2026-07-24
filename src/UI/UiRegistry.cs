@@ -28,6 +28,15 @@ public static class UiRegistry
             services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
             services.AddSingleton<IFlowchartBuilder, WindowFlowchartBuilder>();
             services.AddSingleton<IDocumentPrinter, PrintDialogDocumentPrinter>();
+            services.AddSingleton<IPrintPreview, WindowPrintPreview>();
+
+            // The one editor-wide Page Setup, persisted beside the Workspace State (INV-061).
+            services.AddSingleton<ICustomMarginsPrompt, WindowCustomMarginsPrompt>();
+            services.AddSingleton<IPageSetupStore>(_ => new JsonPageSetupStore(
+                System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "LiveMarkDownEditor",
+                    "page-setup.json")));
             services.AddSingleton<IJumpList, WpfJumpList>();
             services.AddSingleton<IThemeService, WpfThemeService>();
             services.AddSingleton<IMarkdownRoundTrip, Wysiwyg.FlowDocumentRoundTrip>();

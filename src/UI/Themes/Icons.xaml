@@ -43,6 +43,14 @@
          sheet emerging below. The one shape every editor agrees means "print". -->
     <Geometry x:Key="Icon.Print">M7 8 V3 H17 V8 M4 8 H20 V16 H4 Z M7 12 H17 M8 16 H16 V21 H8 Z</Geometry>
 
+    <!-- Print Preview: a page with a magnifier over it — the printed page, being looked at before it
+         is printed (INV-061). -->
+    <Geometry x:Key="Icon.PrintPreview">M6 3 H18 V21 H6 Z M11.5 8 A3.2 3.2 0 1 1 11.5 14.4 A3.2 3.2 0 1 1 11.5 8 Z M13.8 13.5 L16.5 16.5</Geometry>
+
+    <!-- Page Setup: a page with its margin drawn inside — the frame the Print Margins inset and the
+         Page Orientation turns (INV-061). -->
+    <Geometry x:Key="Icon.PageSetup">M6 3 H18 V21 H6 Z M9 6.5 H15 V17.5 H9 Z</Geometry>
+
     <!-- A clock, for Open Recent: the "history / recently used" glyph, a circle with two hands. -->
     <Geometry x:Key="Icon.OpenRecent">M12 4 A8 8 0 0 1 12 20 A8 8 0 0 1 12 4 Z M12 8 V12 L15 14</Geometry>
 

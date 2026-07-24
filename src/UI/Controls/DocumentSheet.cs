@@ -1,5 +1,3 @@
-using System.Windows;
-
 namespace UI.Controls;
 
 /// <summary>
@@ -30,44 +28,67 @@ public static class DocumentSheet
     public const double PageHeight = 1056d;
 
     /// <summary>
-    /// The Document Sheet's page margins: the inset from the Sheet's edges to its content, the way a
-    /// word processor leaves a margin around the page. Presentation-only (INV-058).
-    /// </summary>
-    public static Thickness PagePadding { get; } = new(left: 72d, top: 64d, right: 72d, bottom: 64d);
-
-    /// <summary>
-    /// The number of Pages the Sheet needs to hold content of the given height: one Page while the
-    /// content fits on it, and a further Page for each overflow — so the Sheet gains its next Page as
-    /// soon as the content needs it (INV-058).
+    /// The number of Pages the Sheet needs to hold content of the given height, at the upright US
+    /// Letter page height: one Page while the content fits on it, and a further Page for each overflow
+    /// — so the Sheet gains its next Page as soon as the content needs it (INV-058).
     /// </summary>
     /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
     /// <returns>The Page count — never fewer than one, even before the surface has been measured.</returns>
-    public static int PageCount(double contentHeight)
+    public static int PageCount(double contentHeight) => PageCount(contentHeight, PageHeight);
+
+    /// <summary>
+    /// The number of Pages the Sheet needs to hold content of the given height, counted by the page
+    /// height the Page Setup's orientation yields — 1056 units upright, 816 turned (INV-058, INV-061).
+    /// </summary>
+    /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
+    /// <param name="pageHeight">One Page's height, in device-independent units.</param>
+    /// <returns>The Page count — never fewer than one, even before the surface has been measured.</returns>
+    public static int PageCount(double contentHeight, double pageHeight)
     {
-        if (double.IsNaN(contentHeight) || contentHeight <= PageHeight + Tolerance)
+        if (double.IsNaN(contentHeight) || contentHeight <= pageHeight + Tolerance)
         {
             return 1;
         }
 
-        return (int)Math.Ceiling((contentHeight - Tolerance) / PageHeight);
+        return (int)Math.Ceiling((contentHeight - Tolerance) / pageHeight);
     }
 
     /// <summary>
-    /// The Sheet's height for content of the given height: always a whole number of Pages (INV-058).
+    /// The Sheet's height for content of the given height, at the upright US Letter page height:
+    /// always a whole number of Pages (INV-058).
     /// </summary>
     /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
     /// <returns>The Sheet height, in device-independent units.</returns>
-    public static double HeightFor(double contentHeight) => PageCount(contentHeight) * PageHeight;
+    public static double HeightFor(double contentHeight) => HeightFor(contentHeight, PageHeight);
 
     /// <summary>
-    /// The blank space that fills out the rest of the last Page: what the Sheet adds below content of
-    /// the given height so it ends on a Page boundary rather than wherever the content happens to stop
-    /// (INV-058).
+    /// The Sheet's height for content of the given height, counted by the page height the Page Setup's
+    /// orientation yields: always a whole number of Pages (INV-058, INV-061).
+    /// </summary>
+    /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
+    /// <param name="pageHeight">One Page's height, in device-independent units.</param>
+    /// <returns>The Sheet height, in device-independent units.</returns>
+    public static double HeightFor(double contentHeight, double pageHeight) =>
+        PageCount(contentHeight, pageHeight) * pageHeight;
+
+    /// <summary>
+    /// The blank space that fills out the rest of the last Page, at the upright US Letter page height:
+    /// what the Sheet adds below content of the given height so it ends on a Page boundary rather than
+    /// wherever the content happens to stop (INV-058).
     /// </summary>
     /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
     /// <returns>The filler height, in device-independent units; never negative.</returns>
-    public static double TrailingSpaceFor(double contentHeight) =>
+    public static double TrailingSpaceFor(double contentHeight) => TrailingSpaceFor(contentHeight, PageHeight);
+
+    /// <summary>
+    /// The blank space that fills out the rest of the last Page, counted by the page height the Page
+    /// Setup's orientation yields (INV-058, INV-061).
+    /// </summary>
+    /// <param name="contentHeight">The Visual Document's laid-out height, in device-independent units.</param>
+    /// <param name="pageHeight">One Page's height, in device-independent units.</param>
+    /// <returns>The filler height, in device-independent units; never negative.</returns>
+    public static double TrailingSpaceFor(double contentHeight, double pageHeight) =>
         double.IsNaN(contentHeight)
-            ? PageHeight
-            : Math.Max(0d, HeightFor(contentHeight) - contentHeight);
+            ? pageHeight
+            : Math.Max(0d, HeightFor(contentHeight, pageHeight) - contentHeight);
 }

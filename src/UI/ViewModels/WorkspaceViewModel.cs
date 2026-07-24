@@ -23,6 +23,8 @@ public sealed class WorkspaceViewModel : ObservableObject
     private readonly IFilePicker _filePicker;
     private readonly IUnsavedEditsPrompt _unsavedEditsPrompt;
     private readonly IWorkspaceStateStore _stateStore;
+    private readonly IPageSetupStore _pageSetupStore;
+    private readonly ICustomMarginsPrompt _customMarginsPrompt;
     private readonly ObservableCollection<EditorSessionViewModel> _sessions = [];
 
     private EditorSessionViewModel? _activeSession;
@@ -31,6 +33,7 @@ public sealed class WorkspaceViewModel : ObservableObject
     private bool _isSourcePanelRequested;
     private bool _isPreviewPanelRequested;
     private bool _isPageViewEnabled = true;
+    private PageSetup _pageSetup = PageSetup.Default;
     private double _workspaceWidth;
     private PanelVisibility _resolved;
 
@@ -48,6 +51,9 @@ public sealed class WorkspaceViewModel : ObservableObject
     /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
     /// <param name="sideDock">The Side Dock — the tabbed left panel hosting the Folder and Navigation panels (INV-046).</param>
     /// <param name="stateStore">Persists and restores the Workspace across runs — open Tabs, Recent Files, and the Folder Workspace (INV-037, INV-045).</param>
+    /// <param name="pageSetupStore">Persists and restores the editor-wide Page Setup across runs (INV-061).</param>
+    /// <param name="customMarginsPrompt">Asks the user for custom Print Margins (INV-061).</param>
+    /// <param name="printPreview">Shows the Print Preview for Print Preview (INV-061).</param>
     public WorkspaceViewModel(
         EditorSessionFactory createSession,
         IFilePicker filePicker,
@@ -61,14 +67,20 @@ public sealed class WorkspaceViewModel : ObservableObject
         ExportViewModel export,
         FolderWorkspaceViewModel folder,
         SideDockViewModel sideDock,
-        IWorkspaceStateStore stateStore)
+        IWorkspaceStateStore stateStore,
+        IPageSetupStore pageSetupStore,
+        ICustomMarginsPrompt customMarginsPrompt,
+        IPrintPreview printPreview)
     {
         _createSession = createSession ?? throw new ArgumentNullException(nameof(createSession));
         _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
         _unsavedEditsPrompt = unsavedEditsPrompt ?? throw new ArgumentNullException(nameof(unsavedEditsPrompt));
         _stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
+        _pageSetupStore = pageSetupStore ?? throw new ArgumentNullException(nameof(pageSetupStore));
+        _customMarginsPrompt = customMarginsPrompt ?? throw new ArgumentNullException(nameof(customMarginsPrompt));
         LinkPrompt = linkPrompt ?? throw new ArgumentNullException(nameof(linkPrompt));
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
+        PrintPreview = printPreview ?? throw new ArgumentNullException(nameof(printPreview));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
         DiagramImageRenderer = diagramImageRenderer ?? throw new ArgumentNullException(nameof(diagramImageRenderer));
@@ -93,6 +105,12 @@ public sealed class WorkspaceViewModel : ObservableObject
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
         TogglePreviewPanelCommand = new RelayCommand(TogglePreviewPanel);
         TogglePageViewCommand = new RelayCommand(TogglePageView);
+        SetPageOrientationCommand = new AsyncRelayCommand<PageOrientation>(SetPageOrientationAsync);
+        SetMarginPresetCommand = new AsyncRelayCommand<MarginPreset>(SetMarginPresetAsync);
+        EditCustomMarginsCommand = new AsyncRelayCommand(EditCustomMarginsAsync);
+
+        // The one editor-wide Page Setup, exactly as the last run left it (INV-061).
+        _pageSetup = _pageSetupStore.Load();
 
         // The Side Dock's tab intent feeds the responsive layout: opening or closing a tab can make the
         // dock or a right panel no longer fit, so re-resolve Compact Layout when it changes (INV-059).
@@ -175,6 +193,13 @@ public sealed class WorkspaceViewModel : ObservableObject
     public IDocumentPrinter DocumentPrinter { get; }
 
     /// <summary>
+    /// The Print Preview the editing surface shows the re-projected document in (INV-061). Exposed so
+    /// the View can hand it to the <c>MarkdownRichEditor</c>, which owns Print Preview but is composed
+    /// in XAML rather than by the container — the same reason <see cref="DocumentPrinter"/> is exposed.
+    /// </summary>
+    public IPrintPreview PrintPreview { get; }
+
+    /// <summary>
     /// The renderer the editing surface uses to render a copied selection to HTML for the clipboard's
     /// HTML flavor (INV-035). Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which
     /// owns Copy but is composed in XAML rather than by the container — as with <see cref="LinkPrompt"/>.
@@ -241,6 +266,31 @@ public sealed class WorkspaceViewModel : ObservableObject
         private set => Set(ref _isPageViewEnabled, value);
     }
 
+    /// <summary>
+    /// The one editor-wide Page Setup — the Page Orientation together with the Print Margins — obeyed
+    /// by the Document Sheet, the Print Preview, and the printout alike. Restored from its store at
+    /// construction and persisted on every change. Presentation-and-output only: changing it never
+    /// changes any Markdown Document (INV-061).
+    /// </summary>
+    public PageSetup PageSetup
+    {
+        get => _pageSetup;
+        private set
+        {
+            if (Set(ref _pageSetup, value))
+            {
+                Raise(nameof(MarginPreset));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Margin Preset the current Print Margins stand for — a named preset, or Custom when they
+    /// match none. Derived from <see cref="PageSetup"/>, so the menu's check state can never disagree
+    /// with the margins (INV-061).
+    /// </summary>
+    public MarginPreset MarginPreset => PrintMargins.PresetOf(_pageSetup.Margins);
+
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }
 
@@ -267,6 +317,15 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>Turns Page View on if it is off, or off if it is on (INV-058).</summary>
     public ICommand TogglePageViewCommand { get; }
+
+    /// <summary>Turns the Page to the given Page Orientation, keeping the margins (INV-061). Parameter: the orientation.</summary>
+    public ICommand SetPageOrientationCommand { get; }
+
+    /// <summary>Sets the Print Margins to a named Margin Preset's (INV-061). Parameter: the preset; Custom is ignored.</summary>
+    public ICommand SetMarginPresetCommand { get; }
+
+    /// <summary>Asks for custom Print Margins through the Custom Margins Prompt; dismissing it changes nothing (INV-061).</summary>
+    public ICommand EditCustomMarginsCommand { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and makes it the Active Session.</summary>
     public void New()
@@ -483,6 +542,35 @@ public sealed class WorkspaceViewModel : ObservableObject
     }
 
     private void TogglePageView() => IsPageViewEnabled = !IsPageViewEnabled;
+
+    private Task SetPageOrientationAsync(PageOrientation orientation) =>
+        ApplyPageSetupAsync(new PageSetup(orientation, PageSetup.Margins));
+
+    private Task SetMarginPresetAsync(MarginPreset preset) =>
+        preset == MarginPreset.Custom
+            ? Task.CompletedTask // Custom has no fixed margins; EditCustomMarginsCommand is the way there.
+            : ApplyPageSetupAsync(new PageSetup(PageSetup.Orientation, PrintMargins.For(preset)));
+
+    private Task EditCustomMarginsAsync()
+    {
+        var answer = _customMarginsPrompt.Ask(PageSetup.Margins);
+        return answer is null
+            ? Task.CompletedTask // Dismissing the prompt changes nothing (INV-061).
+            : ApplyPageSetupAsync(new PageSetup(PageSetup.Orientation, answer));
+    }
+
+    // Every Page Setup change lands here: apply it to the one editor-wide setup and persist it, so the
+    // next run opens exactly as this one looks (INV-061).
+    private async Task ApplyPageSetupAsync(PageSetup setup)
+    {
+        if (setup == PageSetup)
+        {
+            return;
+        }
+
+        PageSetup = setup;
+        await _pageSetupStore.SaveAsync(setup).ConfigureAwait(true);
+    }
 
     // Resolves which side panels fit the current width (INV-059) and pushes the result to the effective
     // visibility properties and the Side Dock's width-collapse. Each panel's toggle intent is kept, so a

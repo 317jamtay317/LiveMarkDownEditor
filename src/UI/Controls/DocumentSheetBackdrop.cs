@@ -33,6 +33,13 @@ public sealed class DocumentSheetBackdrop : FrameworkElement
         typeof(DocumentSheetBackdrop),
         new FrameworkPropertyMetadata(Brushes.Gainsboro, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>Identifies the <see cref="PageHeight"/> dependency property.</summary>
+    public static readonly DependencyProperty PageHeightProperty = DependencyProperty.Register(
+        nameof(PageHeight),
+        typeof(double),
+        typeof(DocumentSheetBackdrop),
+        new FrameworkPropertyMetadata(DocumentSheet.PageHeight, FrameworkPropertyMetadataOptions.AffectsRender));
+
     /// <summary>Initialises the Sheet, taking its paper and Page Break colours from the active palette.</summary>
     public DocumentSheetBackdrop()
     {
@@ -53,6 +60,17 @@ public sealed class DocumentSheetBackdrop : FrameworkElement
     {
         get => (Brush)GetValue(PageBreakBrushProperty);
         set => SetValue(PageBreakBrushProperty, value);
+    }
+
+    /// <summary>
+    /// One Page's height, in device-independent units: where the Page Break rules fall. Bind it to the
+    /// Page Setup's page height so the rules follow the Page Orientation — 1056 units upright, 816
+    /// turned (INV-061).
+    /// </summary>
+    public double PageHeight
+    {
+        get => (double)GetValue(PageHeightProperty);
+        set => SetValue(PageHeightProperty, value);
     }
 
     /// <inheritdoc />
@@ -77,8 +95,16 @@ public sealed class DocumentSheetBackdrop : FrameworkElement
             pen.Freeze();
         }
 
-        // Every Page boundary except the Sheet's own bottom edge, which is already a page edge.
-        for (var pageBottom = DocumentSheet.PageHeight; pageBottom < height; pageBottom += DocumentSheet.PageHeight)
+        // Every Page boundary except the Sheet's own bottom edge, which is already a page edge. A
+        // page height that is not yet a real one (a binding still settling) draws no rules — a
+        // non-positive step would otherwise never advance.
+        var pageHeight = PageHeight;
+        if (pageHeight <= 0d)
+        {
+            return;
+        }
+
+        for (var pageBottom = pageHeight; pageBottom < height; pageBottom += pageHeight)
         {
             // Half-pixel offset so a one-unit rule lands on a device pixel instead of blurring across two.
             var y = Math.Round(pageBottom) + (BreakThickness / 2d);
