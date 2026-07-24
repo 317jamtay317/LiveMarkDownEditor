@@ -1282,6 +1282,47 @@ and tested.
   Document), and `SideDockViewModelTests.*_INV059` (a width-collapse hides the dock even with a tab
   shown, restores it when the width returns, and preserves the Selected tab).
 
+### INV-060 — A live reload shows what it changed, and changes nothing else
+- **Statement:** When an External Change reloads live (INV-007), or the user resolves a Conflict by
+  reloading from disk, the Visual Document briefly marks what the change did: the Reload Difference
+  between the Markdown Document as the session held it and the contents that replaced it is computed
+  as Changed Regions, and each is given a **Change Highlight** — a shade behind every Block a Changed
+  region of kind Changed covers, and a thin rule at the seam of every Removed region. Three rules
+  bound it:
+  - **Exactly the changed content is marked.** The Changed Regions are the non-Unchanged runs of the
+    Reload Difference and nothing else: an unchanged Block is never shaded, and a reload that changes
+    no content produces no Changed Regions at all — indeed such a change never reaches here, being
+    ignored outright (INV-026).
+  - **The Change Highlight moves nothing.** It never changes the Markdown Document or the result of a
+    Capture, and it never moves the caret, the selection, the scroll position, or any Fold state. It
+    is drawn as a **read-only overlay** on the Visual Document — the same pattern Code Shading (INV-017)
+    and the Find highlights (INV-016) use — so it recolours with the palette without re-formatting the
+    document, and leaves nothing behind when it goes.
+  - **It is transient, and never stale.** It holds briefly and then fades on its own, and it is cleared
+    outright by anything that would make it a lie: an edit, a subsequent reload, or loading or saving a
+    document. A Change Highlight therefore always refers to a change that is actually on screen.
+- **Note:** Which Blocks a Changed Region covers is decided from the source line range the Project
+  records on each Block, not by comparing rendered text — so a Block whose source moved but whose
+  content did not is not marked. The Change Highlight is deliberately *not* offered for a Conflict:
+  a Conflict is resolved through the Conflict Difference (INV-021), which shows both sides, whereas a
+  Change Highlight can only ever show the side that won.
+- **Enforced by:** The pure static `ReloadDifference.Compute` in the Domain (mapping the two source
+  texts to Changed Regions over a `ConflictDifference`, holding no state and mutating neither side);
+  `SourceLines`, the attached range `MarkdownToFlowDocumentProjector` records on each projected Block;
+  the pure `ChangeHighlightScanner`, which resolves Changed Regions to the Blocks and seams that carry
+  them; `ChangeHighlightAdorner`, which paints them and runs the hold-then-fade; and
+  `EditorSessionViewModel.ChangeHighlight`, which publishes the regions after a reload and clears them
+  on an edit, a load, or a save.
+- **Tested by:** `ReloadDifferenceTests.*_INV060` (identical texts yield nothing; an altered line, an
+  insertion, and a replaced run mark only the new lines; a deletion marks its seam and adds no shaded
+  region; regions are ordered, non-overlapping, deterministic, and mutate neither side),
+  `ChangeHighlightScannerTests.*_INV060` (the changed Blocks are targeted and the unchanged ones are
+  not; a Removed seam targets the Block below it, or the last Block when it falls at the end; no
+  regions target nothing), `MarkdownToFlowDocumentProjectorTests.*_INV060` (each projected Block
+  records its source line range), and `EditorSessionViewModelTests.*_INV060` (a clean reload publishes
+  the Change Highlight; resolving a Conflict by reloading publishes it; an edit, a load, and a save
+  clear it; a content-free change publishes nothing).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
