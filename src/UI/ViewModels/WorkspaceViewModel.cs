@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Input;
@@ -27,9 +28,11 @@ public sealed class WorkspaceViewModel : ObservableObject
     private EditorSessionViewModel? _activeSession;
     private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
     private bool _isRestoring;
-    private bool _isSourcePanelVisible;
-    private bool _isPreviewPanelVisible;
+    private bool _isSourcePanelRequested;
+    private bool _isPreviewPanelRequested;
     private bool _isPageViewEnabled = true;
+    private double _workspaceWidth;
+    private PanelVisibility _resolved;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
     /// <param name="createSession">Factory that mints a fresh Editor Session (with its own watcher) per Tab.</param>
@@ -90,6 +93,11 @@ public sealed class WorkspaceViewModel : ObservableObject
         ToggleSourcePanelCommand = new RelayCommand(ToggleSourcePanel);
         TogglePreviewPanelCommand = new RelayCommand(TogglePreviewPanel);
         TogglePageViewCommand = new RelayCommand(TogglePageView);
+
+        // The Side Dock's tab intent feeds the responsive layout: opening or closing a tab can make the
+        // dock or a right panel no longer fit, so re-resolve Compact Layout when it changes (INV-059).
+        SideDock.PropertyChanged += OnSideDockPropertyChanged;
+        Recompute();
 
         New();
     }
@@ -189,24 +197,37 @@ public sealed class WorkspaceViewModel : ObservableObject
 
     /// <summary>
     /// Whether the Source Panel — the raw, editable Markdown source of the Active Session shown
-    /// alongside the Visual Document — is visible. Hidden until the user toggles it on.
-    /// Presentation-only: toggling it never changes any Markdown Document (INV-014).
+    /// alongside the Visual Document — is visible. Hidden until the user toggles it on, and auto-collapsed
+    /// while the Workspace is too narrow to show it beside the editor (Compact Layout), reappearing as the
+    /// user toggled it once there is room. Presentation-only: neither toggling nor collapsing it changes
+    /// any Markdown Document (INV-014, INV-059).
     /// </summary>
-    public bool IsSourcePanelVisible
-    {
-        get => _isSourcePanelVisible;
-        private set => Set(ref _isSourcePanelVisible, value);
-    }
+    public bool IsSourcePanelVisible => _resolved.Source;
 
     /// <summary>
     /// Whether the Preview Panel — the live Diagram Preview of the Mermaid Diagram at the caret, shown
-    /// beside the Visual Document — is visible. Hidden until the user toggles it on. Presentation-only:
-    /// toggling it never changes any Markdown Document (INV-048).
+    /// beside the Visual Document — is visible. Hidden until the user toggles it on, and auto-collapsed
+    /// while the Workspace is too narrow to show it beside the editor (Compact Layout), reappearing as the
+    /// user toggled it once there is room. Presentation-only: neither toggling nor collapsing it changes
+    /// any Markdown Document (INV-048, INV-059).
     /// </summary>
-    public bool IsPreviewPanelVisible
+    public bool IsPreviewPanelVisible => _resolved.Preview;
+
+    /// <summary>
+    /// The width available to the editing row, fed by the View through the <c>SizeObserver</c> behaviour.
+    /// Compact Layout resolves which side panels fit from it, collapsing the Preview Panel, then the
+    /// Source Panel, then the Side Dock until the Visual Document keeps its minimum width (INV-059).
+    /// </summary>
+    public double WorkspaceWidth
     {
-        get => _isPreviewPanelVisible;
-        private set => Set(ref _isPreviewPanelVisible, value);
+        get => _workspaceWidth;
+        set
+        {
+            if (Set(ref _workspaceWidth, value))
+            {
+                Recompute();
+            }
+        }
     }
 
     /// <summary>
@@ -449,11 +470,45 @@ public sealed class WorkspaceViewModel : ObservableObject
         await PersistStateAsync().ConfigureAwait(true);
     }
 
-    private void ToggleSourcePanel() => IsSourcePanelVisible = !IsSourcePanelVisible;
+    private void ToggleSourcePanel()
+    {
+        _isSourcePanelRequested = !_isSourcePanelRequested;
+        Recompute();
+    }
 
-    private void TogglePreviewPanel() => IsPreviewPanelVisible = !IsPreviewPanelVisible;
+    private void TogglePreviewPanel()
+    {
+        _isPreviewPanelRequested = !_isPreviewPanelRequested;
+        Recompute();
+    }
 
     private void TogglePageView() => IsPageViewEnabled = !IsPageViewEnabled;
+
+    // Resolves which side panels fit the current width (INV-059) and pushes the result to the effective
+    // visibility properties and the Side Dock's width-collapse. Each panel's toggle intent is kept, so a
+    // panel collapsed only for width returns exactly as toggled once the Workspace is wide enough again.
+    private void Recompute()
+    {
+        var intent = new PanelIntent(SideDock.HasVisibleTab, _isSourcePanelRequested, _isPreviewPanelRequested);
+        var resolved = CompactLayout.Resolve(_workspaceWidth, intent);
+
+        SideDock.SetWidthCollapsed(intent.Dock && !resolved.Dock);
+
+        if (resolved != _resolved)
+        {
+            _resolved = resolved;
+            Raise(nameof(IsSourcePanelVisible));
+            Raise(nameof(IsPreviewPanelVisible));
+        }
+    }
+
+    private void OnSideDockPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SideDockViewModel.HasVisibleTab))
+        {
+            Recompute();
+        }
+    }
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);

@@ -144,4 +144,34 @@ public sealed class SideDockViewModelTests
         // Docking and selecting are presentation-only: no File was ever opened (INV-046).
         _opened.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void HasVisibleTab_IsTrue_WhileAnyTabIsShown_INV059()
+    {
+        var sideDock = new SideDockViewModel(CreateFolder());
+        sideDock.HasVisibleTab.ShouldBeFalse();
+
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+
+        sideDock.HasVisibleTab.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void WidthCollapse_HidesTheDock_WithoutLosingItsTabOrSelection_INV059()
+    {
+        var sideDock = new SideDockViewModel(CreateFolder());
+        sideDock.ToggleNavigationPanelCommand.Execute(null);
+        sideDock.IsVisible.ShouldBeTrue();
+
+        // The window has grown too narrow for the dock beside the editor: it collapses (INV-059)...
+        sideDock.SetWidthCollapsed(true);
+        sideDock.IsVisible.ShouldBeFalse();
+
+        // ...but its tab and selection are intact, so widening restores it exactly as it was.
+        sideDock.IsNavigationTabVisible.ShouldBeTrue();
+        sideDock.SelectedTab.ShouldBe(SideDockTab.Navigation);
+
+        sideDock.SetWidthCollapsed(false);
+        sideDock.IsVisible.ShouldBeTrue();
+    }
 }

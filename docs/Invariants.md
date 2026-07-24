@@ -1246,6 +1246,42 @@ and tested.
   `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's Markdown Document
   unchanged).
 
+### INV-059 — Compact Layout is width-driven, view-only, and reversible
+- **Statement:** When the Workspace's available width is too small to show the Visual Document at its
+  minimum width beside the side panels the user has toggled on, it enters **Compact Layout**: the side
+  panels are auto-collapsed one at a time — the **Preview Panel** first, then the **Source Panel**, then
+  the **Side Dock** — until the Visual Document keeps its minimum width, so no window width ever hides
+  the editor behind a panel or crushes it to nothing. Three rules bound it:
+  - **Collapse only on overflow, lowest priority first.** A panel is auto-collapsed only when, and only
+    as far as, the row would otherwise not leave the Visual Document its minimum width, and panels
+    collapse in the fixed order Preview → Source → Side Dock (and reappear in the reverse order as the
+    window grows). At every width the editor keeps at least its minimum.
+  - **Intent is preserved, not toggled off.** Auto-collapsing a panel does not change the user's toggle:
+    a panel hidden only for width is restored — exactly as it was toggled — the moment the window is
+    wide enough again. This is what distinguishes a width-collapse from the user hiding a panel.
+  - **Compact Layout is presentation-only and a pure function of width.** Entering or leaving it changes
+    no Markdown Document, Editor Session, Folder Tree, or Fold state, and the same width with the same
+    toggled-on panels always yields the same collapsed set — the panel-layout counterpart of the Command
+    Bar's overflow collapse (INV-054).
+- **Note:** The fit decision uses each side panel's nominal width, not a user-dragged Source/Preview
+  width, so it decides whether an arrangement *fits* rather than laying it out pixel-exactly; a hidden
+  panel's own column still gives back its exact space (INV-056).
+- **Enforced by:** The pure static `CompactLayout.Resolve` (Domain-style pure logic — no I/O, no state —
+  mapping an available width and the set of toggled-on panels to the set that stay visible, collapsing
+  Preview → Source → Side Dock until the Visual Document keeps `CompactLayout.EditorMinWidth`);
+  `WorkspaceViewModel`, which feeds it the measured `WorkspaceWidth` reported by the `SizeObserver`
+  behaviour, gates the effective `IsSourcePanelVisible` / `IsPreviewPanelVisible` on the result, and
+  drives the Side Dock's width-collapse; and `SideDockViewModel`, whose `IsVisible` combines its tab
+  intent (`HasVisibleTab`) with the width-collapse so the dock hides on width without losing its
+  Selected tab. A width of zero (before the surface is measured) leaves every panel at its intent, so
+  the layout is unchanged until a real width arrives.
+- **Tested by:** `CompactLayoutTests.*_INV059` (all fit → all shown; progressively narrower collapses
+  Preview, then Source, then the Side Dock; the editor minimum always holds; an unmeasured width leaves
+  the intent unchanged; the result is deterministic), `WorkspaceViewModelTests.*_INV059` (a narrow
+  `WorkspaceWidth` hides the toggled-on Source/Preview and widening restores them, changing no Markdown
+  Document), and `SideDockViewModelTests.*_INV059` (a width-collapse hides the dock even with a tab
+  shown, restores it when the width returns, and preserves the Selected tab).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

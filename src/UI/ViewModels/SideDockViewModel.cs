@@ -18,6 +18,7 @@ public sealed class SideDockViewModel : ObservableObject, IDisposable
 {
     private readonly FolderWorkspaceViewModel _folder;
     private bool _isNavigationTabVisible;
+    private bool _isWidthCollapsed;
     private SideDockTab _selectedTab = SideDockTab.Folder;
 
     /// <summary>Creates the Side Dock over the Folder Workspace whose Folder Panel it docks.</summary>
@@ -54,8 +55,18 @@ public sealed class SideDockViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Whether the Side Dock is shown at all — true exactly while at least one of its tabs is shown.</summary>
-    public bool IsVisible => IsFolderTabVisible || IsNavigationTabVisible;
+    /// <summary>
+    /// Whether at least one of the Side Dock's tabs is toggled on — the dock's intent, before any
+    /// width-driven collapse (INV-059). <see cref="IsVisible"/> combines it with the width-collapse.
+    /// </summary>
+    public bool HasVisibleTab => IsFolderTabVisible || IsNavigationTabVisible;
+
+    /// <summary>
+    /// Whether the Side Dock is shown — true while at least one of its tabs is toggled on
+    /// (<see cref="HasVisibleTab"/>) and the Workspace has not collapsed it for want of width
+    /// (INV-046, INV-059).
+    /// </summary>
+    public bool IsVisible => HasVisibleTab && !_isWidthCollapsed;
 
     /// <summary>The tab whose panel is currently presented. Only meaningful while <see cref="IsVisible"/>.</summary>
     public SideDockTab SelectedTab
@@ -72,6 +83,21 @@ public sealed class SideDockViewModel : ObservableObject, IDisposable
 
     /// <summary>Selects the Navigation Panel's tab, when it is shown.</summary>
     public ICommand SelectNavigationTabCommand { get; }
+
+    /// <summary>
+    /// Collapses or restores the Side Dock for width: while collapsed the dock is hidden even though its
+    /// tabs stay toggled on, so a narrow Workspace never hides the editor behind it and widening restores
+    /// the dock exactly as it was (INV-059). The Workspace drives this from the measured width.
+    /// </summary>
+    /// <param name="value"><see langword="true"/> to collapse the dock for width; <see langword="false"/> to restore it.</param>
+    public void SetWidthCollapsed(bool value)
+    {
+        if (_isWidthCollapsed != value)
+        {
+            _isWidthCollapsed = value;
+            Raise(nameof(IsVisible));
+        }
+    }
 
     /// <summary>Unsubscribes from the Folder Workspace's change notifications.</summary>
     public void Dispose() => _folder.PropertyChanged -= OnFolderPropertyChanged;
@@ -117,6 +143,7 @@ public sealed class SideDockViewModel : ObservableObject, IDisposable
             }
         }
 
+        Raise(nameof(HasVisibleTab));
         Raise(nameof(IsVisible));
     }
 
