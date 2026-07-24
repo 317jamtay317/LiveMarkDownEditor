@@ -1220,12 +1220,20 @@ and tested.
   `Fill_AwayFromAMisspelling_OffersTheClipboardCommandsAlone`, and
   `Fill_ReplacesWhatTheMenuHeldBefore`.
 
-### INV-058 — Page View lays the Visual Document on a fixed-width Document Sheet
+### INV-058 — Page View lays the Visual Document on a Document Sheet of whole US Letter Pages
 - **Statement:** In **Page View** the Visual Document is laid out on a **Document Sheet** of a single
   fixed width — the US Letter width — so every element it contains, **including tables**, is confined
   to that width no matter how wide the editing surface is; the Sheet floats on the editing canvas and
   scrolls as one piece. Page View is **on by default**. It is presentation-only: turning it on or off
-  never changes the Markdown Document or the result of a Capture.
+  never changes the Markdown Document or the result of a Capture. Two further rules bound the Sheet:
+  - **The Sheet is always a whole number of Pages.** A **Page** is US Letter — 8.5 × 11 inches — so a
+    Visual Document shorter than one Page still shows a full Page, and the Sheet gains its next Page
+    the moment the content outgrows the last one, whether that content arrives by typing, a reload, or
+    an Unfold. The Sheet never ends partway down a Page.
+  - **A Page Break marks where a Page ends; it does not repaginate.** The boundary between Pages is
+    drawn as a rule across the Sheet, behind the Visual Document so it never strikes through text.
+    Content flows continuously across it: a Page Break moves nothing onto the next Page, and like the
+    Sheet itself it changes no Markdown Document and no Capture.
 - **Why:** A `RichTextBox` lays its whole `FlowDocument` out at once — it does not virtualise — and a
   projected GFM table is a WPF `Table` with no fixed width, so it fills whatever width it is given. On
   an unbounded editing surface a table therefore spans the entire pane while prose wraps to a
@@ -1235,16 +1243,21 @@ and tested.
   document out on a Document Sheet of one fixed width confines every element to the same page width and
   makes the layout width independent of the window width, so a table can no longer outrun the prose and
   maximising no longer reflows a single line.
-- **Enforced by:** `DocumentSheet`, the pure rule that gives the Sheet its fixed `Width` (the US Letter
-  width) and its page `PagePadding`; `PageView`, the behaviour that puts the editing surface into Page
-  View — fixing the Visual Document's width to the Sheet, floating it on the outer scrolling canvas, and
-  keeping the caret in view by driving that canvas — and restores the plain full-pane surface when
-  turned off; and `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by
-  default).
-- **Tested by:** `DocumentSheetTests` (the Sheet's `Width` is the US Letter width and its `PagePadding`
-  insets the content from every edge) and `WorkspaceViewModelPageViewTests` (Page View is on by default;
-  `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's Markdown Document
-  unchanged).
+- **Enforced by:** `DocumentSheet`, the pure rule that gives the Sheet its fixed `Width` and `PageHeight`
+  (the US Letter page), its page `PagePadding`, and the whole-Page arithmetic — `PageCount`, `HeightFor`,
+  and the `TrailingSpaceFor` filler that carries the Sheet down to the end of its last Page; `PageView`,
+  the behaviour that puts the editing surface into Page View — fixing the Visual Document's width to the
+  Sheet, snapping the Sheet to whole Pages whenever its content's height changes, floating it on the
+  outer scrolling canvas, and keeping the caret in view by driving that canvas — and restores the plain
+  full-pane surface when turned off; `DocumentSheetBackdrop`, which draws the Sheet's paper and its Page
+  Breaks behind the (then-transparent) editing surface, so a break passes under the text; and
+  `WorkspaceViewModel.IsPageViewEnabled`, the presentation flag it binds to (on by default).
+- **Tested by:** `DocumentSheetTests` (the Sheet's `Width` and `PageHeight` are the US Letter page; its
+  `PagePadding` insets the content from every edge; content that fits is one Page and content that
+  overflows adds the next; `HeightFor` is always a whole number of Pages; and `TrailingSpaceFor` fills
+  out the rest of the last Page without ever going negative) and `WorkspaceViewModelPageViewTests` (Page
+  View is on by default; `TogglePageViewCommand` flips it; and toggling it leaves the Active Session's
+  Markdown Document unchanged).
 
 ### INV-059 — Compact Layout is width-driven, view-only, and reversible
 - **Statement:** When the Workspace's available width is too small to show the Visual Document at its

@@ -1098,6 +1098,17 @@
                         </Grid.ColumnDefinitions>
 
                         <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+
+                        <!-- The Document Sheet's paper and the Page Break rule where each 8.5 x 11 Page
+                             ends, drawn behind the editing surface (which Page View makes transparent)
+                             so a break passes under the text rather than striking through it. Sized to
+                             the editor, which Page View grows in whole Pages (INV-058). -->
+                        <controls:DocumentSheetBackdrop Grid.Column="1"
+                                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                        Width="{Binding ActualWidth, ElementName=Editor}"
+                                                        Height="{Binding ActualHeight, ElementName=Editor}"
+                                                        Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
                         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
                                                      Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                                      ChangedRegions="{Binding ActiveSession.ChangeHighlight}"

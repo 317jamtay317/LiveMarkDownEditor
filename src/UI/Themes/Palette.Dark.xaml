@@ -9,6 +9,9 @@
     <!-- Editing canvas: the muted surround the Document Sheet floats on in Page View, darker than the
          Sheet (EditorBackgroundBrush) so the page edge reads clearly (INV-058). -->
     <SolidColorBrush x:Key="EditorCanvasBrush" Color="#111114" />
+    <!-- Page Break: the rule the PageBreakAdorner draws across the Sheet where one Page ends and the
+         next begins, in the canvas colour so a break reads as the seam between two sheets (INV-058). -->
+    <SolidColorBrush x:Key="PageBreakBrush" Color="#37373E" />
 
     <SolidColorBrush x:Key="TextBrush" Color="#E6E6E9" />
     <SolidColorBrush x:Key="MutedTextBrush" Color="#8B8B95" />

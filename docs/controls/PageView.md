@@ -1,15 +1,19 @@
 # PageView
 
 **Page View**: the presentation mode that lays the [MarkdownRichEditor](MarkdownRichEditor.md)'s Visual
-Document out on a fixed-width **Document Sheet** floating on a scrolling canvas — the way a word
-processor shows a page — so every element, **tables included**, is confined to one page width instead
-of stretching to the pane. Page View is **on by default**; turned off, the editor fills the pane as a
-plain editing surface. It is presentation-only: turning it on or off never changes the Markdown
-Document or the result of a Capture (INV-058).
+Document out on a **Document Sheet** of whole 8.5 × 11 **Pages** floating on a scrolling canvas — the
+way a word processor shows a page — so every element, **tables included**, is confined to one page width
+instead of stretching to the pane, and the Sheet gains its next Page as soon as the content needs it.
+Page View is **on by default**; turned off, the editor fills the pane as a plain editing surface. It is
+presentation-only: turning it on or off never changes the Markdown Document or the result of a Capture
+(INV-058).
 
 - **Class:** `UI.Controls.PageView` (a `static` attached behaviour)
-- **Rule:** `UI.Controls.DocumentSheet` — the Sheet's fixed `Width` (816, the US Letter width at 96 dpi)
-  and its page `PagePadding`
+- **Rule:** `UI.Controls.DocumentSheet` — the Page's `Width` (816) and `PageHeight` (1056), the US Letter
+  page at 96 dpi; the page `PagePadding`; and the whole-Page arithmetic (`PageCount`, `HeightFor`,
+  `TrailingSpaceFor`)
+- **Sheet:** [DocumentSheetBackdrop](DocumentSheetBackdrop.md) — the paper and the Page Break rules,
+  drawn behind the editor
 - **Canvas colour:** `EditorCanvasBrush` (in `Palette.Light.xaml` / `Palette.Dark.xaml`)
 
 Authored as an attached behaviour — the sanctioned home for view-interaction logic outside a ViewModel
@@ -32,6 +36,16 @@ editor, inside an outer `ScrollViewer` (the canvas). On enter it:
   content's full height and the whole Sheet moves as one piece when the canvas scrolls;
 - **fixes the editor to the Sheet** — `Width = DocumentSheet.Width`, page `Padding`, a 1px edge — and
   its Grid column to `Auto`, so `[gutter | Sheet]` hugs its content;
+- **snaps the Sheet to whole Pages**: the filler `DocumentSheet.TrailingSpaceFor` asks for is added to
+  the Sheet's bottom page margin, so a short document still shows a full 8.5 × 11 Page and the Sheet
+  gains its next Page the moment the content outgrows the last. It re-snaps on the editor's
+  `SizeChanged` — the one signal that covers every way the content's height can change (typing, a
+  reload, an Unfold) — coalesced to one snap per dispatcher cycle, since setting the filler resizes the
+  Sheet and lands straight back there. Because the filler rides on the page margin, the Sheet's own
+  height stays the measure of the content: subtracting the filler back off recovers it;
+- **hands the paper to the [DocumentSheetBackdrop](DocumentSheetBackdrop.md)** by making the editor's
+  `Background` transparent, so the Sheet's fill and its Page Break rules are drawn *behind* the Visual
+  Document and a break passes under the text instead of striking through it;
 - **centres the pair on the canvas** natively — the canvas does not scroll horizontally, so it measures
   the surface at the viewport width and `HorizontalAlignment=Center` centres it with equal gray margins
   on both sides, reliably and free of any layout-timing recomputation;
@@ -69,6 +83,12 @@ Set these on the surface `Grid`:
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <controls:EditorGutter Grid.Column="0" Editor="{Binding ElementName=Editor}" />
+        <!-- Before the editor, so the Sheet is drawn behind it. -->
+        <controls:DocumentSheetBackdrop Grid.Column="1"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Width="{Binding ActualWidth, ElementName=Editor}"
+                                        Height="{Binding ActualHeight, ElementName=Editor}"
+                                        Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
                                      Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}" />
     </Grid>
