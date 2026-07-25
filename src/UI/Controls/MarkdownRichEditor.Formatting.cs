@@ -82,6 +82,23 @@ public sealed partial class MarkdownRichEditor
     public void ToggleBlockQuoteAtSelection() => QuoteFormatting.Toggle(this);
 
     /// <summary>
+    /// Applies the Insert Footnote Formatting Action at the caret: a Footnote Reference is inserted
+    /// there and an empty Footnote Definition in the Footnote Section, with the caret left in the
+    /// Definition ready for the note (INV-065). The edit Captures back into <see cref="Markdown"/> like
+    /// any other edit (INV-018).
+    /// </summary>
+    public void InsertFootnoteAtCaret() => FootnoteFormatting.Insert(this);
+
+    /// <summary>
+    /// Applies the Toggle Definition List Formatting Action at the current selection: the whole
+    /// paragraphs the selection touches become a Definition List — the first a Definition Term, the rest
+    /// its Definition Descriptions — or the selected Definition List's blocks become plain paragraphs
+    /// again (INV-066). The edit Captures back into <see cref="Markdown"/> like any other edit
+    /// (INV-018).
+    /// </summary>
+    public void ToggleDefinitionListAtSelection() => DefinitionListFormatting.Toggle(this);
+
+    /// <summary>
     /// Applies the Set Heading Level Formatting Action at the caret: the block at the caret becomes a
     /// Heading at <paramref name="level"/> (1–6), or a plain paragraph again given
     /// <see cref="MarkdownEditingCommands.ParagraphHeadingLevel"/>. It sets a level rather than

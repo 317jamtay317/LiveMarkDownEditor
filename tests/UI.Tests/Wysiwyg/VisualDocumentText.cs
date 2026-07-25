@@ -27,6 +27,15 @@ internal static class VisualDocumentText
         editor.Selection.Select(range.Start, range.Start);
     }
 
+    /// <summary>Collapses the selection to a caret just after the first occurrence of <paramref name="text"/>.</summary>
+    /// <param name="editor">The editor whose Visual Document is searched.</param>
+    /// <param name="text">The literal text to place the caret after.</param>
+    internal static void PlaceCaretAfter(RichTextBox editor, string text)
+    {
+        var range = FindRange(editor.Document, text);
+        editor.Selection.Select(range.End, range.End);
+    }
+
     private static TextRange FindRange(FlowDocument document, string text)
     {
         for (var pointer = document.ContentStart;

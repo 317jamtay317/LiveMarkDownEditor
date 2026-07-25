@@ -162,11 +162,20 @@ internal static class FootnoteProjection
             definition.Blocks.Add(block);
         }
 
-        // A Section must hold at least one block, and an empty note needs somewhere to type.
+        // A Section must hold at least one block, and an empty note needs somewhere to type. A note
+        // opening with something other than a paragraph — a List, a Code Block — gets one above it to
+        // carry the Footnote Number.
         if (definition.Blocks.FirstBlock is not Paragraph first)
         {
             first = new Paragraph { Margin = BodySpacing };
-            definition.Blocks.InsertBefore(definition.Blocks.FirstBlock ?? first, first);
+            if (definition.Blocks.FirstBlock is { } existingFirst)
+            {
+                definition.Blocks.InsertBefore(existingFirst, first);
+            }
+            else
+            {
+                definition.Blocks.Add(first);
+            }
         }
 
         if (number is { } shown)

@@ -185,6 +185,15 @@ public sealed class MarkdownToFlowDocumentProjector
                 }
             }
 
+            // An Item with a Term and no Description keeps an empty one. That is the shape Toggle
+            // Definition List leaves behind until the user types the Description — and the shape a
+            // colon alone on a line parses to — so losing it would quietly turn the list back into a
+            // paragraph on the next Round-Trip (INV-066).
+            if (description.Count == 0 && item.Any(child => child is DefinitionTerm))
+            {
+                section.Blocks.Add(DefinitionListFormatting.CreateDescription([]));
+            }
+
             AddDescription(section, description);
         }
 

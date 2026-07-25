@@ -60,11 +60,19 @@ public sealed class WysiwygRoundTripTests
     [InlineData("[^a]: the note\n\nA claim.[^a]")]
     [InlineData("A claim.[^a]\n\n[^a]: with **bold** and `code`")]
     [InlineData("A claim.[^a]\n\n[^a]: para one\n\n    para two")]
+    [InlineData("A claim.[^a]\n\n[^a]: intro\n\n    - one\n    - two")]
+    // A note opening with something other than a paragraph — the Footnote Number needs a line of its own.
+    [InlineData("A claim.[^a]\n\n[^a]:\n    - one\n    - two")]
     [InlineData("# Head[^h]\n\n[^h]: a note on the heading")]
     [InlineData("- item[^l]\n\n[^l]: a note on a list item")]
     [InlineData("> quoted[^q]\n\n[^q]: a note on a quote")]
     [InlineData("| A |\n| --- |\n| c[^t] |\n\n[^t]: a note in a cell")]
     [InlineData("A claim.[^missing]")]
+    // An empty note and an empty Description — what Insert Footnote and Toggle Definition List leave
+    // behind until the user types. Both must survive, so a new Footnote or Definition List is not
+    // quietly undone by the next Round-Trip.
+    [InlineData("A claim.[^1]\n\n[^1]:")]
+    [InlineData("Term\n:   ")]
     // Definition Lists (INV-066).
     [InlineData("Markdown\n:   A markup language.")]
     [InlineData("Round-Trip\n:   One.\n:   Two.")]
@@ -102,6 +110,8 @@ public sealed class WysiwygRoundTripTests
     [InlineData("First.[^a] Second.[^b]\n\n[^b]: note b\n\n[^a]: note a")]
     [InlineData("A claim.[^a]\n\n[^a]: para one\n\n    para two")]
     [InlineData("Prose.\n\n[^unused]: nobody cites this")]
+    [InlineData("A claim.[^1]\n\n[^1]:")]
+    [InlineData("Term\n:   ")]
     [InlineData("Markdown\n:   A markup language.")]
     [InlineData("Round-Trip\n:   One.\n:   Two.")]
     [InlineData("Term one\nTerm two\n:   Shared description.")]

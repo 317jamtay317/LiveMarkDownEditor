@@ -116,10 +116,19 @@ public sealed class FlowDocumentToMarkdownCapturer
     // Emits one Footnote Definition: `[^label]: ` then the note's own blocks, their continuation lines
     // indented so they stay inside the note. A blank separator line stays blank rather than becoming
     // indented whitespace, so repeated Round-Trips converge (INV-005).
-    private static string Emit(Section definition) =>
-        "[^" + Role(definition).Label + "]: " + Indent(
+    private static string Emit(Section definition)
+    {
+        var note = Indent(
             new FlowDocumentToMarkdownCapturer().Capture(definition.Blocks),
             FootnoteContinuationIndent);
+
+        // An empty note — the state Insert Footnote leaves a new Footnote in until the user types it —
+        // is emitted without the separating space rather than with a trailing one. It still parses back
+        // as the Definition it is, so nothing is lost by not writing whitespace into the user's file.
+        return note.Length == 0
+            ? "[^" + Role(definition).Label + "]:"
+            : "[^" + Role(definition).Label + "]: " + note;
+    }
 
     private static FootnoteDefinitionRole Role(Section definition) => (FootnoteDefinitionRole)definition.Tag;
 
