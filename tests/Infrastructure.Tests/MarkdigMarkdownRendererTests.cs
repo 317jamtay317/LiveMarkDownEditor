@@ -59,4 +59,33 @@ public sealed class MarkdigMarkdownRendererTests
 
         output.Html.ShouldContain("type=\"checkbox\"");
     }
+
+    [Fact]
+    public void Render_GivenFootnote_ProducesReferenceAndNotesSection_INV065()
+    {
+        var output = _renderer.Render(new MarkdownDocument("A claim.[^a]\n\n[^a]: the note\n"));
+
+        output.Html.ShouldContain("<sup>1</sup>");
+        output.Html.ShouldContain("class=\"footnotes\"");
+        output.Html.ShouldContain("the note");
+    }
+
+    [Fact]
+    public void Render_GivenFootnoteReferenceWithNoDefinition_ProducesLiteralText_INV065()
+    {
+        var output = _renderer.Render(new MarkdownDocument("A claim.[^missing]\n"));
+
+        output.Html.ShouldContain("[^missing]");
+        output.Html.ShouldNotContain("<sup>");
+    }
+
+    [Fact]
+    public void Render_GivenDefinitionList_ProducesDefinitionListHtml_INV066()
+    {
+        var output = _renderer.Render(new MarkdownDocument("Markdown\n:   A markup language.\n"));
+
+        output.Html.ShouldContain("<dl>");
+        output.Html.ShouldContain("<dt>Markdown</dt>");
+        output.Html.ShouldContain("<dd>A markup language.</dd>");
+    }
 }

@@ -111,6 +111,14 @@ public sealed partial class MarkdownRichEditor : RichTextBox
             (_, _) => ToggleBlockQuoteAtSelection(),
             (_, e) => e.CanExecute = QuoteFormatting.CanToggle(this)));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertFootnote,
+            (_, _) => InsertFootnoteAtCaret(),
+            (_, e) => e.CanExecute = FootnoteFormatting.CanInsert(this)));
+        CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.ToggleDefinitionList,
+            (_, _) => ToggleDefinitionListAtSelection(),
+            (_, e) => e.CanExecute = DefinitionListFormatting.CanToggle(this)));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.SetHeadingLevel,
             (_, e) => SetHeadingLevelAtCaret(e.Parameter),
             (_, e) => e.CanExecute = HeadingFormatting.CanSetLevel(this)));

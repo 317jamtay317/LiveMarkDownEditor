@@ -75,8 +75,6 @@ work that is still in review, noted inline.
   edit lighting up a whole page reads as noise, not as information. It holds ~2s and fades, and it
   deliberately moves neither caret nor scroll — the reload is someone else's action, and taking the
   reader's place away mid-read is not something they asked for.
-- [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
-  from INV-004's supported set. Each lands one tested construct at a time.
 - [ ] **More diagram kinds in the Flowchart Builder.** The Mermaid preview and the graphical
   Flowchart Builder now cover flowcharts end-to-end — author diagrams as text or on a drag-and-drop
   node/arrow canvas, preview them live, and export them (INV-047–053). The same `DiagramGraph` model

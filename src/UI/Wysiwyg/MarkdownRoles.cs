@@ -27,6 +27,26 @@ internal enum BlockSemantic
 
     /// <summary>Thematic break (horizontal rule) — captured as <c>---</c>.</summary>
     ThematicBreak,
+
+    /// <summary>
+    /// The Footnote Section — the block gathering every Footnote Definition at the end of the Visual
+    /// Document. It is composed by Project rather than authored, and is never captured as a block: each
+    /// Footnote Definition it holds is captured at its own authored position instead (INV-065).
+    /// </summary>
+    FootnoteSection,
+
+    /// <summary>A Definition List — captured as its Definition Terms and Descriptions (INV-066).</summary>
+    DefinitionList,
+
+    /// <summary>A Definition Term — captured as its own line, flush (INV-066).</summary>
+    DefinitionTerm,
+
+    /// <summary>
+    /// A Definition Description — captured with a leading <c>:</c> and three spaces, its continuation
+    /// lines indented. It holds blocks rather than inlines, because a Description may be more than one
+    /// block (INV-066).
+    /// </summary>
+    DefinitionDescription,
 }
 
 /// <summary>
@@ -75,6 +95,40 @@ internal sealed record CodeBlockRole(string? Language);
 /// </summary>
 /// <param name="Source">The Mermaid Diagram's source text.</param>
 internal sealed record MermaidDiagramRole(string Source);
+
+/// <summary>
+/// The role carried by the superscript <see cref="System.Windows.Documents.Run"/> a Footnote Reference
+/// is projected into, so Capture can reproduce <c>[^label]</c>. The Run's text is the Footnote Number,
+/// which is presentation counted from reference order; the Footnote Label kept here is what Capture
+/// writes, so a Footnote is never renumbered into the user's document (INV-065).
+/// </summary>
+/// <param name="Label">The Footnote Label, without its leading <c>^</c>.</param>
+internal sealed record FootnoteReferenceRole(string Label);
+
+/// <summary>
+/// The role carried by the leading <see cref="System.Windows.Documents.Run"/> that shows a Footnote
+/// Definition's Footnote Number in the Footnote Section. The Number is presentation, so Capture emits
+/// nothing for this Run — only the text a user has typed into it (INV-065).
+/// </summary>
+/// <param name="Label">The Footnote Label of the Definition this Number belongs to.</param>
+internal sealed record FootnoteNumberRole(string Label);
+
+/// <summary>
+/// The role carried by the <see cref="System.Windows.Documents.Section"/> holding one Footnote
+/// Definition's blocks inside the Footnote Section, so Capture can reproduce <c>[^label]: </c> and
+/// the note's content.
+/// </summary>
+/// <remarks>
+/// The Footnote Section is shown at the end of the Visual Document, but a Definition is captured where
+/// it was **authored** — so it remembers the top-level block it followed in the source. Capture emits
+/// the Definition after that block; a Definition whose <paramref name="Anchor"/> is
+/// <see langword="null"/> is emitted before every block, and one whose Anchor is no longer in the
+/// document (the user deleted it) falls to the end rather than disappearing with it (INV-065).
+/// </remarks>
+/// <param name="Label">The Footnote Label, without its leading <c>^</c>.</param>
+/// <param name="Anchor">The top-level Block this Definition was authored after, or
+/// <see langword="null"/> when it was authored before any of them.</param>
+internal sealed record FootnoteDefinitionRole(string Label, System.Windows.Documents.Block? Anchor);
 
 /// <summary>
 /// The role carried by a <see cref="System.Windows.Documents.Table"/> projected from a Markdown

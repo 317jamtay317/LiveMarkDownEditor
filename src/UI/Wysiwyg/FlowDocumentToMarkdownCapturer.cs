@@ -53,14 +53,30 @@ public sealed class FlowDocumentToMarkdownCapturer
     {
         ArgumentNullException.ThrowIfNull(blocks);
 
+        var ordered = blocks.ToList();
+
+        // The Footnote Section is shown at the end of the Visual Document, but each Footnote Definition
+        // it holds is written where it was authored — so the Definitions are lifted out and spliced in
+        // after the blocks they remember, and the Section itself is never emitted (INV-065).
+        var pending = FootnoteDefinitions(ordered);
+
         var captured = new List<string>();
-        foreach (var block in blocks)
+        captured.AddRange(TakeAnchoredTo(pending, anchor: null));
+
+        foreach (var block in ordered)
         {
+            if (block is Section { Tag: BlockSemantic.FootnoteSection })
+            {
+                continue;
+            }
+
             var text = CaptureBlock(block);
             if (text is not null)
             {
                 captured.Add(text);
             }
+
+            captured.AddRange(TakeAnchoredTo(pending, block));
         }
 
         // A Block Island (a Table, a Mermaid Diagram) is always followed by an empty paragraph so the
@@ -72,8 +88,57 @@ public sealed class FlowDocumentToMarkdownCapturer
             captured.RemoveAt(captured.Count - 1);
         }
 
+        // A Definition whose remembered block is no longer in the document — the user deleted it —
+        // falls to the end rather than disappearing along with it (INV-065).
+        captured.AddRange(pending.Select(Emit));
+
         return string.Join("\n\n", captured);
     }
+
+    // Every Footnote Definition held by a Footnote Section among `blocks`, in the order it is shown.
+    private static List<Section> FootnoteDefinitions(List<Block> blocks) =>
+    [
+        .. blocks
+            .OfType<Section>()
+            .Where(section => section.Tag is BlockSemantic.FootnoteSection)
+            .SelectMany(section => section.Blocks.OfType<Section>())
+            .Where(definition => definition.Tag is FootnoteDefinitionRole),
+    ];
+
+    // Emits and removes the Definitions authored after `anchor`, so each is written exactly once.
+    private static List<string> TakeAnchoredTo(List<Section> pending, Block? anchor)
+    {
+        var due = pending.Where(definition => Role(definition).Anchor == anchor).ToList();
+        due.ForEach(definition => pending.Remove(definition));
+        return [.. due.Select(Emit)];
+    }
+
+    // Emits one Footnote Definition: `[^label]: ` then the note's own blocks, their continuation lines
+    // indented so they stay inside the note. A blank separator line stays blank rather than becoming
+    // indented whitespace, so repeated Round-Trips converge (INV-005).
+    private static string Emit(Section definition)
+    {
+        var note = Indent(
+            new FlowDocumentToMarkdownCapturer().Capture(definition.Blocks),
+            FootnoteContinuationIndent);
+
+        // An empty note — the state Insert Footnote leaves a new Footnote in until the user types it —
+        // is emitted without the separating space rather than with a trailing one. It still parses back
+        // as the Definition it is, so nothing is lost by not writing whitespace into the user's file.
+        return note.Length == 0
+            ? "[^" + Role(definition).Label + "]:"
+            : "[^" + Role(definition).Label + "]: " + note;
+    }
+
+    private static FootnoteDefinitionRole Role(Section definition) => (FootnoteDefinitionRole)definition.Tag;
+
+    // What a Footnote Definition's continuation lines are indented by, so they stay inside the note.
+    private const string FootnoteContinuationIndent = "    ";
+
+    // A Definition Description's colon and the three spaces that make it one (INV-066), and the indent
+    // its continuation lines carry so they stay inside the Description.
+    private const string DefinitionDescriptionMarker = ":   ";
+    private const string DefinitionContinuationIndent = "    ";
 
     private static string? CaptureBlock(Block block) => block switch
     {
@@ -85,6 +150,7 @@ public sealed class FlowDocumentToMarkdownCapturer
         BlockUIContainer { Tag: MermaidDiagramRole diagram } => CaptureMermaidDiagram(diagram),
         WpfList list => CaptureList(list),
         Section { Tag: BlockSemantic.Quote } quote => CaptureQuote(quote),
+        Section { Tag: BlockSemantic.DefinitionList } definitionList => CaptureDefinitionList(definitionList),
         WpfTable table => CaptureTable(table),
         _ => null,
     };
@@ -134,6 +200,51 @@ public sealed class FlowDocumentToMarkdownCapturer
         var lines = inner.Split('\n');
         return string.Join("\n", lines.Select(line => line.Length == 0 ? ">" : "> " + line));
     }
+
+    // Emits a Definition List: each Definition Term on its own line, each Definition Description behind
+    // a colon and three spaces with its continuation lines indented. The canonical form is exact
+    // because the syntax is unforgiving (INV-066): a colon followed by fewer than three spaces is a
+    // paragraph rather than a definition list, and an Item that has a Term needs the blank line before
+    // it — without one its Term is absorbed into the Description above — while a term-less one must
+    // *not* have it, because a blank line there makes that Description loose and changes the render.
+    private static string CaptureDefinitionList(Section definitionList)
+    {
+        var lines = new List<string>();
+        var afterDescription = false;
+
+        foreach (var block in definitionList.Blocks)
+        {
+            if (block is Section { Tag: BlockSemantic.DefinitionDescription } description)
+            {
+                lines.Add(DefinitionDescriptionMarker + Indent(
+                    new FlowDocumentToMarkdownCapturer().Capture(description.Blocks),
+                    DefinitionContinuationIndent));
+                afterDescription = true;
+                continue;
+            }
+
+            if (block is Paragraph term)
+            {
+                // A Term following a Description begins a new Item; consecutive Terms share one.
+                if (afterDescription)
+                {
+                    lines.Add(string.Empty);
+                }
+
+                lines.Add(CaptureInlines(term.Inlines));
+                afterDescription = false;
+            }
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    // Indents every line of `text` after the first, leaving blank separator lines blank so repeated
+    // Round-Trips converge (INV-005). Shared by a Footnote Definition and a Definition Description,
+    // which carry their continuation lines the same way.
+    private static string Indent(string text, string indent) =>
+        string.Join("\n", text.Split('\n').Select((line, index) =>
+            index == 0 || line.Length == 0 ? line : indent + line));
 
     // Emits a fenced code block. The code text is read back from the paragraph's own inlines (Runs
     // separated by LineBreaks) so any edits to the code are captured; the language comes from the role.
@@ -236,6 +347,20 @@ public sealed class FlowDocumentToMarkdownCapturer
                 segments.Add(Verbatim(EmitImage(image)));
                 break;
 
+            // A Footnote Reference shows a Footnote Number but is captured from its Footnote Label, so a
+            // Footnote is never renumbered into the user's document (INV-065). The number is the Run's
+            // whole text; anything the user typed against it is their content, and is kept.
+            case Run { Tag: FootnoteReferenceRole reference } cited:
+                segments.Add(Verbatim("[^" + reference.Label + "]"));
+                AddTyped(TextBeyondDigits(cited.Text), segments);
+                break;
+
+            // A Footnote Definition's Footnote Number is presentation: it emits nothing at all, so the
+            // number can never reach the Markdown Document (INV-065).
+            case Run { Tag: FootnoteNumberRole } numbered:
+                AddTyped(TextBeyondMarker(numbered.Text), segments);
+                break;
+
             case Run { Tag: TaskMarkerRole task } marker:
             {
                 // The marker owns the separator (the Projector strips the one the source carried on
@@ -287,6 +412,29 @@ public sealed class FlowDocumentToMarkdownCapturer
     }
 
     private static Segment Verbatim(string text) => new(text, false, false, false, false, false, Verbatim: true);
+
+    // Text a user typed into a presentation-only Run — a Footnote Reference's or Footnote Number's — is
+    // their content, and is captured as ordinary prose rather than swallowed by the marker.
+    private static void AddTyped(string typed, List<Segment> segments)
+    {
+        if (typed.Length > 0)
+        {
+            segments.Add(new Segment(typed, false, false, false, false, false, Verbatim: false));
+        }
+    }
+
+    // Whatever a Footnote Reference's Run holds beyond the Footnote Number it shows.
+    private static string TextBeyondDigits(string text) => text.TrimStart(Digits);
+
+    // Whatever a Footnote Definition's marker Run holds beyond the "N. " it shows.
+    private static string TextBeyondMarker(string text)
+    {
+        var rest = text.TrimStart(Digits);
+        rest = rest.StartsWith('.') ? rest[1..] : rest;
+        return rest.StartsWith(' ') ? rest[1..] : rest;
+    }
+
+    private static readonly char[] Digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
     // Whatever a Task Marker's Run holds beyond its checkbox glyph and the single space that
     // separates it from the item's text — that is, text the user typed into the marker's Run.

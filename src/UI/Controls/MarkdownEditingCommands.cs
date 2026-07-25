@@ -127,6 +127,27 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands));
 
     /// <summary>
+    /// The Insert Footnote Formatting Action: cites a new Footnote at the caret — a Footnote Reference
+    /// there and an empty Footnote Definition in the Footnote Section — and leaves the caret in the
+    /// Definition, ready for the note (INV-065).
+    /// </summary>
+    public static RoutedUICommand InsertFootnote { get; } = new(
+        "Footnote",
+        nameof(InsertFootnote),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
+    /// The Toggle Definition List Formatting Action: the paragraphs the selection touches become a
+    /// Definition List — the first a Definition Term, the rest its Definition Descriptions — or the
+    /// selected Definition List's blocks become plain paragraphs again. Whole blocks are taken
+    /// (INV-066).
+    /// </summary>
+    public static RoutedUICommand ToggleDefinitionList { get; } = new(
+        "Definition list",
+        nameof(ToggleDefinitionList),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
     /// The <see cref="SetHeadingLevel"/> parameter that means "not a Heading" — the Heading Level
     /// Picker's Paragraph choice, which turns the Heading at the caret back into a plain paragraph.
     /// </summary>

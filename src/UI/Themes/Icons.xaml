@@ -98,6 +98,16 @@
          18px the extra rules crowd into a mesh and stop reading as a table at all. -->
     <Geometry x:Key="Icon.Table">M3 5 H21 V19 H3 Z M3 10 H21 M12 10 V19</Geometry>
 
+    <!-- Lines of prose with a raised mark above their last line: the superscript Footnote Number a
+         Footnote Reference shows in the Visual Document. The mark sits clear of the text lines, since a
+         raised tick touching them reads as a stray stroke rather than as a citation. -->
+    <Geometry x:Key="Icon.InsertFootnote">M4 6 H20 M4 11 H20 M4 16 H11 M15 19 V14 M13.5 15.5 L15 14</Geometry>
+
+    <!-- A short flush line over a longer indented one, twice: the shape a Definition List is shown with
+         in the Visual Document — each Definition Term against the margin, its Definition Descriptions
+         indented beneath it. -->
+    <Geometry x:Key="Icon.ToggleDefinitionList">M4 5 H12 M9 10 H20 M4 15 H12 M9 20 H20</Geometry>
+
     <!-- Fold actions: chevrons that close toward a line, and open away from it. The line is what
          makes them legible — two facing chevrons alone merge into an X (collapse) and a diamond
          (expand), which say nothing. It also reads as the Section Heading the fold closes onto. -->

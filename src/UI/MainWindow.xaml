@@ -498,6 +498,28 @@
                     </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
                 </Button>
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
+                        AutomationProperties.Name="Footnote"
+                        Command="controls:MarkdownEditingCommands.InsertFootnote"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Footnote"
+                                             Detail="Cite a footnote here, and type the note at the end of the document." />
+                    </Button.ToolTip>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertFootnote}" />
+                </Button>
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
+                        AutomationProperties.Name="Definition list"
+                        Command="controls:MarkdownEditingCommands.ToggleDefinitionList"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Definition list"
+                                             Detail="Make the selected paragraphs a term and its definitions, or plain paragraphs again." />
+                    </Button.ToolTip>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleDefinitionList}" />
+                </Button>
 
                 <!-- Insert group — collapsed form: one dropdown gathering the same insert actions, shown
                      only while the expanded icons above do not fit (INV-054). -->
@@ -508,7 +530,7 @@
                               AutomationProperties.Name="Insert">
                         <MenuItem.ToolTip>
                             <controls:CommandTip Heading="Insert"
-                                                 Detail="Insert a link, image, table, flowchart, or block quote." />
+                                                 Detail="Insert a link, image, table, flowchart, footnote, definition list, or block quote." />
                         </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Insert}" />
@@ -626,6 +648,35 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
                                     <TextBlock Text="Flowchart…  (Ctrl+Shift+D)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Footnote"
+                                  Command="controls:MarkdownEditingCommands.InsertFootnote"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Footnote"
+                                                     Detail="Cite a footnote here, and type the note at the end of the document." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertFootnote}" />
+                                    <TextBlock Text="Footnote" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Definition list"
+                                  Command="controls:MarkdownEditingCommands.ToggleDefinitionList"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Definition list"
+                                                     Detail="Make the selected paragraphs a term and its definitions, or plain paragraphs again." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.ToggleDefinitionList}" />
+                                    <TextBlock Text="Definition list" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>
