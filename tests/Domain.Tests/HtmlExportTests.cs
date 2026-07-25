@@ -52,6 +52,26 @@ public sealed class HtmlExportTests
     }
 
     [Fact]
+    public void Compose_StandalonePage_StylesTheFootnoteSection_INV065()
+    {
+        // A Standalone Page stands on its own, so it carries the rules that set the notes off from the
+        // prose that cites them — as the Visual Document and the printout both do.
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        page.ShouldContain(".footnotes");
+        page.ShouldContain("sup");
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_StylesADefinitionList_INV066()
+    {
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        page.ShouldContain("dt");
+        page.ShouldContain("dd");
+    }
+
+    [Fact]
     public void Compose_StandalonePage_StylesCodeTokensForDarkModeToo_INV064()
     {
         var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");

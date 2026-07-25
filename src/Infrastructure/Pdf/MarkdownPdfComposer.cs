@@ -1,5 +1,8 @@
-using System.Collections.Frozen;
+﻿using System.Collections.Frozen;
+using System.Globalization;
 using Infrastructure.Markdown;
+using Markdig.Extensions.DefinitionLists;
+using Markdig.Extensions.Footnotes;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -8,6 +11,7 @@ using MdTable = Markdig.Extensions.Tables.Table;
 using MdTableRow = Markdig.Extensions.Tables.TableRow;
 using MdTableCell = Markdig.Extensions.Tables.TableCell;
 using MdColumnAlign = Markdig.Extensions.Tables.TableColumnAlign;
+using MdFootnote = Markdig.Extensions.Footnotes.Footnote;
 
 namespace Infrastructure.Pdf;
 
@@ -27,6 +31,9 @@ internal sealed class MarkdownPdfComposer
     private const string CodeFont = "Courier New";
     private const double UsableWidthCm = 16.0;
     private const double IndentStepCm = 0.6;
+
+    // Notes are set smaller than the prose that cites them, as they are in print.
+    private const double FootnoteFontSize = 9.5;
 
     private static readonly double[] HeadingSizes = [20, 17, 15, 13, 12, 11];
 
@@ -124,6 +131,12 @@ internal sealed class MarkdownPdfComposer
                 break;
             case ThematicBreakBlock:
                 WriteThematicBreak();
+                break;
+            case FootnoteGroup footnotes:
+                WriteFootnotes(footnotes);
+                break;
+            case DefinitionList definitions:
+                WriteDefinitionList(definitions, indentCm, quoted);
                 break;
             case ContainerBlock nested:
                 WriteBlocks(nested, indentCm, quoted);
@@ -294,6 +307,72 @@ internal sealed class MarkdownPdfComposer
         paragraph.Format.SpaceAfter = "6pt";
     }
 
+    // The Footnote Section as the Rendered Output shows it: a rule, then each note beside its Footnote
+    // Number, in reference order (INV-065). A Footnote Definition no Reference cites is not in the group
+    // at all — Markdown omits it from the Rendered Output, and so does a printout.
+    private void WriteFootnotes(FootnoteGroup footnotes)
+    {
+        var notes = footnotes.OfType<MdFootnote>().ToList();
+        if (notes.Count == 0)
+        {
+            return;
+        }
+
+        WriteThematicBreak();
+        foreach (var note in notes)
+        {
+            WriteFootnote(note, note.Order.ToString(CultureInfo.InvariantCulture) + ". ");
+        }
+    }
+
+    // One Footnote Definition, its Number written before its first block the way a List Item's marker
+    // is. The back-reference the parser appended belongs to the Rendered Output's navigation, not to the
+    // note, and is dropped with the other inlines it cannot print (INV-065).
+    private void WriteFootnote(MdFootnote note, string marker)
+    {
+        var wroteMarker = false;
+        foreach (var child in note)
+        {
+            if (child is ParagraphBlock paragraph && !wroteMarker)
+            {
+                var written = NewParagraph(IndentStepCm, quoted: false);
+                written.Format.Font.Size = FootnoteFontSize;
+                written.AddText(marker);
+                WriteInlines(paragraph.Inline, written, default);
+                wroteMarker = true;
+                continue;
+            }
+
+            WriteBlock(child, IndentStepCm, quoted: false);
+        }
+    }
+
+    // A Definition List: each Definition Term flush, each Definition Description indented beneath it —
+    // the shape the Visual Document and the Rendered Output both show (INV-066).
+    private void WriteDefinitionList(DefinitionList definitions, double indentCm, bool quoted)
+    {
+        foreach (var itemBlock in definitions)
+        {
+            if (itemBlock is not DefinitionItem item)
+            {
+                continue;
+            }
+
+            foreach (var child in item)
+            {
+                if (child is DefinitionTerm term)
+                {
+                    var paragraph = NewParagraph(indentCm, quoted);
+                    paragraph.Format.KeepWithNext = true;
+                    WriteInlines(term.Inline, paragraph, default);
+                    continue;
+                }
+
+                WriteBlock(child, indentCm + IndentStepCm, quoted);
+            }
+        }
+    }
+
     private void WriteTable(MdTable table)
     {
         var pdfTable = _section.AddTable();
@@ -396,6 +475,17 @@ internal sealed class MarkdownPdfComposer
             case HtmlEntityInline entity:
                 AddRun(paragraph, entity.Transcoded.ToString(), style);
                 break;
+            // A Footnote Reference is the superscript Footnote Number that stands in the prose; the
+            // back-reference under the note is the Rendered Output's navigation and prints nothing
+            // (INV-065).
+            case FootnoteLink { IsBackLink: true }:
+                break;
+            case FootnoteLink reference:
+                AddRun(
+                    paragraph,
+                    reference.Footnote.Order.ToString(CultureInfo.InvariantCulture),
+                    style with { Superscript = true });
+                break;
             case TaskList:
             case HtmlInline:
                 break;
@@ -439,6 +529,11 @@ internal sealed class MarkdownPdfComposer
             run.Font.Color = Colors.RoyalBlue;
             run.Font.Underline = Underline.Single;
         }
+
+        if (style.Superscript)
+        {
+            run.Font.Superscript = true;
+        }
     }
 
     private static ParagraphAlignment AlignmentFor(MdTable table, int column)
@@ -474,7 +569,8 @@ internal sealed class MarkdownPdfComposer
         int.TryParse(orderedStart, out var start) ? start : 1;
 
     /// <summary>The accumulated inline formatting applied to a run of text.</summary>
-    private readonly record struct InlineStyle(bool Bold, bool Italic, bool Code, bool Link)
+    private readonly record struct InlineStyle(
+        bool Bold, bool Italic, bool Code, bool Link, bool Superscript = false)
     {
         /// <summary>Returns this style with the formatting the given emphasis run adds.</summary>
         public InlineStyle WithEmphasis(EmphasisInline emphasis) => emphasis switch

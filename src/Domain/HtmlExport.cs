@@ -94,6 +94,16 @@ public static class HtmlExport
             hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
             img { max-width: 100%; }
             ul.contains-task-list { list-style: none; padding-left: 1.2em; }
+            /* A Footnote (INV-065): the Reference is a small raised number, and the notes are set off
+               from the prose that cites them — behind a rule, smaller, the way they are in print. */
+            sup { font-size: 0.75em; line-height: 0; }
+            .footnotes { margin-top: 2.5em; font-size: 0.9em; color: var(--muted); }
+            .footnotes hr { margin: 0 0 1em; }
+            .footnotes li { margin: 0.4em 0; }
+            /* A Definition List (INV-066): each Definition Term flush, its Definition Descriptions
+               indented beneath it — the shape the Visual Document shows. */
+            dt { font-weight: 600; margin-top: 0.8em; }
+            dd { margin: 0.2em 0 0 1.5em; }
             .mermaid { margin: 1em 0; text-align: center; }
             .mermaid svg { max-width: 100%; height: auto; }
         """;
