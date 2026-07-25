@@ -17,7 +17,7 @@
              checking that flags only the genuinely misspelled sub-word and skips code. -->
         <Setter Property="SpellCheck.IsEnabled" Value="False" />
         <!-- Themed via the active palette so the editing surface follows light/dark. The projector
-             sets no foreground colour, so all projected content inherits Foreground. -->
+             sets no foreground color, so all projected content inherits Foreground. -->
         <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="CaretBrush" Value="{DynamicResource CaretBrush}" />

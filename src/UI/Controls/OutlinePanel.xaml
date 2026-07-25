@@ -3,7 +3,7 @@
                     xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Default style for the Navigation Panel. Authored as the control's ResourceDictionary alongside
-         the OutlinePanel class, per the project's Control conventions. Colours are DynamicResource
+         the OutlinePanel class, per the project's Control conventions. Colors are DynamicResource
          lookups into the active palette so the panel follows the light/dark theme. -->
 
     <controls:HeadingLevelToIndentConverter x:Key="HeadingLevelToIndentConverter" />

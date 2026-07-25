@@ -81,7 +81,7 @@ internal static class CodeFormatting
     /// <param name="run">The run carrying the code text.</param>
     internal static void ApplyCodeSpan(Run run)
     {
-        // Monospace alone reads like body text; an accent colour plus Code Shading make an inline
+        // Monospace alone reads like body text; an accent color plus Code Shading make an inline
         // code span visibly code. The Code tag (not the styling) is what Capture keys on, and it is
         // also what the CodeShadingScanner finds to shade the span (INV-017).
         run.Tag = InlineSemantic.Code;

@@ -14,7 +14,7 @@ namespace UI.Controls;
 /// </summary>
 /// <remarks>
 /// The shade is an <em>overlay</em>, not each code element's own <c>Background</c>, precisely so a
-/// theme recolour stays cheap: recolouring a brush that backs text forces WPF to re-format that text,
+/// theme recolor stays cheap: recoloring a brush that backs text forces WPF to re-format that text,
 /// which on a code-heavy document reflows the whole document. Filling a rectangle in an adorner that
 /// owns no text only repaints. The adorner re-scans for Code Regions when the document changes; a
 /// scroll or resize merely repaints from the regions already held.
@@ -24,7 +24,6 @@ public sealed class CodeShadingAdorner : Adorner
     // A Code Block's shade is inset to cover its Padding; an inline Code Span's hugs the text closely.
     private const double BlockPadding = 8d;
     private const double SpanPadding = 2d;
-    private const double RightInset = 14d;
     private const double CornerRadius = 3d;
 
     private readonly RichTextBox _editor;
@@ -74,7 +73,7 @@ public sealed class CodeShadingAdorner : Adorner
         {
             if (region.IsBlock)
             {
-                DrawBlock(drawingContext, region, brush, viewportWidth, viewportHeight);
+                DrawBlock(drawingContext, region, brush, viewportHeight);
             }
             else
             {
@@ -85,10 +84,12 @@ public sealed class CodeShadingAdorner : Adorner
         drawingContext.Pop();
     }
 
-    // A Code Block: a full-width panel from the first line to the last, inset to cover the block's
-    // Padding on the left and top/bottom. Two character rects (start, end) give its vertical extent, so
-    // even a block taller than the viewport is drawn (and clipped) without walking every line.
-    private void DrawBlock(DrawingContext drawingContext, CodeRegion region, Brush brush, double viewportWidth, double viewportHeight)
+    // A Code Block: a panel spanning the text column, from the first line to the last, inset to cover
+    // the block's Padding on the left and top/bottom. Two character rects (start, end) give its
+    // vertical extent, so even a block taller than the viewport is drawn (and clipped) without walking
+    // every line. It stops at the column rather than at the control's edge, so the shade is inset
+    // evenly on both sides — see EditorTextColumn.
+    private void DrawBlock(DrawingContext drawingContext, CodeRegion region, Brush brush, double viewportHeight)
     {
         try
         {
@@ -105,7 +106,7 @@ public sealed class CodeShadingAdorner : Adorner
             }
 
             var left = startRect.Left - BlockPadding;
-            var right = viewportWidth - RightInset;
+            var right = EditorTextColumn.RightEdge(_editor);
             if (right <= left)
             {
                 return;

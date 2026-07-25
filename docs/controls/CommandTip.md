@@ -24,8 +24,8 @@ as a glaring near-white box — the same bug the stock `TextBox` and `ComboBox` 
 
 - **carry structured content** — a heading, a detail line, and an optional gesture, rather than one flat
   string; and
-- **paint itself from the active palette** — every colour in its template is a `DynamicResource` lookup,
-  so a theme swap recolours it live.
+- **paint itself from the active palette** — every color in its template is a `DynamicResource` lookup,
+  so a theme swap recolors it live.
 
 Because a `CommandTip` *is* a `ToolTip`, it is assigned straight to an element's `ToolTip` and shown with
 its own template — no stock tooltip is wrapped around it. The plain-string tooltips that remain (the
@@ -83,6 +83,6 @@ them show their Command Tip whether enabled or not.
 - [`CommandTipTests`](../../tests/UI.Tests/Controls/CommandTipTests.cs) — the control is a `ToolTip`, and
   its three properties round-trip and default to empty.
 - [`CommandTipStyleTests`](../../tests/UI.Tests/Themes/CommandTipStyleTests.cs) — the `CommandTip` default
-  style and the implicit `ToolTip` style are defined, target the right types, and take every colour from
-  the palette (no literal a theme swap could not recolour); and the shared command styles set
+  style and the implicit `ToolTip` style are defined, target the right types, and take every color from
+  the palette (no literal a theme swap could not recolor); and the shared command styles set
   `ToolTipService.ShowOnDisabled` so a disabled command still shows its tip.

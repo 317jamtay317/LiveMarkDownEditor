@@ -10,8 +10,8 @@ namespace UI.Tests.Themes;
 /// Tests for the Dialog Button styles: the look of the buttons that accept or dismiss the Link
 /// Prompt. WPF's stock Button chrome is a fixed grey gradient that ignores the palette entirely, so
 /// a button left unstyled reads as a foreign control sitting on a themed surface — and looks broken
-/// outright in the dark palette. These tests hold both styles to taking every colour from the
-/// palette, so a theme swap recolours them with everything else.
+/// outright in the dark palette. These tests hold both styles to taking every color from the
+/// palette, so a theme swap recolors them with everything else.
 /// </summary>
 /// <remarks>
 /// That the Link Prompt <em>asks</em> for these styles is not covered here. Reaching its buttons
@@ -47,30 +47,30 @@ public sealed class DialogButtonTests
     }
 
     /// <summary>
-    /// Every colour a Dialog Button paints itself with is a DynamicResource lookup into the active
-    /// palette. A literal colour here would survive a theme swap and strand the button in the
+    /// Every color a Dialog Button paints itself with is a DynamicResource lookup into the active
+    /// palette. A literal color here would survive a theme swap and strand the button in the
     /// palette it was authored against — the very bug these styles exist to fix.
     /// </summary>
     [Theory]
     [MemberData(nameof(DialogButtonStyleKeys))]
-    public void DialogButtonStyle_TakesItsColours_FromThePalette(string key)
+    public void DialogButtonStyle_TakesItsColors_FromThePalette(string key)
     {
         StaThread.Run(() =>
         {
             var style = (Style)LoadControlStyles()[key]!;
 
-            var colourSetters = style.Setters
+            var colorSetters = style.Setters
                 .OfType<Setter>()
                 .Where(setter => setter.Property == Control.ForegroundProperty
                                  || setter.Property == Control.BackgroundProperty
                                  || setter.Property == Control.BorderBrushProperty)
                 .ToList();
 
-            colourSetters.ShouldNotBeEmpty($"'{key}' must colour itself.");
-            foreach (var setter in colourSetters)
+            colorSetters.ShouldNotBeEmpty($"'{key}' must color itself.");
+            foreach (var setter in colorSetters)
             {
                 setter.Value.ShouldBeOfType<DynamicResourceExtension>(
-                    $"'{key}' sets {setter.Property.Name} to a literal, which no theme swap can recolour.");
+                    $"'{key}' sets {setter.Property.Name} to a literal, which no theme swap can recolor.");
             }
         });
     }

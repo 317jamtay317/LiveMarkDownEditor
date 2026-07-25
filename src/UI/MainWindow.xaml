@@ -1427,6 +1427,7 @@
                                                      LinkPrompt="{Binding LinkPrompt}"
                                                      FlowchartBuilder="{Binding FlowchartBuilder}"
                                                      DiagramImageRenderer="{Binding DiagramImageRenderer}"
+                                                     SyntaxHighlighter="{Binding SyntaxHighlighter}"
                                                      IsDarkTheme="{Binding Appearance.IsDarkTheme}"
                                                      DocumentPrinter="{Binding DocumentPrinter}"
                                                      PrintPreview="{Binding PrintPreview}"

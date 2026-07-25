@@ -14,7 +14,7 @@
            them on screen, so the path data does not need arcs to look soft.
 
          Geometry is not a brush, so WpfThemeService leaves this dictionary alone on a theme swap
-         (it recolours SolidColorBrush entries only). Icons follow the theme through the stroke,
+         (it recolors SolidColorBrush entries only). Icons follow the theme through the stroke,
          which inherits the button's Foreground. -->
 
     <!-- File actions. -->

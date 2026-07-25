@@ -38,7 +38,7 @@ Page ends; it does not push the line that straddles it onto the next Page (INV-0
   device pixel instead of blurring across two. The Sheet's own bottom is a page edge already, so it
   gets no rule. `PageHeight` is bound to the Page Setup's oriented page height (1056 units upright,
   816 turned), so the rules follow the Page Orientation (INV-061).
-- **Recolour is free.** Both brushes are resource references (`EditorBackgroundBrush`, `PageBreakBrush`)
+- **Recolor is free.** Both brushes are resource references (`EditorBackgroundBrush`, `PageBreakBrush`)
   declared `AffectsRender`, so a theme switch repaints the Sheet and never reflows the document.
 - **Invisible outside Page View.** Its `Visibility` is bound to `WorkspaceViewModel.IsPageViewEnabled`;
   with Page View off the editor paints its own background again and this element is collapsed.

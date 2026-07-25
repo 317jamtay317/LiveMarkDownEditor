@@ -5,7 +5,7 @@
     <!-- Default style for the Panel Header (INV-062). Authored as the control's ResourceDictionary
          alongside the PanelHeader class, per the project's Control conventions. Self-contained: the
          header button style lives here rather than leaning on the app-level command styles, and every
-         colour is a DynamicResource lookup so the header follows the light/dark theme. -->
+         color is a DynamicResource lookup so the header follows the light/dark theme. -->
     <Style x:Key="PanelHeaderButton" TargetType="Button">
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Padding" Value="4" />

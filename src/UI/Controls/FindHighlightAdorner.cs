@@ -39,7 +39,7 @@ public sealed class FindHighlightAdorner : Adorner
     }
 
     /// <summary>
-    /// Sets the highlight colours, so the overlay follows the active light/dark palette. The Match
+    /// Sets the highlight colors, so the overlay follows the active light/dark palette. The Match
     /// fill sits behind all Matches; the Current-Match fill and outline mark the one in focus.
     /// </summary>
     /// <param name="matchBrush">The fill behind every Match.</param>

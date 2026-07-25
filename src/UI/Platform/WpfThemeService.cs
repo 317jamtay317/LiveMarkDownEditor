@@ -9,16 +9,16 @@ using UI.Core;
 namespace UI.Platform;
 
 /// <summary>
-/// WPF adapter for <see cref="IThemeService"/>. Applies a theme by recolouring a single live palette
+/// WPF adapter for <see cref="IThemeService"/>. Applies a theme by recoloring a single live palette
 /// <see cref="ResourceDictionary"/> merged into the application's resources. The control styles in
 /// <c>Themes/Controls.xaml</c> reference the palette's brushes via <c>DynamicResource</c>, so
-/// recolouring those brushes repaints the whole UI live. The window's non-client area (title bar) is
+/// recoloring those brushes repaints the whole UI live. The window's non-client area (title bar) is
 /// not covered by WPF styling, so it is themed here via the DWM immersive-dark-mode attribute — for
 /// every window as it loads (a dialog opened after a theme change would otherwise keep a light title
 /// bar) as well as for every open window when the theme changes.
 /// </summary>
 /// <remarks>
-/// The palette brushes are recoloured <em>in place</em> rather than by swapping a merged palette
+/// The palette brushes are recolored <em>in place</em> rather than by swapping a merged palette
 /// dictionary. Swapping a dictionary raises an application-wide resource invalidation that re-resolves
 /// every <c>DynamicResource</c> and re-formats the editor's whole Visual Document — a stall that grows
 /// with document size. Mutating each live <see cref="SolidColorBrush"/>'s
@@ -27,10 +27,10 @@ namespace UI.Platform;
 /// regardless of document size.
 /// <para>
 /// A resource brush placed in any <see cref="ResourceDictionary"/> (root or merged) is frozen by WPF
-/// so it can be shared, which would make recolouring throw. Each live brush therefore has its
-/// <see cref="SolidColorBrush.Color"/> data-bound to a mutable <see cref="PaletteColour"/> holder:
+/// so it can be shared, which would make recoloring throw. Each live brush therefore has its
+/// <see cref="SolidColorBrush.Color"/> data-bound to a mutable <see cref="PaletteColor"/> holder:
 /// a brush with a bound property reports <c>CanFreeze == false</c>, so the dictionary leaves it
-/// mutable. Re-theming sets each holder's colour, which the binding pushes into the live brush.
+/// mutable. Re-theming sets each holder's color, which the binding pushes into the live brush.
 /// </para>
 /// </remarks>
 public sealed class WpfThemeService : IThemeService
@@ -40,10 +40,10 @@ public sealed class WpfThemeService : IThemeService
     private static readonly Uri LightPalette = new("/UI;component/Themes/Palette.Light.xaml", UriKind.Relative);
     private static readonly Uri DarkPalette = new("/UI;component/Themes/Palette.Dark.xaml", UriKind.Relative);
 
-    // The colour holders backing each live brush, keyed as in the palette dictionaries. Setting a
-    // holder's Colour flows through its binding to recolour the live brush — the whole theming
+    // The color holders backing each live brush, keyed as in the palette dictionaries. Setting a
+    // holder's Color flows through its binding to recolor the live brush — the whole theming
     // mechanism, with no dictionary swap.
-    private Dictionary<object, PaletteColour>? _holders;
+    private Dictionary<object, PaletteColor>? _holders;
 
     // The live brushes themselves, kept so their (unbound) Opacity can be updated per theme.
     private Dictionary<object, SolidColorBrush>? _liveBrushes;
@@ -86,8 +86,8 @@ public sealed class WpfThemeService : IThemeService
             return;
         }
 
-        // Load the target palette's colours. This dictionary is only a source of values — the brushes
-        // actually shown are the live ones, recoloured to match.
+        // Load the target palette's colors. This dictionary is only a source of values — the brushes
+        // actually shown are the live ones, recolored to match.
         var source = new ResourceDictionary
         {
             Source = theme == AppTheme.Dark ? DarkPalette : LightPalette,
@@ -99,7 +99,7 @@ public sealed class WpfThemeService : IThemeService
         }
         else
         {
-            Recolour(source);
+            Recolor(source);
         }
 
         Current = theme;
@@ -107,9 +107,9 @@ public sealed class WpfThemeService : IThemeService
         ThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    // First application: build a live brush per palette brush whose Colour is bound to a mutable holder,
+    // First application: build a live brush per palette brush whose Color is bound to a mutable holder,
     // and place it in the application resources where the control styles' DynamicResource lookups
-    // resolve it. The binding keeps each brush unfreezable, so it stays mutable for later recolouring.
+    // resolve it. The binding keeps each brush unfreezable, so it stays mutable for later recoloring.
     private void InstallLivePalette(System.Windows.Application application, ResourceDictionary source)
     {
         _holders = [];
@@ -118,12 +118,12 @@ public sealed class WpfThemeService : IThemeService
         {
             if (entry.Value is SolidColorBrush brush)
             {
-                var holder = new PaletteColour { Colour = brush.Color };
+                var holder = new PaletteColor { Color = brush.Color };
                 var live = new SolidColorBrush { Opacity = brush.Opacity };
                 BindingOperations.SetBinding(
                     live,
                     SolidColorBrush.ColorProperty,
-                    new Binding(nameof(PaletteColour.Colour)) { Source = holder });
+                    new Binding(nameof(PaletteColor.Color)) { Source = holder });
 
                 application.Resources[entry.Key] = live;
                 _holders[entry.Key] = holder;
@@ -136,10 +136,10 @@ public sealed class WpfThemeService : IThemeService
         }
     }
 
-    // Subsequent applications: push each target colour into its holder (the binding recolours the live
+    // Subsequent applications: push each target color into its holder (the binding recolors the live
     // brush) and update the brush's Opacity. The brush instances — and the DynamicResource references
     // to them — are unchanged, so WPF repaints without a dictionary swap and its tree-wide invalidation.
-    private void Recolour(ResourceDictionary source)
+    private void Recolor(ResourceDictionary source)
     {
         foreach (DictionaryEntry entry in source)
         {
@@ -148,7 +148,7 @@ public sealed class WpfThemeService : IThemeService
                 continue;
             }
 
-            holder.Colour = next.Color;
+            holder.Color = next.Color;
             _liveBrushes![entry.Key].Opacity = next.Opacity;
         }
     }
@@ -182,20 +182,20 @@ public sealed class WpfThemeService : IThemeService
         DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref useDark, sizeof(int));
     }
 
-    // A mutable colour a live brush binds to. Binding the brush's Color to this holder makes the brush
-    // unfreezable, so the resource dictionary leaves it mutable; setting Colour recolours the brush.
-    private sealed class PaletteColour : DependencyObject
+    // A mutable color a live brush binds to. Binding the brush's Color to this holder makes the brush
+    // unfreezable, so the resource dictionary leaves it mutable; setting Color recolors the brush.
+    private sealed class PaletteColor : DependencyObject
     {
-        public static readonly DependencyProperty ColourProperty = DependencyProperty.Register(
-            nameof(Colour),
+        public static readonly DependencyProperty ColorProperty = DependencyProperty.Register(
+            nameof(Color),
             typeof(Color),
-            typeof(PaletteColour),
+            typeof(PaletteColor),
             new PropertyMetadata(Colors.Transparent));
 
-        public Color Colour
+        public Color Color
         {
-            get => (Color)GetValue(ColourProperty);
-            set => SetValue(ColourProperty, value);
+            get => (Color)GetValue(ColorProperty);
+            set => SetValue(ColorProperty, value);
         }
     }
 }

@@ -10,7 +10,7 @@
          Sheet (EditorBackgroundBrush) so the page edge reads clearly (INV-058). -->
     <SolidColorBrush x:Key="EditorCanvasBrush" Color="#111114" />
     <!-- Page Break: the rule the PageBreakAdorner draws across the Sheet where one Page ends and the
-         next begins, in the canvas colour so a break reads as the seam between two sheets (INV-058). -->
+         next begins, in the canvas color so a break reads as the seam between two sheets (INV-058). -->
     <SolidColorBrush x:Key="PageBreakBrush" Color="#37373E" />
 
     <SolidColorBrush x:Key="TextBrush" Color="#E6E6E9" />
@@ -22,8 +22,20 @@
     <SolidColorBrush x:Key="HoverBrush" Color="#26262B" />
 
     <!-- Code Shading: a subtle translucent tint drawn behind code by the CodeShadingAdorner overlay
-         (not as the code's own background, so a theme recolour never re-formats the document). -->
+         (not as the code's own background, so a theme recolor never re-formats the document). -->
     <SolidColorBrush x:Key="CodeShadingBrush" Color="#1EFFFFFF" />
+
+    <!-- Syntax Highlighting: one brush per Code Token Kind, which is what a Code Block's colored
+         Runs reference (INV-064). Lifted for a dark page rather than reused from the light palette,
+         where the same hues would sit too dark to read. A Plain Code Token has no brush of its own
+         on purpose — it inherits the ordinary code foreground. -->
+    <SolidColorBrush x:Key="CodeTokenCommentBrush" Color="#8B949E" />
+    <SolidColorBrush x:Key="CodeTokenStringBrush" Color="#56D4B8" />
+    <SolidColorBrush x:Key="CodeTokenNumberBrush" Color="#E3A857" />
+    <SolidColorBrush x:Key="CodeTokenKeywordBrush" Color="#FF7B72" />
+    <SolidColorBrush x:Key="CodeTokenTypeBrush" Color="#D2A8FF" />
+    <SolidColorBrush x:Key="CodeTokenFunctionBrush" Color="#79C0FF" />
+    <SolidColorBrush x:Key="CodeTokenOperatorBrush" Color="#A0A8B4" />
 
     <!-- Change Highlight: the brief shade the ChangeHighlightAdorner draws behind what a live reload
          changed, and the stronger accent for a changed Block's leading edge and a deletion seam's
@@ -31,7 +43,7 @@
     <SolidColorBrush x:Key="ChangeHighlightBrush" Color="#3D7C6CF0" />
     <SolidColorBrush x:Key="ChangeHighlightMarkerBrush" Color="#9B8DFF" />
 
-    <!-- Scrollbar thumb: the accent colour, muted at rest and full-strength on hover/drag. -->
+    <!-- Scrollbar thumb: the accent color, muted at rest and full-strength on hover/drag. -->
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#7C6CF0" Opacity="0.55" />
 
     <SolidColorBrush x:Key="CaretBrush" Color="#E6E6E9" />

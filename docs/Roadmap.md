@@ -75,8 +75,6 @@ work that is still in review, noted inline.
   edit lighting up a whole page reads as noise, not as information. It holds ~2s and fades, and it
   deliberately moves neither caret nor scroll — the reload is someone else's action, and taking the
   reader's place away mid-read is not something they asked for.
-- [ ] **Syntax highlighting inside a Code Block.** The language tag already survives a Round-Trip.
-  Coloring is view-only, so it fits the read-only overlay pattern Code Shading established.
 - [ ] **Footnotes and definition lists.** The notable Markdig-supported constructs still missing
   from INV-004's supported set. Each lands one tested construct at a time.
 - [ ] **More diagram kinds in the Flowchart Builder.** The Mermaid preview and the graphical
@@ -87,3 +85,4 @@ work that is still in review, noted inline.
   not node/arrow graphs and stay text-authored with the live preview.
 - [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
 - [ ] **Alternate color Rows on tables:** The rows should have alternate colors so its easier to read and see.
+- [ ] [ ] Panel memory: [ ] when we close the app we should remember what panelse we had open and the state if they are closed or in autohide or what.

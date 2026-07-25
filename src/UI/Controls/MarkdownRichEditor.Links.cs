@@ -134,6 +134,7 @@ public sealed partial class MarkdownRichEditor
         }
 
         var document = _projector.Project(Markdown, BaseDirectory);
+        SyntaxHighlighting.ApplyAllForPrint(document, SyntaxHighlighter);
         DocumentPrinter.Print(document, "LiveMarkDownEditor document", PageSetup ?? PageSetup.Default);
     }
 
@@ -152,6 +153,7 @@ public sealed partial class MarkdownRichEditor
         }
 
         var document = _projector.Project(Markdown, BaseDirectory);
+        SyntaxHighlighting.ApplyAllForPrint(document, SyntaxHighlighter);
         PrintPreview.Show(document, PageSetup ?? PageSetup.Default, "LiveMarkDownEditor document");
     }
 

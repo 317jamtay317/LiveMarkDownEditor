@@ -28,6 +28,13 @@ public static class HtmlExport
               --border: #E2E4E8;
               --accent: #4F46E5;
               --code-shading: rgba(0, 0, 0, 0.09);
+              --tok-comment: #6E7781;
+              --tok-string: #0F766E;
+              --tok-number: #B45309;
+              --tok-keyword: #CF222E;
+              --tok-type: #7C3AED;
+              --tok-function: #1F6FEB;
+              --tok-operator: #57606A;
             }
             @media (prefers-color-scheme: dark) {
               :root {
@@ -37,6 +44,13 @@ public static class HtmlExport
                 --border: #30343A;
                 --accent: #A5B4FC;
                 --code-shading: rgba(255, 255, 255, 0.09);
+                --tok-comment: #8B949E;
+                --tok-string: #56D4B8;
+                --tok-number: #E3A857;
+                --tok-keyword: #FF7B72;
+                --tok-type: #D2A8FF;
+                --tok-function: #79C0FF;
+                --tok-operator: #A0A8B4;
               }
             }
             body {
@@ -58,6 +72,16 @@ public static class HtmlExport
             code { background: var(--code-shading); padding: 0.15em 0.35em; border-radius: 4px; }
             pre { background: var(--code-shading); padding: 1em; border-radius: 6px; overflow-x: auto; }
             pre code { background: none; padding: 0; }
+            /* Syntax Highlighting: one rule per Code Token Kind, matching the classes the Rendered
+               Output marks each Code Token with (INV-064). A Plain Code Token carries no class and
+               so takes the ordinary code color, exactly as it does in the editor. */
+            .tok-comment { color: var(--tok-comment); font-style: italic; }
+            .tok-string { color: var(--tok-string); }
+            .tok-number { color: var(--tok-number); }
+            .tok-keyword { color: var(--tok-keyword); }
+            .tok-type { color: var(--tok-type); }
+            .tok-function { color: var(--tok-function); }
+            .tok-operator { color: var(--tok-operator); }
             blockquote {
               margin: 1em 0;
               padding: 0 1em;

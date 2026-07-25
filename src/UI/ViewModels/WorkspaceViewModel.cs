@@ -40,6 +40,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
     /// <param name="flowchartBuilder">Opens the Flowchart Builder for Open Flowchart Builder (INV-053).</param>
     /// <param name="diagramImageRenderer">Renders each Mermaid Diagram's inline picture (INV-047).</param>
+    /// <param name="syntaxHighlighter">Tokenizes each Code Block's code for Syntax Highlighting (INV-064).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
     /// <param name="export">The Export as HTML and PDF actions exposed to the shell's chrome (INV-032, INV-033).</param>
     /// <param name="folder">The Folder Workspace shell — the file-tree panel for browsing a folder (INV-042/043/044/045).</param>
@@ -57,6 +58,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         IMarkdownRenderer renderer,
         IFlowchartBuilder flowchartBuilder,
         IMermaidImageRenderer diagramImageRenderer,
+        ISyntaxHighlighter syntaxHighlighter,
         AppearanceViewModel appearance,
         ExportViewModel export,
         FolderWorkspaceViewModel folder,
@@ -78,6 +80,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
         DiagramImageRenderer = diagramImageRenderer ?? throw new ArgumentNullException(nameof(diagramImageRenderer));
+        SyntaxHighlighter = syntaxHighlighter ?? throw new ArgumentNullException(nameof(syntaxHighlighter));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
         Export = export ?? throw new ArgumentNullException(nameof(export));
         Folder = folder ?? throw new ArgumentNullException(nameof(folder));
@@ -210,6 +213,14 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// rather than by the container — the same reason <see cref="Renderer"/> is exposed.
     /// </summary>
     public IMermaidImageRenderer DiagramImageRenderer { get; }
+
+    /// <summary>
+    /// The tokenizer the editing surface colors each Code Block's Syntax Highlighting by
+    /// (INV-064). Exposed so the View can hand it to the <c>MarkdownRichEditor</c>, which is
+    /// composed in XAML rather than by the container — the same reason
+    /// <see cref="DiagramImageRenderer"/> is exposed.
+    /// </summary>
+    public ISyntaxHighlighter SyntaxHighlighter { get; }
 
     /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
     public ICommand NewCommand { get; }

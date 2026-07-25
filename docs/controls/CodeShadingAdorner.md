@@ -11,13 +11,13 @@ finding of the Code Regions is the pure [`CodeShadingScanner`](../../src/UI/Wysi
 ## Why an overlay instead of a background
 
 Code used to carry its own `TextElement.Background` (a palette brush). That looked right, but it was
-expensive: recolouring a brush that is a text element's background forces WPF to **re-format** every
+expensive: recoloring a brush that is a text element's background forces WPF to **re-format** every
 line of text using it. On a theme switch that re-formatted the whole document — hundreds of
 milliseconds on a code-heavy document.
 
 Drawing the shade as an adorner instead makes it a plain filled rectangle in an overlay that owns no
-text. Recolouring it (a theme switch) only repaints the overlay — no document reflow. So the shading
-recolours in well under a millisecond regardless of document size.
+text. Recoloring it (a theme switch) only repaints the overlay — no document reflow. So the shading
+recolors in well under a millisecond regardless of document size.
 
 ## Division of labour
 
@@ -27,14 +27,30 @@ Code Shading is split so that only the editor Control touches the document:
    sections, lists, tables, and inline spans) and returns the ordered **Code Regions** — one per Code
    Block and one per Code Span, each flagged as block or span.
 2. **The adorner draws.** The editor rebuilds the regions after each edit and hands them to the
-   adorner; `OnRender` paints a rounded shade behind each on-screen region — a full-width panel for a
-   Code Block, a snug box hugging the text for an inline Code Span. It fills with the
-   `CodeShadingBrush` looked up from the active palette, so the shade follows the light/dark theme.
+   adorner; `OnRender` paints a rounded shade behind each on-screen region — a panel spanning the
+   text column for a Code Block, a snug box hugging the text for an inline Code Span. It fills with
+   the `CodeShadingBrush` looked up from the active palette, so the shade follows the light/dark theme.
+
+## Where a Code Block's panel ends
+
+A Code Block's panel spans the **text column**, not the control. Its left edge needs no help — the
+first character sits one block-padding inside the block's left edge, so subtracting that padding
+lands on the column. The right edge has no such landmark, and taking the control's width instead
+overhung the column by whatever padding the surface carries: 11px in the ordinary view, and a full
+inch in Page View, where the control's padding *is* the Page's Margins. The panel ran to the paper's
+edge on the right while sitting an inch clear of it on the left.
+
+[`EditorTextColumn`](../../src/UI/Controls/EditorTextColumn.cs) computes the right edge from the
+hosting `ScrollViewer`'s **viewport**, which is already net of both the control's padding and the
+vertical scrollbar — so the panel is evenly inset and never runs under the scrollbar. Measured on the
+real control, an 816px-wide Page View surface with 96px margins gives a panel from 102 to 713, i.e.
+102 clear on the left and 103 on the right. The [`ChangeHighlightAdorner`](ChangeHighlightAdorner.md)
+shares the same helper, since it shades whole Blocks the same way (INV-060).
 
 ## How it works
 
-- **Recolour is free (the whole point).** The shade is filled with the live `CodeShadingBrush`
-  resource. When the theme changes, that brush's colour changes and WPF re-rasterises the overlay's
+- **Recolor is free (the whole point).** The shade is filled with the live `CodeShadingBrush`
+  resource. When the theme changes, that brush's color changes and WPF re-rasterises the overlay's
   rectangles — it never re-invokes layout, so no document reflow occurs (INV-017).
 - **Repaint (cheap).** Scrolling and resizing only repaint from the regions already held; the
   document is re-scanned only when it actually changes (an edit or a re-projection). Off-screen

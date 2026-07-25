@@ -17,7 +17,7 @@ Document or the result of a Capture (INV-058).
 - **Setup:** `UI.Core.PageSetup` — the orientation and margins the Sheet is laid out under (INV-061)
 - **Sheet:** [DocumentSheetBackdrop](DocumentSheetBackdrop.md) — the paper and the Page Break rules,
   drawn behind the editor
-- **Canvas colour:** `EditorCanvasBrush` (in `Palette.Light.xaml` / `Palette.Dark.xaml`)
+- **Canvas color:** `EditorCanvasBrush` (in `Palette.Light.xaml` / `Palette.Dark.xaml`)
 
 Authored as an attached behaviour — the sanctioned home for view-interaction logic outside a ViewModel
 — so the page-view concern lives here rather than swelling `MarkdownRichEditor`. The editor gets only a

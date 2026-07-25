@@ -18,8 +18,16 @@ public static class InfrastructureRegistry
         /// </summary>
         public void AddInfrastructure()
         {
-            services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
-            services.AddSingleton<IPdfExporter, MigraDocPdfExporter>();
+            services.AddSingleton<ISyntaxHighlighter, ColorCodeSyntaxHighlighter>();
+
+            // The renderer colors each Code Block through the tokenizer, so an exported page shows
+            // the Syntax Highlighting the editor does (INV-064). Composed explicitly rather than by
+            // convention, because the tokenizer is an optional constructor argument.
+            services.AddSingleton<IMarkdownRenderer>(provider =>
+                new MarkdigMarkdownRenderer(provider.GetRequiredService<ISyntaxHighlighter>()));
+            services.AddSingleton<IPdfExporter>(provider => new MigraDocPdfExporter(
+                provider.GetRequiredService<IMermaidImageRenderer>(),
+                provider.GetRequiredService<ISyntaxHighlighter>()));
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
             services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
             services.AddSingleton<IPdfExportStore, FilePdfExportStore>();

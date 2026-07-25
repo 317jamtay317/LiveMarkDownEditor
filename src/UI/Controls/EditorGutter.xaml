@@ -3,7 +3,7 @@
                     xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Default style for the Editor Gutter. Authored as the control's ResourceDictionary alongside
-         the EditorGutter class, per the project's Control conventions. Colours are DynamicResource
+         the EditorGutter class, per the project's Control conventions. Colors are DynamicResource
          lookups into the active palette so the gutter follows the light/dark theme. -->
     <Style TargetType="{x:Type controls:EditorGutter}">
         <Setter Property="Width" Value="52" />

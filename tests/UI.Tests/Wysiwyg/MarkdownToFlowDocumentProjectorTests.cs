@@ -10,7 +10,7 @@ namespace UI.Tests.Wysiwyg;
 /// <summary>
 /// Tests for <see cref="MarkdownToFlowDocumentProjector"/> that guard the Code Shading contract: code
 /// is tagged but given no <c>Background</c>, so the shade lives entirely in the Code Shading overlay
-/// and recolouring it cannot re-format the document (INV-017).
+/// and recoloring it cannot re-format the document (INV-017).
 /// </summary>
 public sealed class MarkdownToFlowDocumentProjectorTests
 {

@@ -20,8 +20,12 @@ namespace Infrastructure.Pdf;
 /// core font families that resolver maps. Each Mermaid Diagram is rendered through the injected
 /// <see cref="IMermaidImageRenderer"/> and written to a temporary PNG the composer embeds; a diagram
 /// the renderer cannot produce is passed as no image, so the composer falls back to its source text.
+/// Given a tokenizer, each Code Block is colored by the same Code Tokens the Visual Document shows
+/// (INV-064); the coloring changes no code, so the PDF still carries the document (INV-033).
 /// </remarks>
-public sealed class MigraDocPdfExporter(IMermaidImageRenderer diagramRenderer) : IPdfExporter
+public sealed class MigraDocPdfExporter(
+    IMermaidImageRenderer diagramRenderer,
+    ISyntaxHighlighter? syntaxHighlighter = null) : IPdfExporter
 {
     private static readonly Lock FontGate = new();
     private static bool _fontsConfigured;
@@ -37,7 +41,7 @@ public sealed class MigraDocPdfExporter(IMermaidImageRenderer diagramRenderer) :
         var (diagrams, tempFiles) = await RenderDiagramsAsync(ast).ConfigureAwait(true);
         try
         {
-            var composed = new MarkdownPdfComposer(diagrams).Compose(ast);
+            var composed = new MarkdownPdfComposer(diagrams, syntaxHighlighter).Compose(ast);
 
             var renderer = new PdfDocumentRenderer { Document = composed };
             renderer.RenderDocument();

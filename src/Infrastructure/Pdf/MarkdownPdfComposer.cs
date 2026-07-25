@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Infrastructure.Markdown;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
@@ -29,9 +30,25 @@ internal sealed class MarkdownPdfComposer
 
     private static readonly double[] HeadingSizes = [20, 17, 15, 13, 12, 11];
 
+    // The color each Code Token Kind is printed in — the editor's light palette, which is the one
+    // that reads on paper (INV-064). A Plain Code Token is absent on purpose: it prints in the
+    // ordinary code color, exactly as it shows in the editor.
+    private static readonly FrozenDictionary<Domain.CodeTokenKind, Color> CodeTokenColors =
+        new Dictionary<Domain.CodeTokenKind, Color>
+        {
+            [Domain.CodeTokenKind.Comment] = new Color(0x6E, 0x77, 0x81),
+            [Domain.CodeTokenKind.String] = new Color(0x0F, 0x76, 0x6E),
+            [Domain.CodeTokenKind.Number] = new Color(0xB4, 0x53, 0x09),
+            [Domain.CodeTokenKind.Keyword] = new Color(0xCF, 0x22, 0x2E),
+            [Domain.CodeTokenKind.Type] = new Color(0x7C, 0x3A, 0xED),
+            [Domain.CodeTokenKind.Function] = new Color(0x1F, 0x6F, 0xEB),
+            [Domain.CodeTokenKind.Operator] = new Color(0x57, 0x60, 0x6A),
+        }.ToFrozenDictionary();
+
     private readonly Document _document = new();
     private readonly Section _section;
     private readonly IReadOnlyDictionary<string, PreparedDiagram> _diagrams;
+    private readonly Domain.ISyntaxHighlighter? _syntaxHighlighter;
 
     /// <summary>Creates a composer with the document styles the exported PDF uses.</summary>
     /// <param name="diagrams">
@@ -39,9 +56,16 @@ internal sealed class MarkdownPdfComposer
     /// diagram's Code Block is (INV-050). A `mermaid` Code Block with no entry here falls back to its
     /// source text as an ordinary Code Block. Defaults to none.
     /// </param>
-    public MarkdownPdfComposer(IReadOnlyDictionary<string, PreparedDiagram>? diagrams = null)
+    /// <param name="syntaxHighlighter">
+    /// Tokenizes each Code Block's code so the PDF carries the same Syntax Highlighting the Visual
+    /// Document shows (INV-064). <see langword="null"/> writes every Code Block uncolored.
+    /// </param>
+    public MarkdownPdfComposer(
+        IReadOnlyDictionary<string, PreparedDiagram>? diagrams = null,
+        Domain.ISyntaxHighlighter? syntaxHighlighter = null)
     {
         _diagrams = diagrams ?? new Dictionary<string, PreparedDiagram>();
+        _syntaxHighlighter = syntaxHighlighter;
 
         // "Normal" is a MigraDoc built-in style; it is always present.
         var normal = _document.Styles["Normal"]!;
@@ -181,6 +205,19 @@ internal sealed class MarkdownPdfComposer
         paragraph.Format.SpaceBefore = "4pt";
         paragraph.Format.SpaceAfter = "4pt";
 
+        // Colored by the same Code Tokens the Visual Document shows, so a printed Code Block reads
+        // the way the one on screen does (INV-064). A block with no Highlighting Language yields no
+        // tokens and takes the plain path below, exactly as before.
+        var tokens = code is FencedCodeBlock fencedCode
+            ? _syntaxHighlighter?.Highlight(CodeOf(code), fencedCode.Info) ?? []
+            : [];
+
+        if (tokens.Count > 0)
+        {
+            WriteCodeTokens(paragraph, tokens);
+            return;
+        }
+
         for (var i = 0; i < code.Lines.Count; i++)
         {
             if (i > 0)
@@ -190,6 +227,52 @@ internal sealed class MarkdownPdfComposer
 
             paragraph.AddText(code.Lines.Lines[i].Slice.ToString());
         }
+    }
+
+    // Writes the Code Tokens into the paragraph, one run each, splitting a token that spans a line
+    // end so each code line still lands on its own line. A Plain Code Token is written as ordinary
+    // text with no color of its own, mirroring the palette.
+    private static void WriteCodeTokens(Paragraph paragraph, IReadOnlyList<Domain.CodeToken> tokens)
+    {
+        foreach (var token in tokens)
+        {
+            var lines = token.Text.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                {
+                    paragraph.AddLineBreak();
+                }
+
+                if (lines[i].Length == 0)
+                {
+                    continue;
+                }
+
+                if (CodeTokenColors.TryGetValue(token.Kind, out var color))
+                {
+                    paragraph.AddFormattedText(lines[i]).Font.Color = color;
+                }
+                else
+                {
+                    paragraph.AddText(lines[i]);
+                }
+            }
+        }
+    }
+
+    // The block's code, lines joined by '\n' — the same text the Visual Document holds, so the PDF
+    // tokenizes exactly what the editor tokenized.
+    private static string CodeOf(LeafBlock block)
+    {
+        var lines = block.Lines;
+        var slices = new List<string>(lines.Count);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            slices.Add(lines.Lines[i].Slice.ToString());
+        }
+
+        return string.Join("\n", slices);
     }
 
     // Places a rendered Mermaid Diagram image, scaled to fit the page width while keeping its aspect

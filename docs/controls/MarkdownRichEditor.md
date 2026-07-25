@@ -36,6 +36,7 @@ two directions echoing each other.
 | `IsReplaceActive` | `bool` | `false` | Whether the Find Bar's Replace Row is shown. Ctrl+H opens the Find Bar with it; Ctrl+F without. |
 | `MatchCount` | `int` | `0` | **Read-only.** The number of Matches for the current `FindQuery`. |
 | `MatchSummary` | `string` | `""` | **Read-only.** The Find Bar's summary: empty with no query, `"No results"`, or `"{ordinal} of {count}"`. |
+| `SyntaxHighlighter` | `ISyntaxHighlighter?` | `null` | The tokenizer each Code Block's Syntax Highlighting is colored by (INV-064). Left unbound, Code Blocks show their code plain. |
 
 ## Formatting Actions (Toggle Code, Lists &amp; Tables)
 
@@ -140,6 +141,42 @@ Four behaviours are worth knowing, all pinned by `MarkdownRichEditorReplaceTests
   makes the batch a single undo unit. WPF attaches no undo stack until the control is loaded in a
   visual tree, so the undo grouping is verified by driving Ctrl+Z in the running app rather than by a
   headless test.
+
+## Syntax Highlighting (coloring code by what it means)
+
+A Code Block whose fence names a language it can tokenize is colored by what its code *means* —
+comments muted, strings and numbers set apart, keywords emphasized (INV-064). It is the Code
+**Block**'s alone: a Code Span carries no language, so nothing says what its code would mean.
+
+- **The colors live on the Runs, not in an overlay.** Code Shading is an adorner because a shade is
+  something drawn *behind* text. Coloring is not: an overlay that owns no text cannot recolor glyphs
+  the editor has already drawn. So the block's inline content is rebuilt as one `Run` per Code Token.
+- **A theme flip is still free.** Each Run's `Foreground` is a `SetResourceReference` to its kind's
+  palette brush (`CodeTokenKeywordBrush`, …), never a fixed color — so switching theme recolors every
+  Code Block without re-tokenizing and without re-projecting the document.
+- **Typing re-colors the block, once the typing settles.** An edit inside a Code Block queues that
+  block on a 200 ms timer; the tick re-tokenizes that one block, restores the caret to the same place
+  in the code, and runs inside `MutateVisualDocument` so it raises no Capture.
+- **A no-op re-highlight touches nothing.** Before rebuilding, the new Code Tokens are compared
+  against what the paragraph already shows (each Run records its kind on its `Tag`). If they match,
+  the paragraph is left entirely alone — which is what stops the caret and the undo stack churning.
+- **Undo needs two guards, and both are load-bearing.** The rebuild is wrapped in
+  `BeginChange`/`EndChange`, and a re-highlight is skipped when `TextChangedEventArgs.UndoAction`
+  reports an undo or a redo. Without the first, the empty-then-refill lands as two undo entries and
+  one Ctrl+Z leaves the Code Block **empty**. Without the second, undoing a re-highlight schedules
+  another one whose entry the next Ctrl+Z takes back instead — the user can never reach their typing.
+  `IsUndoEnabled = false` is not a third option: WPF empties the undo stack when it is set false.
+  The residual cost is one extra Ctrl+Z on a re-colored block (first the coloring, then the typing).
+- **Never an edit.** The rebuilt Runs concatenate to exactly the code that was there — the tokenizer
+  guarantees it — and Capture reads a Code Block's Runs for their text alone, so the Markdown
+  Document is untouched.
+- **Print gets fixed ink.** Print and Print Preview compose a fresh Visual Document that is never
+  shown in the window, and paper is white whatever theme the app is in — so they call
+  `SyntaxHighlighting.ApplyAllForPrint`, which writes the light palette's colors outright instead of
+  referencing a brush.
+- **Unknown languages stay plain.** No fence info string, or one no grammar claims (`bash`, `yaml`,
+  `go`), means no coloring at all — the language is never guessed from the code's contents. A
+  `mermaid` block is shown as a rendered picture (INV-047), so there is no code text to color.
 
 ## Outline &amp; Navigation
 

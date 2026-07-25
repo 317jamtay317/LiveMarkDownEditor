@@ -34,6 +34,34 @@ public sealed class HtmlExportTests
             () => HtmlExport.Compose(Output, (ExportShape)42, "Title"));
     }
 
+    [Theory]
+    [InlineData("tok-comment")]
+    [InlineData("tok-string")]
+    [InlineData("tok-number")]
+    [InlineData("tok-keyword")]
+    [InlineData("tok-type")]
+    [InlineData("tok-function")]
+    [InlineData("tok-operator")]
+    public void Compose_StandalonePage_StylesEveryCodeTokenKind_INV064(string tokenClass)
+    {
+        // The Rendered Output marks each Code Token with its kind's class; a Standalone Page stands
+        // on its own, so it must carry the rule that gives that class a color.
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        page.ShouldContain("." + tokenClass);
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_StylesCodeTokensForDarkModeToo_INV064()
+    {
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        // The page already follows the reader's light/dark preference; the token colors must too,
+        // or code turns unreadable in one of the two.
+        page.ShouldContain("--tok-keyword");
+        page.ShouldContain("prefers-color-scheme: dark");
+    }
+
     [Fact]
     public void Compose_HtmlFragment_IsTheRenderedOutputAlone_INV032()
     {

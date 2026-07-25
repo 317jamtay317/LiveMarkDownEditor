@@ -12,8 +12,8 @@ namespace UI.Tests.Themes;
 /// WPF's stock ToolTip is a pale, system-drawn popup that ignores the palette — in the dark theme it
 /// reads as a glaring near-white box, the same bug the stock TextBox and ComboBox carry (see
 /// <c>Themes/Controls.xaml</c>). These tests hold both the <see cref="CommandTip"/> default style and
-/// the implicit <see cref="ToolTip"/> style to taking every colour from the palette, so a theme swap
-/// recolours a tooltip with everything else.
+/// the implicit <see cref="ToolTip"/> style to taking every color from the palette, so a theme swap
+/// recolors a tooltip with everything else.
 /// </summary>
 /// <remarks>
 /// Like <see cref="DialogButtonTests"/>, these load the compiled resource dictionaries directly rather
@@ -60,27 +60,27 @@ public sealed class CommandTipStyleTests
     }
 
     /// <summary>
-    /// Every colour the Command Tip paints itself with is a DynamicResource lookup into the active
+    /// Every color the Command Tip paints itself with is a DynamicResource lookup into the active
     /// palette; a literal would strand it in the theme it was authored against on the next swap.
     /// </summary>
     [Fact]
-    public void CommandTipStyle_TakesItsColours_FromThePalette()
+    public void CommandTipStyle_TakesItsColors_FromThePalette()
     {
-        StaThread.Run(() => AssertColoursComeFromThePalette(
+        StaThread.Run(() => AssertColorsComeFromThePalette(
             LoadDictionary("Controls/CommandTip.xaml"), typeof(CommandTip)));
     }
 
-    /// <summary>The implicit ToolTip chrome likewise takes every colour it sets from the palette.</summary>
+    /// <summary>The implicit ToolTip chrome likewise takes every color it sets from the palette.</summary>
     [Fact]
-    public void ToolTipStyle_TakesItsColours_FromThePalette()
+    public void ToolTipStyle_TakesItsColors_FromThePalette()
     {
-        StaThread.Run(() => AssertColoursComeFromThePalette(
+        StaThread.Run(() => AssertColorsComeFromThePalette(
             LoadDictionary("Themes/Controls.xaml"), typeof(ToolTip)));
     }
 
     /// <summary>
     /// The shared command styles — every command button, dropdown header, and dropdown entry derives
-    /// from one of these — carry every colour they set as a palette lookup, so a theme swap recolours a
+    /// from one of these — carry every color they set as a palette lookup, so a theme swap recolors a
     /// dropdown and its list with everything else.
     /// </summary>
     public static TheoryData<string> CommandStyleKeys() =>
@@ -113,22 +113,22 @@ public sealed class CommandTipStyleTests
         });
     }
 
-    private static void AssertColoursComeFromThePalette(ResourceDictionary dictionary, Type key)
+    private static void AssertColorsComeFromThePalette(ResourceDictionary dictionary, Type key)
     {
         var style = (Style)dictionary[key]!;
 
-        var colourSetters = style.Setters
+        var colorSetters = style.Setters
             .OfType<Setter>()
             .Where(setter => setter.Property == Control.ForegroundProperty
                              || setter.Property == Control.BackgroundProperty
                              || setter.Property == Control.BorderBrushProperty)
             .ToList();
 
-        colourSetters.ShouldNotBeEmpty($"'{key.Name}' must colour itself.");
-        foreach (var setter in colourSetters)
+        colorSetters.ShouldNotBeEmpty($"'{key.Name}' must color itself.");
+        foreach (var setter in colorSetters)
         {
             setter.Value.ShouldBeOfType<DynamicResourceExtension>(
-                $"'{key.Name}' sets {setter.Property.Name} to a literal, which no theme swap can recolour.");
+                $"'{key.Name}' sets {setter.Property.Name} to a literal, which no theme swap can recolor.");
         }
     }
 

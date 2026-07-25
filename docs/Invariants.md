@@ -210,8 +210,8 @@ and tested.
 - **Statement:** Drawing Code Shading behind the Code Blocks and Code Spans of the Visual Document
   never changes the Markdown Document. Code Shading is a read-only overlay: it computes its Code
   Regions from the document and only paints behind them, so the Captured Markdown source text is
-  identical before and after Code Shading is drawn or recoloured. Because the shading is an overlay
-  rather than each code element's own background, recolouring it for a theme change repaints without
+  identical before and after Code Shading is drawn or recolored. Because the shading is an overlay
+  rather than each code element's own background, recoloring it for a theme change repaints without
   re-formatting the Visual Document. (This is the Code-Shading counterpart of INV-016.)
 - **Enforced by:** The pure `CodeShadingScanner` (which computes the ordered Code Regions from a
   Visual Document with no reference back to the source), the `CodeShadingAdorner` (which only draws),
@@ -1329,7 +1329,7 @@ and tested.
   - **The Change Highlight moves nothing.** It never changes the Markdown Document or the result of a
     Capture, and it never moves the caret, the selection, the scroll position, or any Fold state. It
     is drawn as a **read-only overlay** on the Visual Document — the same pattern Code Shading (INV-017)
-    and the Find highlights (INV-016) use — so it recolours with the palette without re-formatting the
+    and the Find highlights (INV-016) use — so it recolors with the palette without re-formatting the
     document, and leaves nothing behind when it goes.
   - **It is transient, and never stale.** It holds briefly and then fades on its own, and it is cleared
     outright by anything that would make it a lie: an edit, a subsequent reload, or loading or saving a
@@ -1457,6 +1457,76 @@ and tested.
   Pane is not Docked).
 - **Tested by:** `PanelChromeTests.*_INV063`, `WorkspaceViewModelPanelChromeTests.*_INV063`,
   `CompactLayoutTests.*_INV063`, and `PanelColumnTests.*_INV063`.
+
+### INV-064 — Syntax Highlighting colors a Code Block, and changes nothing
+- **Statement:** Coloring a Code Block's code by its Highlighting Language never changes the
+  Markdown Document — the Code-Block counterpart of Code Shading (INV-017), reached for the code's
+  meaning rather than its backdrop. Six rules bound it:
+  - **Tokenizing is pure, and lossless.** The Code Tokens of a Code Block are a function of its code
+    and its Highlighting Language alone. Their text, concatenated in order, is **exactly** the code
+    that went in — every space, tab, newline, and unrecognised character is carried by some Code
+    Token. This is what makes the coloring safe: Capture reads the Code Block's Runs back as its
+    code (INV-004), so a tokenizer that dropped or added a character would silently rewrite the
+    user's document.
+  - **A Code Block with no Highlighting Language is plain.** No info string, or one no grammar
+    claims, means no coloring at all — the code keeps the ordinary code foreground. The language is
+    never guessed from the code's contents, because a wrong guess miscolors code that is not wrong.
+  - **A Mermaid Diagram is not highlighted.** Its Code Block is shown as a rendered picture
+    (INV-047), so there is no code text on screen to color.
+  - **Color is a Code Token Kind, resolved by the palette.** On screen a Code Token is colored by
+    referencing its Code Token Kind's brush in the active palette, so a theme flip recolors every
+    Code Block without re-tokenizing and without re-projecting the document. A printout is the one
+    exception, and for the same reason: it is composed detached from the window and lands on white
+    paper whatever theme the app is in, so it carries the light palette's colors outright.
+  - **Re-highlighting an edited Code Block is not an edit.** Typing inside a Code Block re-tokenizes
+    that Code Block alone: it raises no Capture, and it leaves the caret at the same place in the
+    code. The Captured Markdown is identical before and after.
+  - **A re-highlight that would change nothing does nothing.** Before rebuilding, the Code Tokens are
+    compared against what the paragraph already shows; if they agree, the paragraph is left entirely
+    alone rather than rebuilt into an identical one. Without this, every keystroke would replace
+    every Run of the block — moving the caret and putting an entry on the undo stack that undoes no
+    edit.
+  - **A re-highlight never costs the user their history.** Rebuilding a Code Block is one atomic
+    change, so undoing it restores exactly the Runs that were there; and a re-highlight is never run
+    in response to an undo or a redo. Both halves are load-bearing. Ungrouped, the rebuild's
+    empty-then-refill lands as two undo entries and a single undo leaves the Code Block **empty** —
+    the user's code destroyed. Unguarded, undoing a re-highlight is itself a text change that
+    schedules another one, whose entry the next undo takes back instead, so the user can never reach
+    their own typing. The cost of getting this right is that a re-colored block takes one extra undo:
+    the first press takes back the coloring, the second the typing.
+  - **What is exported carries the same colors, and the same code.** An Export as HTML, an Export
+    as PDF, and a printout each color a Code Block by the same Code Tokens the Visual Document
+    shows. The code text they carry is unchanged by the coloring, so an exported Code Block still
+    holds exactly the Markdown Document's code (INV-032, INV-033, INV-034). A Standalone Page carries
+    the rules that give those colors meaning; an HTML Fragment carries the token classes alone, being
+    unstyled by nature.
+- **Enforced by:** The `ISyntaxHighlighter` port and its `CodeToken` / `CodeTokenKind` vocabulary in
+  the Domain; the `ColorCodeSyntaxHighlighter` adapter, which resolves the info string to a grammar
+  (yielding no tokens when none claims it) and re-emits every character of the code exactly once;
+  `SyntaxHighlighting.Apply`, which compares the Code Tokens against the paragraph's current Runs
+  before touching it and, when they differ, rebuilds them binding each Run's `Foreground` to its
+  kind's palette brush by resource reference rather than by color (`ApplyAllForPrint` writing fixed
+  ink instead); the editor's debounced re-highlight pass, which runs inside `MutateVisualDocument`
+  so it raises no Capture, wraps the rebuild in `BeginChange`/`EndChange` so it is one undo entry,
+  stands down when `TextChangedEventArgs.UndoAction` says the change was an undo or a redo, and
+  restores the caret by its character offset within the block; and the
+  `HighlightedCodeBlockRenderer` and `MarkdownPdfComposer`, which color from the same tokens.
+- **Tested by:** `CodeTokenTests.*_INV064`, `ColorCodeSyntaxHighlighterTests.*_INV064` (tokens
+  concatenate back to the input across eighteen languages and every awkward shape of code —
+  whitespace-only, empty, CRLF, unterminated literals, non-ASCII; an unknown language yields no
+  tokens), `SyntaxHighlightingTests.*_INV064` (the code and the Captured Markdown survive a rebuild;
+  a re-apply leaves the very same `Run` objects in place; print gets fixed ink),
+  `MarkdownRichEditorSyntaxHighlightingTests.*_INV064` (highlighting and re-highlighting never change
+  the Captured Markdown, and the caret stays after the same code),
+  `MarkdigMarkdownRendererHighlightingTests.*_INV064` (the exported page carries token spans, the
+  same code, and an untouched Mermaid Diagram), `HtmlExportTests.*_INV064` (a Standalone Page styles
+  every kind, in both light and dark), and `MarkdownPdfComposerHighlightingTests.*_INV064`.
+- **Not covered by a test:** the undo behavior. WPF records undo only for a loaded editor driven by
+  real input, and the test harness edits the document through `TextPointer`, which bypasses the undo
+  stack entirely — so the harness cannot observe it either way. It is verified by driving the running
+  app: type inside a `csharp` block, then undo twice, and confirm the block still holds its code
+  (the first press takes back the coloring, the second the typing). Both failure modes above were
+  found that way, having passed every test.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
