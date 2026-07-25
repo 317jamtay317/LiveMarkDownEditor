@@ -56,7 +56,8 @@ and tested.
   `MarkdigMarkdownRenderer` HTML oracle). Currently supported: headings, paragraphs, bold, italic,
   strikethrough, inline code, Unordered and Ordered Lists (with nesting), links, autolinks, images,
   block quotes, fenced and indented code blocks, thematic breaks (horizontal rules), GFM tables
-  (with column alignment), task-list items, and hard line breaks.
+  (with column alignment), task-list items, hard line breaks, Footnotes (INV-065), and Definition
+  Lists (INV-066).
 
 ### INV-005 — Capture is idempotent over Round-Trips
 - **Statement:** Once a Markdown Document has been Round-Tripped, Round-Tripping the result again
@@ -224,7 +225,8 @@ and tested.
 ### INV-018 — A Formatting Action Captures to canonical Markdown
 - **Statement:** Applying a Formatting Action (Toggle Strikethrough, Toggle Code, Set Heading Level,
   Insert Link, Insert Image, Toggle Block Quote, Insert Table, Add Row, Add Column, Remove Row,
-  Remove Column, Toggle Unordered List, Toggle Ordered List, Toggle Task List) edits the Visual
+  Remove Column, Toggle Unordered List, Toggle Ordered List, Toggle Task List, Insert Footnote,
+  Toggle Definition List) edits the Visual
   Document using the
   same tagged elements a Project produces, so the Captured source text is canonical Markdown:
   Round-Tripping it preserves its semantics (INV-004) and converges (INV-005). A Formatting Action
@@ -1527,6 +1529,104 @@ and tested.
   app: type inside a `csharp` block, then undo twice, and confirm the block still holds its code
   (the first press takes back the coloring, the second the typing). Both failure modes above were
   found that way, having passed every test.
+
+### INV-065 — A Footnote is a Reference in the prose and a Definition in the Footnote Section
+- **Statement:** A Footnote joins two halves through its Footnote Label: a Footnote Reference standing
+  in the prose, shown as a superscript Footnote Number, and a Footnote Definition holding the note's
+  own content, shown in the Footnote Section at the end of the Visual Document. Both are projected
+  from the Markdown Document and Captured back to it, so a Footnote Round-Trips — the Captured source
+  renders to the same Rendered Output (INV-004) and converges (INV-005). Seven rules bound it:
+  - **The Reference shows a Number; the Label is what is Captured.** A Footnote Number is
+    presentation, counted from the order the References appear — two References sharing a Label share
+    a Number. The author's Footnote Label rides on the Reference and on its Definition, and Capture
+    writes *it*: a Footnote labelled `alpha` shows as `¹` and Captures as `[^alpha]`, never renumbered
+    into the user's document. Renumbering the display is not an edit.
+  - **The Footnote Section is composed, not authored.** Project gathers every Footnote Definition into
+    one block at the document's end, behind a thin rule, each Definition beside its Number — where a
+    reader expects notes, and where the Rendered Output puts them. It holds Definitions and nothing
+    else, and it is **not** itself Captured: capturing it as a block would write the notes twice.
+  - **A Definition is Captured where it was authored, not where it is shown.** The Footnote Section
+    sits at the end of the Visual Document, but each Definition remembers the block it followed in the
+    source and is re-emitted **there**, so saving does not shuffle the author's notes to the bottom of
+    their file. A Definition authored before any block is emitted first. A Definition whose remembered
+    block is no longer in the document — the user deleted it — falls to the end rather than
+    disappearing with it.
+  - **Editing a Definition is an ordinary edit.** A Definition in the Footnote Section is real,
+    editable Visual Document content: typing in one Captures back to the Markdown Document like typing
+    anywhere else. A Definition may hold more than one block, and its continuation lines are Captured
+    indented so they stay inside the note.
+  - **An unreferenced Definition is kept.** A Definition no Reference cites is still shown in the
+    Footnote Section (without a Number) and still Captured, even though Markdown itself omits it from
+    the Rendered Output. This is the one place the Visual Document deliberately shows more than the
+    Rendered Output does, and the trade is deliberate: dropping it would silently delete prose the
+    author wrote the moment they removed a Reference. Deleting a Reference therefore does not delete
+    its Definition — it leaves it unreferenced.
+  - **A Reference with no Definition is not a Footnote.** `[^missing]` with nothing to match is the
+    literal text the author typed, shown and Captured as that text — Markdown reads it that way, and
+    inventing a Footnote for it would show a number the document cannot explain.
+  - **The back-reference is not content.** Parsing a Footnote appends a back-link to the last block of
+    its Definition, to jump from the note to the prose. It belongs to the Rendered Output, not to the
+    document: it is never projected into the Visual Document and never Captured.
+- **Insert Footnote cites a new Footnote in one edit.** It inserts a Reference at the caret and an
+  empty Definition in the Footnote Section — creating the Section when this is the document's first
+  Footnote — and leaves the caret in the Definition, ready for the note. Its Footnote Label is the
+  lowest number not already a Label in the document, so the new Reference always has a Definition to
+  match (a Reference without one is not a Footnote at all, above). Like any Formatting Action it
+  Captures canonical Markdown (INV-018), and it is one undo.
+- **Enforced by:** `GfmPipeline` enabling Markdig's footnote extension, so the editing surface and the
+  Rendered Output agree on the construct; `FootnoteProjection`, which projects a `FootnoteLink` as a
+  `FootnoteReferenceRole`-tagged superscript `Run`, skips the back-link, recovers an unreferenced
+  Definition from its `FootnoteLinkReferenceDefinition`, and composes the Footnote Section with each
+  Definition carrying a `FootnoteDefinitionRole` naming its Label and its anchor block;
+  `FlowDocumentToMarkdownCapturer`, which lifts the Definitions out of the Footnote Section and emits
+  each after its anchor (and at the end when the anchor is gone); and `FootnoteFormatting`, which
+  Insert Footnote drives.
+- **Tested by:** `MarkdigMarkdownRendererTests.*_INV065` (the Rendered Output carries the reference and
+  the notes section), `FootnoteProjectionTests.*_INV065` (the Reference is a superscript Number, the
+  Section holds the Definitions, the back-link is absent, an unreferenced Definition survives, a
+  Reference with no Definition stays literal text), `WysiwygRoundTripTests.*_INV065`/`_INV004`/`_INV005`
+  (a Definition Captures at its authored position, and Footnotes Round-Trip against the render oracle
+  and converge), and `MarkdownRichEditorFootnoteTests.*_INV065` (Insert Footnote's Reference,
+  Definition, Label choice, and caret).
+
+### INV-066 — A Definition List projects as flush Terms with indented Descriptions
+- **Statement:** A Definition List projects into the Visual Document as each Definition Term flush
+  against the margin with its Definition Descriptions indented beneath it, and Captures back to
+  canonical Markdown definition-list syntax — so it Round-Trips, rendering to the same Rendered Output
+  (INV-004) and converging (INV-005). Four rules bound it:
+  - **An Item is zero or more Terms and the Descriptions that define them.** More than one Term is how
+    two words share one Description; **zero** Terms is the ordinary shape of a second Description for
+    the Item above it. Both survive a Round-Trip.
+  - **Terms and Descriptions are ordinary content.** A Term carries inline formatting; a Description
+    may hold more than one block — a further paragraph, a List, a Code Block — and its continuation
+    lines are Captured indented so they stay inside the Description.
+  - **Canonical emission is exact, because the syntax is unforgiving.** A Description is emitted as a
+    colon and **three** spaces (`:   text`), its continuation lines indented four; an Item that has a
+    Term is preceded by a blank line, and a term-less one is **not**. None of this is cosmetic:
+    a colon followed by fewer than three spaces is not a definition list at all — it is a paragraph
+    beginning with a colon — and a blank line before a term-less Description makes the Description
+    above it *loose*, which changes the Rendered Output. Emitting either wrongly would break INV-004
+    for every Definition List.
+  - **A Term is not stolen from the prose above it.** A paragraph immediately above a Term becomes
+    another Term of that Item, so a Definition List is always Captured separated from the block before
+    it by a blank line.
+- **Toggle Definition List works on whole blocks.** It turns the paragraphs the selection touches into
+  a Definition List — the first a Term, the rest its Descriptions — or turns the selected Definition
+  List back into plain paragraphs. A `:` prefix applies to a line, so defining part of a paragraph is
+  not expressible in Markdown (the whole-blocks rule Toggle Block Quote is bound by, INV-028). A lone
+  selected paragraph becomes a Term with one empty Description, which is where the caret lands. Like
+  any Formatting Action it Captures canonical Markdown (INV-018).
+- **Enforced by:** `GfmPipeline` enabling Markdig's definition-list extension; `DefinitionListFormatting`,
+  the one shared composition — a `DefinitionListRole`-tagged `Section` of `DefinitionTermRole` and
+  `DefinitionDescriptionRole` paragraphs — used by both Project and Toggle Definition List, so a
+  loaded Definition List and a user-made one are identical to Capture (INV-018); and
+  `FlowDocumentToMarkdownCapturer`, which emits the canonical form the rules above fix.
+- **Tested by:** `MarkdigMarkdownRendererTests.*_INV066` (the Rendered Output carries a `<dl>`),
+  `DefinitionListProjectionTests.*_INV066` (Terms flush, Descriptions indented, multiple Terms, a
+  multi-block Description), `WysiwygRoundTripTests.*_INV066`/`_INV004`/`_INV005` (every shape
+  Round-Trips against the render oracle and converges — the exactness of the canonical form is what
+  these catch), and `MarkdownRichEditorDefinitionListTests.*_INV066` (Toggle Definition List both ways,
+  whole blocks, and the caret).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

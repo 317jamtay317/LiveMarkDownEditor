@@ -4,6 +4,8 @@ using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
 using Infrastructure.Markdown;
+using Markdig.Extensions.DefinitionLists;
+using Markdig.Extensions.Footnotes;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using MarkdigTable = Markdig.Extensions.Tables.Table;
@@ -55,6 +57,11 @@ public sealed class MarkdownToFlowDocumentProjector
         var lines = new SourceLineIndex(text);
 
         var document = new FlowDocument();
+
+        // Where each projected block began in the source. A Footnote Definition is shown in the
+        // Footnote Section at the end but captured where it was *authored*, so it remembers the block
+        // it followed (INV-065).
+        var anchors = new List<(int Line, WpfBlock Block)>();
         foreach (var block in ast)
         {
             var projected = ProjectBlock(block, baseDirectory);
@@ -62,6 +69,7 @@ public sealed class MarkdownToFlowDocumentProjector
             {
                 SourceLines.SetRange(projected, lines.RangeOf(block.Line, block.Span.End));
                 document.Blocks.Add(projected);
+                anchors.Add((block.Line, projected));
             }
         }
 
@@ -72,6 +80,16 @@ public sealed class MarkdownToFlowDocumentProjector
         if (document.Blocks.LastBlock is Table or BlockUIContainer)
         {
             VisualDocumentTraversal.EnsureParagraphAfter(document, document.Blocks.LastBlock);
+        }
+
+        // Every Footnote Definition is gathered at the end, where a reader expects notes and where the
+        // Rendered Output puts them. The Section is composed, not authored: Capture lifts the
+        // Definitions out of it and writes each at its own authored position (INV-065).
+        var footnotes = FootnoteProjection.Collect(ast);
+        if (footnotes.Count > 0)
+        {
+            document.Blocks.Add(FootnoteProjection.CreateSection(
+                footnotes, anchors, block => ProjectBlock(block, baseDirectory)));
         }
 
         return document;
@@ -121,8 +139,69 @@ public sealed class MarkdownToFlowDocumentProjector
             case MarkdigTable table:
                 return ProjectTable(table, baseDirectory);
 
+            case DefinitionList definitionList:
+                return ProjectDefinitionList(definitionList, baseDirectory);
+
             default:
                 return null;
+        }
+    }
+
+    // A Definition List becomes a Section of flush Definition Terms and indented Definition
+    // Descriptions. Its Items are not elements of their own: an Item's boundary is recoverable from
+    // where a Term follows a Description, which is all Capture needs to place the blank line that
+    // separates one Item from the next (INV-066). Composed through the same seam Toggle Definition List
+    // uses, so a loaded Definition List and a user-made one are identical to Capture (INV-018).
+    private static WpfBlock ProjectDefinitionList(DefinitionList definitionList, string? baseDirectory)
+    {
+        var section = new Section();
+        DefinitionListFormatting.ApplyList(section);
+
+        foreach (var child in definitionList)
+        {
+            if (child is not DefinitionItem item)
+            {
+                continue;
+            }
+
+            // A Description may span several blocks, so the Item's blocks are gathered up to the next
+            // Term and composed as one Description.
+            var description = new List<WpfBlock>();
+            foreach (var itemChild in item)
+            {
+                if (itemChild is DefinitionTerm term)
+                {
+                    AddDescription(section, description);
+                    var paragraph = new Paragraph();
+                    DefinitionListFormatting.ApplyTerm(paragraph);
+                    AppendInlines(paragraph.Inlines, term.Inline, baseDirectory);
+                    section.Blocks.Add(paragraph);
+                    continue;
+                }
+
+                if (ProjectBlock(itemChild, baseDirectory) is { } projected)
+                {
+                    description.Add(projected);
+                }
+            }
+
+            AddDescription(section, description);
+        }
+
+        if (section.Blocks.Count == 0)
+        {
+            section.Blocks.Add(new Paragraph());
+        }
+
+        return section;
+
+        static void AddDescription(Section section, List<WpfBlock> blocks)
+        {
+            if (blocks.Count > 0)
+            {
+                section.Blocks.Add(DefinitionListFormatting.CreateDescription(blocks));
+                blocks.Clear();
+            }
         }
     }
 
@@ -377,6 +456,15 @@ public sealed class MarkdownToFlowDocumentProjector
             case AutolinkInline autolink:
                 // A bare URL re-autolinks when rendered, so a plain Run round-trips to the same link.
                 return new Run(autolink.Url);
+
+            // The back-reference the parser appends to a Footnote Definition's last block belongs to
+            // the Rendered Output, not to the document — it is never shown and never captured (INV-065).
+            case FootnoteLink { IsBackLink: true }:
+                return null;
+
+            case FootnoteLink reference:
+                return FootnoteProjection.CreateReference(
+                    FootnoteProjection.LabelOf(reference.Footnote.Label), reference.Footnote.Order);
 
             case LineBreakInline lineBreak:
                 return new LineBreak { Tag = lineBreak.IsHard ? InlineSemantic.HardBreak : null };

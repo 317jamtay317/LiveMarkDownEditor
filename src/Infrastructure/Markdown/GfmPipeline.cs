@@ -5,7 +5,8 @@ namespace Infrastructure.Markdown;
 
 /// <summary>
 /// Builds the single, shared Markdig pipeline configured for GitHub Flavored Markdown (GFM):
-/// CommonMark plus pipe/grid tables, task lists, strikethrough, and autolinks.
+/// CommonMark plus pipe/grid tables, task lists, strikethrough, autolinks, footnotes, and
+/// definition lists.
 /// </summary>
 /// <remarks>
 /// Both the HTML render path and the Visual Document projection MUST parse with the identical
@@ -22,5 +23,9 @@ public static class GfmPipeline
             .UseTaskLists()
             .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
             .UseAutoLinks()
+            // A Footnote (INV-065) and a Definition List (INV-066) are part of the supported set, so
+            // the projection and the Rendered Output must both read them as the constructs they are.
+            .UseFootnotes()
+            .UseDefinitionLists()
             .Build();
 }

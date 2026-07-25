@@ -50,6 +50,31 @@ public sealed class WysiwygRoundTripTests
     [InlineData("| Left | Right |\n| :--- | ---: |\n| a | b |")]
     [InlineData("- [ ] todo\n- [x] done")]
     [InlineData("line one  \nline two")]
+    // Footnotes (INV-065).
+    [InlineData("A claim.[^a]\n\n[^a]: the note")]
+    [InlineData("A claim.[^alpha]\n\n[^alpha]: the note")]
+    [InlineData("First.[^a] Second.[^b]\n\n[^a]: note a\n\n[^b]: note b")]
+    [InlineData("First.[^a] Second.[^b]\n\n[^b]: note b\n\n[^a]: note a")]
+    [InlineData("Here[^a] and here[^a].\n\n[^a]: cited twice")]
+    [InlineData("A claim.[^a]\n\n[^a]: the note\n\nMore prose.")]
+    [InlineData("[^a]: the note\n\nA claim.[^a]")]
+    [InlineData("A claim.[^a]\n\n[^a]: with **bold** and `code`")]
+    [InlineData("A claim.[^a]\n\n[^a]: para one\n\n    para two")]
+    [InlineData("# Head[^h]\n\n[^h]: a note on the heading")]
+    [InlineData("- item[^l]\n\n[^l]: a note on a list item")]
+    [InlineData("> quoted[^q]\n\n[^q]: a note on a quote")]
+    [InlineData("| A |\n| --- |\n| c[^t] |\n\n[^t]: a note in a cell")]
+    [InlineData("A claim.[^missing]")]
+    // Definition Lists (INV-066).
+    [InlineData("Markdown\n:   A markup language.")]
+    [InlineData("Round-Trip\n:   One.\n:   Two.")]
+    [InlineData("A\n:   one.\n\nB\n:   two.")]
+    [InlineData("Term one\nTerm two\n:   Shared description.")]
+    [InlineData("**Bold term**\n:   has *italic* and `code`")]
+    [InlineData("Term\n:   first line\n    second line")]
+    [InlineData("Term\n:   para one\n\n    para two")]
+    [InlineData("Term\n:   intro\n\n    - one\n    - two")]
+    [InlineData("Intro para.\n\nTerm\n:   desc.")]
     public void RoundTrip_PreservesSemantics_INV004(string markdown)
     {
         var renderer = new MarkdigMarkdownRenderer();
@@ -73,6 +98,14 @@ public sealed class WysiwygRoundTripTests
     [InlineData("```csharp\nvar x = 1;\n```")]
     [InlineData("| A | B |\n| --- | --- |\n| 1 | 2 |")]
     [InlineData("- [ ] todo\n- [x] done")]
+    [InlineData("A claim.[^a]\n\n[^a]: the note\n\nMore prose.")]
+    [InlineData("First.[^a] Second.[^b]\n\n[^b]: note b\n\n[^a]: note a")]
+    [InlineData("A claim.[^a]\n\n[^a]: para one\n\n    para two")]
+    [InlineData("Prose.\n\n[^unused]: nobody cites this")]
+    [InlineData("Markdown\n:   A markup language.")]
+    [InlineData("Round-Trip\n:   One.\n:   Two.")]
+    [InlineData("Term one\nTerm two\n:   Shared description.")]
+    [InlineData("Term\n:   para one\n\n    para two")]
     public void RoundTrip_IsIdempotent_INV005(string markdown)
     {
         StaThread.Run(() =>
