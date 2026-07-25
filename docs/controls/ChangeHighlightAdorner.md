@@ -37,7 +37,7 @@ The Change Highlight is split three ways, so only the editor Control ever touche
   closed over the deleted content. There is nothing left to shade, so the mark says "something was
   here" without inventing content.
 - Both brushes come from the active palette, so the highlight follows the light/dark theme — and,
-  like Code Shading, recolouring an overlay that owns no text can never reflow the document.
+  like Code Shading, recoloring an overlay that owns no text can never reflow the document.
 
 ## How it behaves
 

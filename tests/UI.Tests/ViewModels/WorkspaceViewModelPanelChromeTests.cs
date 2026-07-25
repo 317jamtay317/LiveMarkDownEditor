@@ -1,4 +1,5 @@
 using Application;
+using Infrastructure.Markdown;
 using Shouldly;
 using UI.Tests.TestDoubles;
 using UI.ViewModels;
@@ -38,6 +39,7 @@ public sealed class WorkspaceViewModelPanelChromeTests
             new StubMarkdownRenderer(),
             new StubFlowchartBuilder(result: null),
             new FakeMermaidImageRenderer(),
+            new ColorCodeSyntaxHighlighter(),
             new AppearanceViewModel(_theme),
             new ExportViewModel(
                 _picker,

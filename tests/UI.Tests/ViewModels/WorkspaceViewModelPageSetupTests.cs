@@ -1,4 +1,5 @@
 using Application;
+using Infrastructure.Markdown;
 using Shouldly;
 using UI.Core;
 using UI.Tests.TestDoubles;
@@ -46,6 +47,7 @@ public sealed class WorkspaceViewModelPageSetupTests
             new StubMarkdownRenderer(),
             new StubFlowchartBuilder(result: null),
             new FakeMermaidImageRenderer(),
+            new ColorCodeSyntaxHighlighter(),
             new AppearanceViewModel(_theme),
             new ExportViewModel(
                 _picker,

@@ -3,7 +3,7 @@
                     xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Default style for the Command Tip. Authored as the control's ResourceDictionary alongside the
-         CommandTip class, per the project's Control conventions. Every colour is a DynamicResource
+         CommandTip class, per the project's Control conventions. Every color is a DynamicResource
          lookup into the active palette, so the tip follows the light/dark theme instead of falling
          back to WPF's pale, system-drawn tooltip chrome — the same reason Themes/Controls.xaml
          re-styles the stock TextBox and ComboBox. -->

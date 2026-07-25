@@ -19,7 +19,7 @@ The header is stateless chrome: the host binds its title, its pin state, and the
 the same control serves every panel. The pin glyph turns with `IsPinned` — upright while pinned,
 sideways while unpinned (the Visual Studio convention) — and both buttons pass `CommandParameter`
 (the panel's `DockablePanel` value) to their commands, whose `CanExecute` drives the greyed-out
-state. Every colour is a `DynamicResource` palette lookup, so the header follows the light/dark
+state. Every color is a `DynamicResource` palette lookup, so the header follows the light/dark
 theme.
 
 ## Properties

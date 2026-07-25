@@ -28,7 +28,6 @@ public sealed class ChangeHighlightAdorner : Adorner
     private static readonly TimeSpan HoldDuration = TimeSpan.FromMilliseconds(2200);
 
     private const double BlockPadding = 4d;
-    private const double RightInset = 14d;
     private const double CornerRadius = 3d;
     private const double EdgeBarWidth = 3d;
     private const double SeamTickWidth = 72d;
@@ -144,7 +143,7 @@ public sealed class ChangeHighlightAdorner : Adorner
             }
 
             var left = startRect.Left - BlockPadding;
-            var right = viewportWidth - RightInset;
+            var right = EditorTextColumn.RightEdge(_editor);
             if (right <= left)
             {
                 return;

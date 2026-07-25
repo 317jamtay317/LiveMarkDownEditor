@@ -203,7 +203,7 @@ public sealed class MarkdownToFlowDocumentProjector
     // line, separated by LineBreaks). The CodeBlockRole tag carries the fence language so Capture can
     // re-emit a fenced block; the code itself is read back from the paragraph's inlines, so edits to
     // the code survive a Round-Trip. Its shaded panel is Code Shading, drawn by the CodeShadingAdorner
-    // overlay rather than a Background here, so a theme recolour never re-formats the code (INV-017).
+    // overlay rather than a Background here, so a theme recolor never re-formats the code (INV-017).
     // The formatting itself is shared with the Toggle Code Formatting Action (INV-018).
     private static WpfBlock ProjectCodeBlock(LeafBlock codeBlock, string? language)
     {

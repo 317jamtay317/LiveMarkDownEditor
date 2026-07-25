@@ -278,6 +278,11 @@ public sealed partial class MarkdownRichEditor : RichTextBox
             // Fold state references the outgoing document's blocks; a fresh projection clears it.
             _foldedBodies.Clear();
             Document = _projector.Project(markdown, BaseDirectory);
+
+            // Color each Code Block by its Highlighting Language. Inside the guard, so the Runs it
+            // rebuilds raise no Capture — the coloring is view-only (INV-064).
+            _pendingReHighlight = null;
+            HighlightAllCodeBlocks();
         }
         finally
         {
@@ -335,6 +340,10 @@ public sealed partial class MarkdownRichEditor : RichTextBox
 
         // An edit inside a Mermaid Diagram changes its source; refresh the Diagram Preview (INV-047).
         UpdateDiagramSource();
+
+        // An edit inside a Code Block changes what its code means; re-color it once the typing
+        // settles (INV-064).
+        ScheduleReHighlightAtCaret(e.UndoAction);
 
         // The edited text may have gained or lost Matches; keep the highlights current. A Replace All
         // batch is the exception — it is iterating the Match ranges, and Recomputes once at the end.

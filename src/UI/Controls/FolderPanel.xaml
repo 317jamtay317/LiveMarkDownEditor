@@ -4,11 +4,11 @@
                     xmlns:domain="clr-namespace:Domain;assembly=Domain">
 
     <!-- Default style for the Folder Panel. Authored as the control's ResourceDictionary alongside the
-         FolderPanel class, per the project's Control conventions. Colours are DynamicResource lookups
+         FolderPanel class, per the project's Control conventions. Colors are DynamicResource lookups
          into the active palette so the panel follows the light/dark theme. -->
 
     <!-- A tree-node glyph (a folder or a Markdown file): a small stroked icon that takes the row's
-         foreground, so it recolours on the accent-filled selected row like a Command Icon. -->
+         foreground, so it recolors on the accent-filled selected row like a Command Icon. -->
     <Style x:Key="FolderTreeIcon" TargetType="Path">
         <Setter Property="Width" Value="15" />
         <Setter Property="Height" Value="15" />

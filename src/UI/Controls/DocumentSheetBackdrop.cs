@@ -40,7 +40,7 @@ public sealed class DocumentSheetBackdrop : FrameworkElement
         typeof(DocumentSheetBackdrop),
         new FrameworkPropertyMetadata(DocumentSheet.PageHeight, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    /// <summary>Initialises the Sheet, taking its paper and Page Break colours from the active palette.</summary>
+    /// <summary>Initialises the Sheet, taking its paper and Page Break colors from the active palette.</summary>
     public DocumentSheetBackdrop()
     {
         IsHitTestVisible = false;

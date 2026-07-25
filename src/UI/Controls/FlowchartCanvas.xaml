@@ -3,7 +3,7 @@
                     xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Default look for the Flowchart Builder's canvas. Authored as the control's ResourceDictionary
-         alongside the FlowchartCanvas class, per the project's Control conventions. Colours are
+         alongside the FlowchartCanvas class, per the project's Control conventions. Colors are
          DynamicResource lookups so the canvas follows the light/dark theme. -->
 
     <controls:NodeShapeGeometryConverter x:Key="NodeShapeGeometry" />

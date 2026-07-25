@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:UI.Controls">
 
-    <!-- Flat, rounded control styles for the editor shell. All colours are DynamicResource lookups
-         into the active palette (Palette.Light.xaml / Palette.Dark.xaml) so a theme swap recolours
+    <!-- Flat, rounded control styles for the editor shell. All colors are DynamicResource lookups
+         into the active palette (Palette.Light.xaml / Palette.Dark.xaml) so a theme swap recolors
          everything live. -->
 
     <!-- A flat text button for the command bar (New / Open / Save). -->
@@ -99,7 +99,7 @@
     </Style>
 
     <!-- The chevron marking a command bar dropdown. Drawn rather than typed: as a 9px "&#x25BE;" it
-         rendered as a three-pixel smudge of subpixel colour, which reads as dirt beside a vector
+         rendered as a three-pixel smudge of subpixel color, which reads as dirt beside a vector
          icon. Its data is inline because it belongs to this style rather than to the Command Icon
          set — it is an affordance on the button, not the icon that names it — and because a
          StaticResource here could not see a sibling dictionary merged alongside this one. -->
@@ -583,7 +583,7 @@
         </Setter>
     </Style>
 
-    <!-- A single Tab: transparent when inactive, editor-coloured with an accent top edge when active. -->
+    <!-- A single Tab: transparent when inactive, editor-colored with an accent top edge when active. -->
     <Style x:Key="TabItem" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="Cursor" Value="Hand" />
