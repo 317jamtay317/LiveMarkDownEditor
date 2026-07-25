@@ -21,8 +21,12 @@ internal static class FootnoteFormatting
     /// <param name="editor">The editor whose caret is citing the Footnote.</param>
     internal static void Insert(RichTextBox editor)
     {
-        if (VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is not { } anchor
-            || !CanInsert(editor))
+        // A citation marks the phrase it follows; it never replaces it, so a selection is cited at its
+        // end rather than swallowed.
+        var caret = editor.Selection.End;
+        if (!CanInsert(editor)
+            || VisualDocumentTraversal.TopLevelBlockOf(caret, LogicalDirection.Backward) is not { } anchor
+            || VisualDocumentTraversal.AncestorOf<Paragraph>(caret) is not { } paragraph)
         {
             return;
         }
@@ -31,17 +35,8 @@ internal static class FootnoteFormatting
         try
         {
             var label = NextLabel(editor.Document);
-
-            // The Reference replaces the selection, the way any insertion at a selection does.
-            var reference = FootnoteProjection.CreateReference(label, NextNumber(editor.Document));
-            var paragraph = VisualDocumentTraversal.AncestorOf<Paragraph>(editor.Selection.Start);
-            if (paragraph is null)
-            {
-                return;
-            }
-
-            editor.Selection.Text = string.Empty;
-            paragraph.Inlines.InsertBefore(SplitAt(paragraph, editor.Selection.Start), reference);
+            InsertReference(paragraph, caret, FootnoteProjection.CreateReference(
+                label, NextNumber(editor.Document)));
 
             var section = FootnoteSectionOf(editor.Document) ?? AppendSection(editor.Document);
             var definition = FootnoteProjection.CreateDefinition(label, NumberIn(section), anchor, []);
@@ -79,40 +74,62 @@ internal static class FootnoteFormatting
         return section;
     }
 
-    // The inline the Reference is inserted before: the caret splits the run it sits inside, so a
-    // citation lands exactly where the caret was rather than at the end of the word it was in.
-    private static Inline SplitAt(Paragraph paragraph, TextPointer caret)
+    // Places the Reference at the caret. Plain text is split so the citation lands exactly where the
+    // caret was; inside an inline span — bold, italic, a Link — it goes **beside** the span instead. A
+    // citation marks the phrase, not the emphasis carrying it, and `[text[^1]](url)` is not a link at
+    // all: a Reference inside a Link's text would break the Link rather than cite it.
+    private static void InsertReference(Paragraph paragraph, TextPointer caret, Inline reference)
     {
-        if (VisualDocumentTraversal.AncestorOf<Run>(caret) is not { } run)
+        if (OutermostInline(paragraph, caret) is not { } outer)
         {
-            return paragraph.Inlines.FirstInline;
+            paragraph.Inlines.Add(reference);
+            return;
         }
 
-        var offset = run.ContentStart.GetOffsetToPosition(caret);
-        var text = run.Text;
-        if (offset <= 0)
+        if (outer is Run run)
         {
-            return run;
-        }
-
-        if (offset >= text.Length)
-        {
-            // At the run's end there is nothing to split: the Reference goes after it.
-            var following = run.NextInline;
-            if (following is null)
+            var offset = run.ContentStart.GetOffsetToPosition(caret);
+            if (offset > 0 && offset < run.Text.Length)
             {
-                var empty = new Run(string.Empty);
-                paragraph.Inlines.Add(empty);
-                return empty;
+                var tail = new Run(run.Text[offset..]);
+                run.Text = run.Text[..offset];
+                paragraph.Inlines.InsertAfter(run, tail);
+                paragraph.Inlines.InsertBefore(tail, reference);
+                return;
+            }
+        }
+
+        if (caret.CompareTo(outer.ContentStart) <= 0)
+        {
+            paragraph.Inlines.InsertBefore(outer, reference);
+            return;
+        }
+
+        paragraph.Inlines.InsertAfter(outer, reference);
+    }
+
+    // The inline sitting directly in `paragraph` that holds the caret, or null when the caret is in no
+    // inline at all (an empty paragraph). Walking out to the paragraph's own child is what keeps the
+    // insertion valid: a nested run's sibling collection belongs to its span, not to the paragraph.
+    private static Inline? OutermostInline(Paragraph paragraph, TextPointer caret)
+    {
+        Inline? outermost = null;
+        for (System.Windows.DependencyObject? node = caret.Parent;
+             node is TextElement element;
+             node = element.Parent)
+        {
+            if (element is Inline inline)
+            {
+                outermost = inline;
             }
 
-            return following;
+            if (ReferenceEquals(element.Parent, paragraph))
+            {
+                break;
+            }
         }
 
-        run.Text = text[..offset];
-        var tail = new Run(text[offset..]);
-        paragraph.Inlines.InsertAfter(run, tail);
-        return tail;
+        return outermost;
     }
 
     // The lowest number not already a Footnote Label in the document. Numbers are what an author writes
@@ -157,7 +174,37 @@ internal static class FootnoteFormatting
             .Where(definition => definition.Tag is FootnoteDefinitionRole),
     ];
 
-    private static bool IsInFootnoteSection(TextPointer? position)
+    /// <summary>
+    /// Trims a block range so it stops short of the Footnote Section. A Select All reaches it, but
+    /// Project composes it at the end of the document rather than the author writing it: quoting it,
+    /// listing it, or defining it would capture the notes somewhere they were never written (INV-065).
+    /// </summary>
+    /// <param name="blocks">The document's top-level blocks, in order.</param>
+    /// <param name="startIndex">The first block of the range.</param>
+    /// <param name="endIndex">The last block of the range.</param>
+    /// <returns>The last block of the trimmed range, or -1 when the range is the Footnote Section alone.</returns>
+    internal static int TrimToProse(IReadOnlyList<Block> blocks, int startIndex, int endIndex)
+    {
+        var trimmed = endIndex;
+        while (trimmed >= startIndex && IsFootnoteSection(blocks[trimmed]))
+        {
+            trimmed--;
+        }
+
+        return trimmed < startIndex ? -1 : trimmed;
+    }
+
+    /// <summary>Whether <paramref name="block"/> is the Footnote Section.</summary>
+    /// <param name="block">The block to test.</param>
+    internal static bool IsFootnoteSection(Block block) =>
+        block is Section { Tag: BlockSemantic.FootnoteSection };
+
+    /// <summary>
+    /// Whether <paramref name="position"/> sits inside the Footnote Section. The Section is composed by
+    /// Project rather than authored, so the block-spanning Formatting Actions leave it alone (INV-065).
+    /// </summary>
+    /// <param name="position">The position to test, or <see langword="null"/>.</param>
+    internal static bool IsInFootnoteSection(TextPointer? position)
     {
         for (System.Windows.DependencyObject? node = position?.Parent;
              node is TextElement element;

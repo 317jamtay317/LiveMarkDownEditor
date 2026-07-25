@@ -151,6 +151,39 @@ public sealed class MarkdownRichEditorDefinitionListTests
     }
 
     [Fact]
+    public void ToggleDefinitionList_NeverSwallowsTheFootnoteSection_INV066()
+    {
+        StaThread.Run(() =>
+        {
+            // The Footnote Section is composed by Project, not authored prose — a Definition List must
+            // not take it in as a Description, which would capture the note inside the glossary.
+            var editor = new MarkdownRichEditor
+            {
+                Markdown = "A claim.[^a]\n\n[^a]: the note\n\nMarkdown\n\nA markup language.",
+            };
+            editor.SelectAll();
+
+            MarkdownEditingCommands.ToggleDefinitionList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldNotContain(":   [^a]");
+            editor.Markdown.ShouldContain("[^a]: the note");
+        });
+    }
+
+    [Fact]
+    public void ToggleDefinitionList_WithTheCaretInTheFootnoteSection_IsUnavailable_INV066()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "A claim.[^a]\n\n[^a]: the note" };
+            VisualDocumentText.PlaceCaretIn(editor, "the note");
+
+            MarkdownEditingCommands.ToggleDefinitionList.CanExecute(parameter: null, target: editor)
+                .ShouldBeFalse();
+        });
+    }
+
+    [Fact]
     public void ToggleDefinitionList_WithTheCaretInACodeBlock_IsUnavailable_INV066()
     {
         StaThread.Run(() =>

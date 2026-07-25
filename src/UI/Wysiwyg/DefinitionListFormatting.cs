@@ -95,7 +95,8 @@ internal static class DefinitionListFormatting
     /// <param name="editor">The editor whose selection is queried.</param>
     internal static bool CanToggle(RichTextBox editor) =>
         DefinitionListAt(editor) is not null
-        || VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is Paragraph { Tag: not CodeBlockRole };
+        || (VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is Paragraph { Tag: not CodeBlockRole }
+            && !FootnoteFormatting.IsInFootnoteSection(editor.Selection.Start));
 
     // Turns every top-level paragraph the selection touches into one Definition List in its place: the
     // first is the Term, the rest its Descriptions. A lone paragraph becomes a Term with one empty
@@ -114,6 +115,14 @@ internal static class DefinitionListFormatting
         var startIndex = blocks.IndexOf(start);
         var endIndex = blocks.IndexOf(end);
         if (startIndex < 0 || endIndex < 0 || blocks[startIndex] is not Paragraph)
+        {
+            return;
+        }
+
+        // A Select All reaches the Footnote Section; taking it in would capture the notes inside the
+        // glossary, so the range stops short of it (INV-065).
+        endIndex = FootnoteFormatting.TrimToProse(blocks, startIndex, endIndex);
+        if (endIndex < 0)
         {
             return;
         }

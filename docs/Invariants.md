@@ -1567,12 +1567,25 @@ and tested.
   - **The back-reference is not content.** Parsing a Footnote appends a back-link to the last block of
     its Definition, to jump from the note to the prose. It belongs to the Rendered Output, not to the
     document: it is never projected into the Visual Document and never Captured.
+  - **No Formatting Action takes the Footnote Section in.** Because Project composes the Section rather
+    than the author writing it, the block-spanning actions — Toggle Block Quote, Toggle Definition List,
+    and the List toggles — stop short of it even under a Select All, and none of them is available with
+    the caret inside it. Quoting or defining it would Capture every note behind a `> ` or a `:` it was
+    never written with, moving the author's notes into a construct they never made.
 - **Insert Footnote cites a new Footnote in one edit.** It inserts a Reference at the caret and an
   empty Definition in the Footnote Section — creating the Section when this is the document's first
   Footnote — and leaves the caret in the Definition, ready for the note. Its Footnote Label is the
   lowest number not already a Label in the document, so the new Reference always has a Definition to
   match (a Reference without one is not a Footnote at all, above). Like any Formatting Action it
-  Captures canonical Markdown (INV-018), and it is one undo.
+  Captures canonical Markdown (INV-018), and it is one undo. Two rules place the Reference:
+  - **A citation marks the phrase; it never replaces it.** Applied over a selection, the Reference is
+    inserted at the selection's **end** and the selected prose is left exactly as it was — the words
+    being cited are the last thing a citation should delete.
+  - **A citation goes beside an inline span, not inside it.** With the caret in plain text the Run is
+    split so the Reference lands exactly where the caret was; with the caret inside emphasis or a Link
+    it is placed beside that span instead. A citation belongs to the phrase rather than to the emphasis
+    carrying it, and `[text[^1]](url)` is not a Link at all — a Reference inside a Link's text would
+    break the Link rather than cite it.
 - **Enforced by:** `GfmPipeline` enabling Markdig's footnote extension, so the editing surface and the
   Rendered Output agree on the construct; `FootnoteProjection`, which projects a `FootnoteLink` as a
   `FootnoteReferenceRole`-tagged superscript `Run`, skips the back-link, recovers an unreferenced
@@ -1586,8 +1599,11 @@ and tested.
   Section holds the Definitions, the back-link is absent, an unreferenced Definition survives, a
   Reference with no Definition stays literal text), `WysiwygRoundTripTests.*_INV065`/`_INV004`/`_INV005`
   (a Definition Captures at its authored position, and Footnotes Round-Trip against the render oracle
-  and converge), and `MarkdownRichEditorFootnoteTests.*_INV065` (Insert Footnote's Reference,
-  Definition, Label choice, and caret).
+  and converge), `MarkdownRichEditorFootnoteTests.*_INV065` (Insert Footnote's Reference, Definition,
+  Label choice, and caret; citing from inside emphasis, a Link, a List Item and a Table cell; citing
+  over a selection; and the notes surviving a Fold), and
+  `MarkdownRichEditorFootnoteSectionGuardTests.*_INV065` (Toggle Block Quote, the List toggles and
+  Toggle Code all leave the Footnote Section alone under a Select All).
 
 ### INV-066 — A Definition List projects as flush Terms with indented Descriptions
 - **Statement:** A Definition List projects into the Visual Document as each Definition Term flush

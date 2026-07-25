@@ -146,6 +146,94 @@ public sealed class MarkdownRichEditorFootnoteTests
     }
 
     [Fact]
+    public void InsertFootnote_WithTheCaretInsideBoldText_CitesTheFootnote_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            // The caret's Run belongs to the Bold span, not to the paragraph, so the Reference has to be
+            // placed relative to the span rather than blindly into the paragraph's own inlines.
+            var editor = new MarkdownRichEditor { Markdown = "A **bold claim** here." };
+            VisualDocumentText.PlaceCaretAfter(editor, "bold claim");
+
+            MarkdownEditingCommands.InsertFootnote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("A **bold claim**[^1] here.\n\n[^1]:");
+        });
+    }
+
+    [Fact]
+    public void InsertFootnote_WithTheCaretInsideALink_CitesTheFootnote_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "See [the docs](https://x/y) now." };
+            VisualDocumentText.PlaceCaretAfter(editor, "the docs");
+
+            MarkdownEditingCommands.InsertFootnote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("See [the docs](https://x/y)[^1] now.\n\n[^1]:");
+        });
+    }
+
+    [Fact]
+    public void InsertFootnote_WithTheCaretInAListItem_CitesTheFootnote_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- an item" };
+            VisualDocumentText.PlaceCaretAfter(editor, "an item");
+
+            MarkdownEditingCommands.InsertFootnote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- an item[^1]\n\n[^1]:");
+        });
+    }
+
+    [Fact]
+    public void InsertFootnote_WithTheCaretInATableCell_CitesTheFootnote_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "| A |\n| --- |\n| cell |" };
+            VisualDocumentText.PlaceCaretAfter(editor, "cell");
+
+            MarkdownEditingCommands.InsertFootnote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("| A |\n| --- |\n| cell[^1] |\n\n[^1]:");
+        });
+    }
+
+    [Fact]
+    public void InsertFootnote_OverASelection_CitesItsEnd_AndKeepsTheProse_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            // A citation marks the phrase it follows. Replacing the selection with a Reference would
+            // delete the very words being cited.
+            var editor = new MarkdownRichEditor { Markdown = "A claim worth citing here." };
+            VisualDocumentText.SelectText(editor, "claim worth citing");
+
+            MarkdownEditingCommands.InsertFootnote.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("A claim worth citing[^1] here.\n\n[^1]:");
+        });
+    }
+
+    [Fact]
+    public void InsertFootnote_WithTheCaretInTheFootnoteSection_IsUnavailable_INV065()
+    {
+        StaThread.Run(() =>
+        {
+            // The Footnote Section holds notes, not the prose that cites them.
+            var editor = new MarkdownRichEditor { Markdown = "A claim.[^a]\n\n[^a]: the note" };
+            VisualDocumentText.PlaceCaretIn(editor, "the note");
+
+            MarkdownEditingCommands.InsertFootnote.CanExecute(parameter: null, target: editor)
+                .ShouldBeFalse();
+        });
+    }
+
+    [Fact]
     public void InsertFootnote_WithTheCaretInACodeBlock_IsUnavailable_INV065()
     {
         StaThread.Run(() =>
@@ -156,6 +244,38 @@ public sealed class MarkdownRichEditorFootnoteTests
             // A Footnote Reference in a Code Block would be code text, not a citation.
             MarkdownEditingCommands.InsertFootnote.CanExecute(parameter: null, target: editor)
                 .ShouldBeFalse();
+        });
+    }
+
+    [Fact]
+    public void Capture_WithTheFootnoteSectionInsideAFoldedSection_KeepsEveryNote_INV011()
+    {
+        StaThread.Run(() =>
+        {
+            // The Footnote Section sits at the end of the Visual Document, so Folding the last Section
+            // Heading hides it. A Fold is view-only: the notes must still be Captured (INV-011).
+            const string Markdown = "# Top\n\nA claim.[^a]\n\n[^a]: the note\n\n## Last\n\nUnder the last heading.";
+            var editor = new MarkdownRichEditor { Markdown = Markdown };
+            var heading = editor.Document.Blocks.OfType<Paragraph>()
+                .First(paragraph => paragraph.Tag is HeadingRole { Level: 2 });
+
+            editor.ToggleFold(heading);
+
+            editor.Markdown.ShouldBe(Markdown);
+        });
+    }
+
+    [Fact]
+    public void Capture_WithEveryFoldCollapsed_KeepsEveryNote_INV011()
+    {
+        StaThread.Run(() =>
+        {
+            const string Markdown = "# Top\n\nA claim.[^a]\n\n[^a]: the note\n\n## Last\n\nUnder the last heading.";
+            var editor = new MarkdownRichEditor { Markdown = Markdown };
+
+            editor.CollapseAllFolds();
+
+            editor.Markdown.ShouldBe(Markdown);
         });
     }
 

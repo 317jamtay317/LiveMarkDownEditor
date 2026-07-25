@@ -63,7 +63,8 @@ internal static class QuoteFormatting
     /// <param name="editor">The editor whose selection is queried.</param>
     internal static bool CanToggle(RichTextBox editor) =>
         QuoteAt(editor) is not null
-        || VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is not null;
+        || (VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is not null
+            && !FootnoteFormatting.IsInFootnoteSection(editor.Selection.Start));
 
     // Moves every top-level block the selection touches into one new Block Quote, in its place.
     private static void Quote(RichTextBox editor)
@@ -80,6 +81,15 @@ internal static class QuoteFormatting
         var startIndex = blocks.IndexOf(start);
         var endIndex = blocks.IndexOf(end);
         if (startIndex < 0 || endIndex < 0)
+        {
+            return;
+        }
+
+        // A Select All reaches the Footnote Section, which Project composes rather than the author
+        // writing it: quoting it would capture every note behind a "> " it was never written with
+        // (INV-065).
+        endIndex = FootnoteFormatting.TrimToProse(blocks, startIndex, endIndex);
+        if (endIndex < 0)
         {
             return;
         }
