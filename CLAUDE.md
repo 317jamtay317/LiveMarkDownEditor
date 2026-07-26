@@ -75,8 +75,9 @@ public void Render_GivenEmptyDocument_ProducesEmptyHtml()
 ## Workflow
 - Work on a feature branch, not `main`/`master`. Commit regularly.
 - Only commit or push when the user asks.
-- The [project wiki](https://github.com/317jamtay317/LiveMarkDownEditor/wiki) mirrors the
-  supporting docs — `docs/Roadmap.md` and everything under `docs/controls/`. When a PR changes any
-  of those files (or adds a new control doc), update the matching wiki page in the same PR so the
-  wiki stays in sync. The authoritative `docs/UbiquitousLanguage.md` and `docs/Invariants.md` are
-  **not** mirrored — they live only in the repo as the source of truth.
+- The [project wiki](https://github.com/317jamtay317/LiveMarkDownEditor/wiki) holds the **user
+  guide** — how to use each part of the app — and mirrors everything under `docs/controls/`. When a
+  PR changes a control doc (or adds one), update the matching wiki page in the same PR so the wiki
+  stays in sync; when a PR changes what the app does for the user, update the matching user-guide
+  page and the feature list in `README.md` too. The authoritative `docs/UbiquitousLanguage.md` and
+  `docs/Invariants.md` are **not** mirrored — they live only in the repo as the source of truth.
