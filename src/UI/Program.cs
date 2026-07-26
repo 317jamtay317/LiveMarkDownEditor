@@ -32,6 +32,22 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        RunEditor(args);
+
+        // Closing the editor window must end the process, always. WPF has shut down by here
+        // (App.xaml's ShutdownMode="OnMainWindowClose") and the app starts no foreground thread of its
+        // own, so the runtime would normally exit on its own — but a host that injects one keeps a
+        // windowless process alive forever, and it holds the Single Instance with it, so the next
+        // launch silently forwards to a process the user cannot see (INV-020). A debugger's or
+        // profiler's agent is exactly such a host. Exiting explicitly makes shutdown the app's
+        // decision rather than a property of whatever loaded it.
+        Environment.Exit(0);
+    }
+
+    // Composes and runs the editor. Everything it owns — the Single Instance, the host, the logger —
+    // is released by the time it returns.
+    private static void RunEditor(string[] args)
+    {
         // Pin the working directory to the executable's own folder so every relative path — the
         // configuration files, the Serilog log sink, anything app-local — resolves identically
         // whether the app is launched by double-click, from the repo root, or from its output
