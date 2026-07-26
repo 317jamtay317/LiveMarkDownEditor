@@ -5,11 +5,12 @@ using UI.Core;
 namespace UI.Wysiwyg;
 
 /// <summary>
-/// The Insert Link and Insert Image Formatting Actions, and the one shared definition of what a Link
-/// and an Image look like in the Visual Document. The Projector composes each through the same
-/// <see cref="ApplyLink"/> / <see cref="ApplyImage"/> seams, so Capture treats a user-inserted Link
-/// and a loaded one uniformly (INV-018). Each asks through the <see cref="ILinkPrompt"/> port and
-/// edits only on a usable answer (INV-030).
+/// The Insert Link, Insert Image, and Insert Video Formatting Actions, and the one shared definition of
+/// what a Link looks like in the Visual Document. Each composes through the same seam the Projector
+/// does — <see cref="ApplyLink"/> here, <see cref="ImageFormatting"/> and <see cref="VideoFormatting"/>
+/// for the other two — so Capture treats a user-inserted Link, Image, or Video and a loaded one
+/// uniformly (INV-018). Each asks through the <see cref="ILinkPrompt"/> port and edits only on a usable
+/// answer (INV-030).
 /// </summary>
 internal static class LinkFormatting
 {
@@ -39,7 +40,7 @@ internal static class LinkFormatting
     /// <param name="prompt">The Link Prompt to ask, or <see langword="null"/> to make no edit.</param>
     internal static void InsertLink(RichTextBox editor, ILinkPrompt? prompt)
     {
-        if (Ask(editor, prompt, image: false) is not { } details)
+        if (Ask(editor, prompt, LinkPromptKind.Link) is not { } details)
         {
             return;
         }
@@ -73,7 +74,7 @@ internal static class LinkFormatting
     /// <see langword="null"/> when the Editor Session has no file yet (INV-031).</param>
     internal static void InsertImage(RichTextBox editor, ILinkPrompt? prompt, string? baseDirectory)
     {
-        if (Ask(editor, prompt, image: true) is not { } details)
+        if (Ask(editor, prompt, LinkPromptKind.Image) is not { } details)
         {
             return;
         }
@@ -93,6 +94,44 @@ internal static class LinkFormatting
             anchor.SiblingInlines?.InsertAfter(anchor, image);
             anchor.SiblingInlines?.Remove(anchor);
             editor.Selection.Select(image.ContentEnd, image.ContentEnd);
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+    }
+
+    /// <summary>
+    /// The Insert Video Formatting Action: asks <paramref name="prompt"/> for the Video's alt text and
+    /// Media Source — seeded with the selection — and inserts that Video, paused. No edit is made when
+    /// the Link Prompt is dismissed or gives no URL (INV-030/069).
+    /// </summary>
+    /// <param name="editor">The editor the Video is inserted into.</param>
+    /// <param name="prompt">The Link Prompt to ask, or <see langword="null"/> to make no edit.</param>
+    /// <param name="baseDirectory">The Base Directory a relative Media Source resolves against, or
+    /// <see langword="null"/> when the Editor Session has no file yet (INV-031).</param>
+    internal static void InsertVideo(RichTextBox editor, ILinkPrompt? prompt, string? baseDirectory)
+    {
+        if (Ask(editor, prompt, LinkPromptKind.Video) is not { } details)
+        {
+            return;
+        }
+
+        editor.BeginChange();
+        try
+        {
+            var alt = details.Text.Length > 0 ? details.Text : details.Url;
+            var start = ReplaceSelection(editor);
+
+            // Composed through the same seam the Projector uses, so the Video the user just inserted is
+            // identical to the one a reload would project (INV-018/069). It is placed by way of an anchor
+            // because a Video Player is an InlineUIContainer, which — unlike a Run — cannot be
+            // constructed at a TextPointer.
+            var anchor = new Run(string.Empty, start);
+            var video = VideoFormatting.CreateVideo(details.Url, alt, title: null, baseDirectory);
+            anchor.SiblingInlines?.InsertAfter(anchor, video);
+            anchor.SiblingInlines?.Remove(anchor);
+            editor.Selection.Select(video.ContentEnd, video.ContentEnd);
         }
         finally
         {
@@ -160,7 +199,7 @@ internal static class LinkFormatting
     // prompt or a blank URL must leave the document untouched (INV-030). The selection is narrowed to
     // its non-whitespace core first, so the space a double-click swept up neither shows in the Link
     // Prompt as a stray character nor ends up inside the Link's brackets (INV-018).
-    private static LinkDetails? Ask(RichTextBox editor, ILinkPrompt? prompt, bool image)
+    private static LinkDetails? Ask(RichTextBox editor, ILinkPrompt? prompt, LinkPromptKind kind)
     {
         if (prompt is null)
         {
@@ -169,7 +208,12 @@ internal static class LinkFormatting
 
         NarrowSelectionToItsCore(editor);
         var proposed = VisualDocumentTraversal.TextIn(editor.Selection);
-        var details = image ? prompt.AskForImage(proposed) : prompt.AskForLink(proposed);
+        var details = kind switch
+        {
+            LinkPromptKind.Image => prompt.AskForImage(proposed),
+            LinkPromptKind.Video => prompt.AskForVideo(proposed),
+            _ => prompt.AskForLink(proposed),
+        };
 
         return details is not null && !string.IsNullOrWhiteSpace(details.Url) ? details : null;
     }

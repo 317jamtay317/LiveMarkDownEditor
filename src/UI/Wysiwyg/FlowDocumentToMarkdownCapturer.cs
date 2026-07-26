@@ -347,6 +347,18 @@ public sealed class FlowDocumentToMarkdownCapturer
                 segments.Add(Verbatim(EmitImage(image)));
                 break;
 
+            // A Video, whichever way it is being shown: as its Video Player (an InlineUIContainer) or as
+            // its alt text (a Run). It re-emits the Image syntax it was authored with, and the Media
+            // Source its author wrote — whether it is playing, paused, or half-scrubbed, because none of
+            // that is content (INV-069).
+            case InlineUIContainer { Tag: VideoRole playing }:
+                segments.Add(Verbatim(EmitVideo(playing)));
+                break;
+
+            case Run { Tag: VideoRole video }:
+                segments.Add(Verbatim(EmitVideo(video)));
+                break;
+
             // A Footnote Reference shows a Footnote Number but is captured from its Footnote Label, so a
             // Footnote is never renumbered into the user's document (INV-065). The number is the Run's
             // whole text; anything the user typed against it is their content, and is kept.
@@ -458,6 +470,10 @@ public sealed class FlowDocumentToMarkdownCapturer
 
     private static string EmitImage(ImageRole image) =>
         "![" + image.Alt + "](" + image.Url + TitleSuffix(image.Title) + ")";
+
+    // A Video is written with the Image's own syntax, so it is emitted with it (INV-069).
+    private static string EmitVideo(VideoRole video) =>
+        "![" + video.Alt + "](" + video.Url + TitleSuffix(video.Title) + ")";
 
     private static string TitleSuffix(string? title) =>
         string.IsNullOrEmpty(title) ? string.Empty : " \"" + title + "\"";

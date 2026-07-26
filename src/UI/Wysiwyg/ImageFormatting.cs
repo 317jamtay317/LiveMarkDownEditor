@@ -34,12 +34,13 @@ internal static class ImageFormatting
     /// <param name="alt">The Image's alt text.</param>
     /// <param name="title">The optional image title, or <see langword="null"/>.</param>
     /// <param name="baseDirectory">The Base Directory a relative Image Source resolves against, or
-    /// <see langword="null"/> when the Editor Session has no file and so no folder to resolve against.</param>
+    /// <see langword="null"/> when the Editor Session has no file and so no folder to resolve against.
+    /// Resolution itself is <see cref="MediaSource"/>'s, shared with a Video (INV-069).</param>
     /// <returns>The inline to show, carrying the Image's <see cref="ImageRole"/> either way.</returns>
     internal static Inline CreateImage(string url, string alt, string? title, string? baseDirectory)
     {
         var role = new ImageRole(url, alt, title);
-        if (Resolve(url, baseDirectory) is not { } source || Decode(source) is not { } bitmap)
+        if (MediaSource.Resolve(url, baseDirectory) is not { } source || Decode(source) is not { } bitmap)
         {
             return AltText(role);
         }
@@ -84,72 +85,6 @@ internal static class ImageFormatting
 
     // The alt text as a UI element, for swapping into a container whose remote picture never arrived.
     private static System.Windows.Controls.TextBlock AltTextBlock(string alt) => new() { Text = alt };
-
-    // The absolute URI an Image Source names, or null when it names nothing reachable. A relative
-    // source is meaningless without a Base Directory, which is why an unsaved Editor Session's
-    // relative Images fall back to their alt text (INV-031).
-    private static Uri? Resolve(string url, string? baseDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return null;
-        }
-
-        if (Uri.TryCreate(url, UriKind.Absolute, out var absolute))
-        {
-            // A file:// URI still has to name a file that exists; a remote one is the network's to
-            // judge, asynchronously.
-            return !absolute.IsFile || File.Exists(absolute.LocalPath) ? absolute : null;
-        }
-
-        if (baseDirectory is null)
-        {
-            return null;
-        }
-
-        // Decoded first, literal second. A space cannot be written bare in a Markdown URL — it does
-        // not parse as one — so `my%20photo.png` is the form an author is handed for "my photo.png",
-        // and percent-decoding is what every other Markdown tool does with it. The literal name is
-        // still tried afterwards, so a file whose name genuinely contains a percent sign is found as
-        // written rather than mangled by the decoding.
-        foreach (var candidate in new[] { Decode(url), url })
-        {
-            if (candidate is null)
-            {
-                continue;
-            }
-
-            try
-            {
-                var path = Path.GetFullPath(Path.Combine(baseDirectory, candidate));
-                if (File.Exists(path))
-                {
-                    return new Uri(path);
-                }
-            }
-            catch (Exception exception) when (exception is ArgumentException or NotSupportedException
-                                                  or PathTooLongException or IOException)
-            {
-                // A source that is not a usable path names no picture — the alt text stands in.
-            }
-        }
-
-        return null;
-    }
-
-    // The percent-decoded form of url, or null when it decodes to nothing new (or is not decodable).
-    private static string? Decode(string url)
-    {
-        try
-        {
-            var decoded = Uri.UnescapeDataString(url);
-            return decoded == url ? null : decoded;
-        }
-        catch (Exception exception) when (exception is UriFormatException or ArgumentException)
-        {
-            return null;
-        }
-    }
 
     // Decodes the picture at uri, or returns null when it is not one. A local file decodes here and
     // now, so a source that is not an image is caught before it is shown; a remote one only starts

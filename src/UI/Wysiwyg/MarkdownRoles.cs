@@ -74,6 +74,22 @@ internal sealed record LinkRole(string Url, string? Title);
 internal sealed record ImageRole(string Url, string Alt, string? Title);
 
 /// <summary>
+/// The role carried by the element a Markdown Video is projected into — its Video Player, or the
+/// <see cref="System.Windows.Documents.Run"/> holding its alt text — so Capture can reproduce the
+/// <c>![alt](clip.mp4)</c> the Video was authored as (INV-069).
+/// </summary>
+/// <remarks>
+/// A Video shares the Image's syntax and so its role shape; they are separate records because they are
+/// separate constructs, and because Capture must not have to ask a player whether it is a picture. The
+/// authored Media Source is kept here, never the absolute path a relative one resolved to, so the
+/// Markdown Document stays portable (INV-031).
+/// </remarks>
+/// <param name="Url">The Video's Media Source, as the author wrote it.</param>
+/// <param name="Alt">The Video's alt text.</param>
+/// <param name="Title">The optional title, or <see langword="null"/>.</param>
+internal sealed record VideoRole(string Url, string Alt, string? Title);
+
+/// <summary>
 /// The role carried by a <see cref="System.Windows.Documents.Run"/> projected from a task-list
 /// marker, so Capture can reproduce <c>[ ]</c> or <c>[x]</c>.
 /// </summary>

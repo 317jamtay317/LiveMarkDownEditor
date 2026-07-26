@@ -27,6 +27,7 @@
                 <ResourceDictionary Source="Controls/FolderPanel.xaml" />
                 <ResourceDictionary Source="Controls/PanelHeader.xaml" />
                 <ResourceDictionary Source="Controls/FlowchartCanvas.xaml" />
+                <ResourceDictionary Source="Controls/VideoPlayerView.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />

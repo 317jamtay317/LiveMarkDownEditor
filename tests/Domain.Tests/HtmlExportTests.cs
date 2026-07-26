@@ -72,6 +72,39 @@ public sealed class HtmlExportTests
     }
 
     [Fact]
+    public void Compose_StandalonePage_BandsEveryOtherBodyRowOfATable_INV068()
+    {
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        // A banded Table stays banded wherever it is shown: the same rows the Visual Document shades
+        // are the rows the exported page shades, and the header is left to its own emphasis.
+        page.ShouldContain("tbody tr:nth-child(even)");
+        page.ShouldContain("--row-banding");
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_BandsRowsForDarkModeToo_INV068()
+    {
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        // The shade is a translucent tint, so it has to be stated for both palettes or it disappears
+        // into one of them.
+        var dark = page[page.IndexOf("prefers-color-scheme: dark", StringComparison.Ordinal)..];
+        dark.ShouldContain("--row-banding");
+    }
+
+    [Fact]
+    public void Compose_StandalonePage_SizesAVideoToThePage_INV069()
+    {
+        var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");
+
+        // Render emits a <video> element for a Video (INV-069); a page that stands on its own has to
+        // keep it inside its own width, exactly as it does an image.
+        page.ShouldContain("video");
+        page.ShouldContain("max-width: 100%");
+    }
+
+    [Fact]
     public void Compose_StandalonePage_StylesCodeTokensForDarkModeToo_INV064()
     {
         var page = HtmlExport.Compose(Output, ExportShape.StandalonePage, "Title");

@@ -28,6 +28,7 @@ public static class HtmlExport
               --border: #E2E4E8;
               --accent: #4F46E5;
               --code-shading: rgba(0, 0, 0, 0.09);
+              --row-banding: rgba(0, 0, 0, 0.06);
               --tok-comment: #6E7781;
               --tok-string: #0F766E;
               --tok-number: #B45309;
@@ -44,6 +45,7 @@ public static class HtmlExport
                 --border: #30343A;
                 --accent: #A5B4FC;
                 --code-shading: rgba(255, 255, 255, 0.09);
+                --row-banding: rgba(255, 255, 255, 0.08);
                 --tok-comment: #8B949E;
                 --tok-string: #56D4B8;
                 --tok-number: #E3A857;
@@ -91,6 +93,13 @@ public static class HtmlExport
             table { border-collapse: collapse; display: block; overflow-x: auto; }
             th, td { border: 1px solid var(--border); padding: 0.4em 0.8em; }
             th { background: var(--code-shading); }
+            /* Row Banding (INV-068): the same rows the editor shades — every other Body Row, the
+               first left plain and the header row never banded, so a wide row can be followed
+               across. */
+            tbody tr:nth-child(even) { background: var(--row-banding); }
+            /* A Video renders as a <video> element rather than an <img> that could never play
+               (INV-069); like a picture, it is kept inside the page's own width. */
+            video { max-width: 100%; }
             hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
             img { max-width: 100%; }
             ul.contains-task-list { list-style: none; padding-left: 1.2em; }

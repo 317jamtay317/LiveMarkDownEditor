@@ -6,7 +6,7 @@ namespace Infrastructure.Markdown;
 /// <summary>
 /// Builds the single, shared Markdig pipeline configured for GitHub Flavored Markdown (GFM):
 /// CommonMark plus pipe/grid tables, task lists, strikethrough, autolinks, footnotes, and
-/// definition lists.
+/// definition lists — and the one rendering rule GFM has no syntax for, a Video (INV-069).
 /// </summary>
 /// <remarks>
 /// Both the HTML render path and the Visual Document projection MUST parse with the identical
@@ -32,6 +32,11 @@ public static class GfmPipeline
         // Registered last, and deliberately so: it replaces the parser the line above installs, which
         // Markdig does not add to the builder until that extension's own setup has run (INV-066).
         builder.Extensions.AddIfNotAlready(new LenientDefinitionListExtension());
+
+        // A Video rides on the Image syntax, so it is the renderer — not the parser — that has to tell
+        // the two apart (INV-069). Registered on the shared pipeline so the Rendered Output and the
+        // projection can never disagree about which is which.
+        builder.Extensions.AddIfNotAlready(new VideoLinkExtension());
 
         return builder.Build();
     }

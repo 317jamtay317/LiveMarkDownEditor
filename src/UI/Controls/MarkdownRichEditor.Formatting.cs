@@ -66,6 +66,15 @@ public sealed partial class MarkdownRichEditor
     public void InsertImageAtSelection() => LinkFormatting.InsertImage(this, LinkPrompt, BaseDirectory);
 
     /// <summary>
+    /// Applies the Insert Video Formatting Action: asks the <see cref="LinkPrompt"/> for the Video's alt
+    /// text (seeded with the selection) and Media Source, and inserts that Video — paused, because a
+    /// document does not play at its reader (INV-069). No edit is made when the Link Prompt is dismissed
+    /// or gives no URL (INV-030). The edit Captures back into <see cref="Markdown"/> like any other
+    /// (INV-018).
+    /// </summary>
+    public void InsertVideoAtSelection() => LinkFormatting.InsertVideo(this, LinkPrompt, BaseDirectory);
+
+    /// <summary>
     /// Applies the Toggle Strikethrough Formatting Action at the current selection: the selection is
     /// struck through, or struck-through prose is restored to plain text — whether that
     /// Strikethrough was loaded or applied by a previous toggle (INV-029). The edit Captures back
@@ -256,6 +265,16 @@ public sealed partial class MarkdownRichEditor
         // on the checkbox itself resolves to it; every other click falls through to the base class and
         // places the caret exactly as it always has.
         if (ToggleTaskMarkerAt(GetPositionFromPoint(e.GetPosition(this), snapToText: false)))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // A click on a Video Player plays or pauses the Video, or seeks it on the Scrubber (INV-069).
+        // It is routed here rather than handled by the player's own parts because the text layer this
+        // control lays over its document keeps embedded elements from being clicked — the same reason
+        // the Task Marker above is routed. Playing is not an edit.
+        if (HandleVideoClick(e.GetPosition(this)))
         {
             e.Handled = true;
             return;

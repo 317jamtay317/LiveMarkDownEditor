@@ -2,7 +2,12 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net10.0-windows</TargetFramework>
+        <!-- The Windows SDK projections are targeted because the Video Player hosts its browser through
+             WebView2CompositionControl, which renders into the WPF visual tree instead of a native child
+             window — the only way the editor's chrome (the status bar above all) draws over a playing
+             Video rather than under it (INV-069). That control initialises through the SDK's D3D image
+             interop, so a plain net10.0-windows target throws in OnApplyTemplate. -->
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>

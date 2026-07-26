@@ -13,14 +13,24 @@ namespace UI.ViewModels;
 /// </summary>
 public sealed class LinkPromptViewModel : INotifyPropertyChanged
 {
-    /// <summary>Creates the Link Prompt's state for a Link or an Image.</summary>
-    /// <param name="forImage">Whether an Image is being inserted rather than a Link.</param>
-    /// <param name="proposedText">The selected text, offered as the Link's text or Image's alt text.</param>
-    public LinkPromptViewModel(bool forImage, string proposedText)
+    /// <summary>Creates the Link Prompt's state for a Link, an Image, or a Video.</summary>
+    /// <param name="kind">What is being inserted, which is all the three differ by.</param>
+    /// <param name="proposedText">The selected text, offered as the Link's text or the alt text.</param>
+    public LinkPromptViewModel(LinkPromptKind kind, string proposedText)
     {
-        Title = forImage ? "Insert image" : "Insert link";
-        TextLabel = forImage ? "Alt text" : "Text";
-        UrlLabel = forImage ? "Image URL" : "Link URL";
+        Title = kind switch
+        {
+            LinkPromptKind.Image => "Insert image",
+            LinkPromptKind.Video => "Insert video",
+            _ => "Insert link",
+        };
+        TextLabel = kind == LinkPromptKind.Link ? "Text" : "Alt text";
+        UrlLabel = kind switch
+        {
+            LinkPromptKind.Image => "Image URL",
+            LinkPromptKind.Video => "Video URL",
+            _ => "Link URL",
+        };
         _text = proposedText ?? string.Empty;
 
         _acceptCommand = new RelayCommand(() => DialogResult = true, () => CanAccept);
@@ -30,10 +40,10 @@ public sealed class LinkPromptViewModel : INotifyPropertyChanged
     /// <inheritdoc />
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>The Link Prompt's window title — "Insert link" or "Insert image".</summary>
+    /// <summary>The Link Prompt's window title — "Insert link", "Insert image", or "Insert video".</summary>
     public string Title { get; }
 
-    /// <summary>The label beside the text box — "Text" for a Link, "Alt text" for an Image.</summary>
+    /// <summary>The label beside the text box — "Text" for a Link, "Alt text" for an Image or a Video.</summary>
     public string TextLabel { get; }
 
     /// <summary>The label beside the URL box.</summary>

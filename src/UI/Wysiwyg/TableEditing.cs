@@ -16,6 +16,9 @@ namespace UI.Wysiwyg;
 /// </summary>
 internal static class TableEditing
 {
+    // The palette key Row Banding's shade is looked up by, in both the light and the dark palette.
+    private const string RowBandingBrushKey = "RowBandingBrush";
+
     /// <summary>Whether <paramref name="position"/> sits inside a Table.</summary>
     /// <param name="position">The position to classify (typically the caret).</param>
     internal static bool IsInTable(TextPointer? position) =>
@@ -68,6 +71,12 @@ internal static class TableEditing
         {
             var newRow = CreateRow(caretRow.Cells.Count, isHeader: false);
             group.Rows.Insert(group.Rows.IndexOf(caretRow) + 1, newRow);
+
+            // The new row displaced every row below it, so their stripes move with them (INV-068).
+            if (group.Parent is WpfTable table)
+            {
+                RefreshRowBanding(table);
+            }
 
             var firstCellParagraph = (Paragraph)newRow.Cells[0].Blocks.FirstBlock!;
             editor.Selection.Select(firstCellParagraph.ContentStart, firstCellParagraph.ContentStart);
@@ -167,6 +176,12 @@ internal static class TableEditing
             var removedAt = group.Rows.IndexOf(caretRow);
             group.Rows.Remove(caretRow);
 
+            // Every row below the gap slid up one place, so their stripes move with them (INV-068).
+            if (group.Parent is WpfTable table)
+            {
+                RefreshRowBanding(table);
+            }
+
             // Land in the row that slid up into the gap, or the last row when there is none.
             var landing = group.Rows.Count == 0
                 ? null
@@ -241,6 +256,51 @@ internal static class TableEditing
     }
 
     /// <summary>
+    /// Re-applies Row Banding to <paramref name="table"/>: every other Body Row takes the shade, the
+    /// rest and the header row are left plain (INV-068). Called wherever the set of rows changes —
+    /// a loaded Table, a newly inserted one, and after Add Row or Remove Row — because a Banded Row is
+    /// one whose *position* among the Body Rows is even, so a row does not keep a shade it has been
+    /// pushed out of.
+    /// </summary>
+    /// <param name="table">The Table to re-band.</param>
+    /// <remarks>
+    /// The shade is assigned as a reference to the palette's <c>RowBandingBrush</c> rather than a fixed
+    /// color, so a theme change recolors the rows in place without the Visual Document being
+    /// re-formatted (the Code Shading rule of INV-017, reached for a Table row). It is a background on
+    /// the row rather than an overlay because a row already *is* a rectangle the layout knows the
+    /// bounds of — there is nothing for an adorner to compute.
+    /// </remarks>
+    internal static void RefreshRowBanding(WpfTable table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
+
+        // The header row is the first row of the first row group — the row Capture emits above the
+        // delimiter row — and is never banded; the Body Rows are every row after it.
+        var bodyPosition = 0;
+        var isFirst = true;
+        foreach (var row in table.RowGroups.SelectMany(group => group.Rows))
+        {
+            if (isFirst)
+            {
+                isFirst = false;
+                row.ClearValue(TextElement.BackgroundProperty);
+                continue;
+            }
+
+            // The second, fourth, sixth … Body Row is banded, leaving the first plain so the header,
+            // the row below it, and the shade read as a rhythm rather than as one thick stripe.
+            if (++bodyPosition % 2 == 0)
+            {
+                row.SetResourceReference(TextElement.BackgroundProperty, RowBandingBrushKey);
+            }
+            else
+            {
+                row.ClearValue(TextElement.BackgroundProperty);
+            }
+        }
+    }
+
+    /// <summary>
     /// Dresses a cell paragraph as a Table cell the way the Projector renders one — header cells
     /// bold (a header convention Capture suppresses), thin borders, comfortable padding.
     /// </summary>
@@ -286,6 +346,9 @@ internal static class TableEditing
         }
 
         table.RowGroups.Add(group);
+
+        // Banded exactly as a loaded Table is, so a user-built one reads the same (INV-018/068).
+        RefreshRowBanding(table);
         return table;
     }
 
