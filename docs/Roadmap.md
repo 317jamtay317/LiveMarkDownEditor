@@ -81,8 +81,24 @@ work that is still in review, noted inline.
   and canvas could extend to the other node/arrow Mermaid kinds — state, ER, class — each a new
   parse/emit strategy and shape set (a new `DiagramKind`). Non-graph kinds (sequence, gantt, pie) are
   not node/arrow graphs and stay text-authored with the live preview.
-- [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
-- [ ] **Alternate color Rows on tables:** The rows should have alternate colors so its easier to read and see.
+- [x] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
+  **Done** (INV-069): a **Video** is written with the Image's own syntax — `![alt](clip.mp4)` — and told
+  apart from an Image by its **Media Source** alone, so nothing new had to be invented for Markdown to
+  say "video". It is shown as a **Video Player** that plays it in place: a Play Toggle, a Scrubber that
+  seeks, and the elapsed and total time. It resolves against the Base Directory and falls back to its alt
+  text on exactly an Image's rules (INV-031), and Captures as the source its author wrote whether it is
+  playing, paused, or half-scrubbed — playing is not an edit, and a Video never starts itself. Starting
+  one pauses every other, because a reader cannot listen to two. **Insert Video** sits beside Insert
+  Image in the command bar, and Render emits a `<video controls>` element so an exported page carries
+  what the editor showed. The player is the app's embedded browser rather than a WPF `MediaElement`,
+  which cannot decode ordinary H.264 MP4s on current Windows — and it is created on first play, so an
+  unwatched Video costs nothing.
+- [x] **Alternate color Rows on tables:** The rows should have alternate colors so its easier to read and see.
+  **Done** (INV-068): every other **Body Row** carries **Row Banding**, a translucent shade that reads over
+  the light and dark palette alike. It follows a row's *position*, so Add Row and Remove Row re-band the
+  rows below them; the header row is never banded, and the first Body Row is left plain so the header and
+  the shade read as a rhythm rather than one thick stripe. Presentation only — a Table Captures identically
+  banded or not — and the same rows are banded in the Visual Document, the exported page, and the PDF.
 - [x] **Panel memory.** When the app closes it remembers which panels were open and how they stood.
   **Done** (INV-067): the **Panel Layout** — every Dockable Panel's open and pinned state, and so its
   Placement — is persisted alongside the open Tabs and Recent Files and restored at startup, so a

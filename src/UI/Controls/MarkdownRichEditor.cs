@@ -103,6 +103,8 @@ public sealed partial class MarkdownRichEditor : RichTextBox
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.InsertImage, (_, _) => InsertImageAtSelection()));
         CommandBindings.Add(new CommandBinding(
+            MarkdownEditingCommands.InsertVideo, (_, _) => InsertVideoAtSelection()));
+        CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ToggleStrikethrough,
             (_, _) => ToggleStrikethroughAtSelection(),
             (_, e) => e.CanExecute = StrikethroughFormatting.CanToggle(this)));

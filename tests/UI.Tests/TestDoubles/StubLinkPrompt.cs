@@ -4,8 +4,8 @@ namespace UI.Tests.TestDoubles;
 
 /// <summary>
 /// An <see cref="ILinkPrompt"/> that answers with whatever it was handed, and records what it was
-/// asked — so Insert Link and Insert Image (INV-030) can be driven headlessly, including the case
-/// where the Link Prompt is dismissed (a <see langword="null"/> answer).
+/// asked — so Insert Link, Insert Image, and Insert Video (INV-030) can be driven headlessly,
+/// including the case where the Link Prompt is dismissed (a <see langword="null"/> answer).
 /// </summary>
 /// <param name="answer">The answer to give, or <see langword="null"/> to act as if dismissed.</param>
 internal sealed class StubLinkPrompt(LinkDetails? answer) : ILinkPrompt
@@ -21,6 +21,9 @@ internal sealed class StubLinkPrompt(LinkDetails? answer) : ILinkPrompt
 
     /// <inheritdoc />
     public LinkDetails? AskForImage(string proposedAlt) => Record(proposedAlt);
+
+    /// <inheritdoc />
+    public LinkDetails? AskForVideo(string proposedAlt) => Record(proposedAlt);
 
     private LinkDetails? Record(string proposedText)
     {

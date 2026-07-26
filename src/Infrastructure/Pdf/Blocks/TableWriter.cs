@@ -9,10 +9,15 @@ namespace Infrastructure.Pdf.Blocks;
 
 /// <summary>
 /// Writes a Table as a real table on the page: its columns sharing the page width evenly, its
-/// header row bold, and each column aligned the way the Table says.
+/// header row bold, each column aligned the way the Table says, and every other Body Row carrying
+/// Row Banding's shade so a wide row can be followed across (INV-068).
 /// </summary>
 internal sealed class TableWriter : IBlockWriter
 {
+    // Row Banding's shade on paper: a light grey, chosen to read on a printed page rather than to
+    // match the editor's translucent tint, which would be invisible against white (INV-068).
+    private static readonly Color BandingColor = new(245, 245, 247);
+
     /// <inheritdoc />
     public void Write(Block block, BlockContext context)
     {
@@ -32,10 +37,19 @@ internal sealed class TableWriter : IBlockWriter
             pdfTable.AddColumn(Unit.FromCentimeter(PdfStyle.UsableWidthCm / columns));
         }
 
+        // Row Banding (INV-068): a banded Table stays banded wherever it is shown, so the printed page
+        // shades the rows the Visual Document shades — every other Body Row, counted below the header.
+        var bodyPosition = 0;
+
         foreach (var rowBlock in table)
         {
             var mdRow = (MdTableRow)rowBlock;
             var row = pdfTable.AddRow();
+            if (!mdRow.IsHeader && ++bodyPosition % 2 == 0)
+            {
+                row.Shading.Color = BandingColor;
+            }
+
             for (var c = 0; c < mdRow.Count && c < columns; c++)
             {
                 var cellParagraph = row.Cells[c].AddParagraph();

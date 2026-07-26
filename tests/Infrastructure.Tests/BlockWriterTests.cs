@@ -181,6 +181,17 @@ public sealed class BlockWriterTests
     }
 
     [Fact]
+    public void Write_GivenATable_BandsEveryOtherBodyRow_INV068()
+    {
+        var section = Write("| a | b |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n| 7 | 8 |");
+
+        // A banded Table stays banded wherever it is shown (INV-068). Row 0 is the header — never
+        // banded — and the first Body Row is left plain, so the shade starts on the second.
+        var table = section.Elements.OfType<Table>().Single();
+        Banding(table).ShouldBe([false, false, true, false, true]);
+    }
+
+    [Fact]
     public void Write_GivenADiagramNarrowerThanThePage_KeepsItsNaturalSize_INV050()
     {
         // 200px at 96 DPI is 5.29cm — well inside the 16cm the page has room for.
@@ -216,4 +227,8 @@ public sealed class BlockWriterTests
 
     private static Paragraph CellParagraph(Table table, int row, int column) =>
         table.Rows[row].Cells[column].Elements.OfType<Paragraph>().First();
+
+    // Whether each row of the PDF table carries Row Banding's shade, top to bottom (INV-068).
+    private static IReadOnlyList<bool> Banding(Table table) =>
+        [.. Enumerable.Range(0, table.Rows.Count).Select(row => !table.Rows[row].Shading.Color.IsEmpty)];
 }

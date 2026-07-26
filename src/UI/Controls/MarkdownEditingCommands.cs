@@ -107,6 +107,17 @@ public static class MarkdownEditingCommands
         typeof(MarkdownEditingCommands));
 
     /// <summary>
+    /// The Insert Video Formatting Action: inserts a Video at the caret, asking for its alt text and
+    /// Media Source through the Link Prompt. A Video is written with the Image's own syntax and is shown
+    /// as a Video Player, paused (INV-069). No edit is made when the Link Prompt is dismissed or gives no
+    /// URL (INV-030).
+    /// </summary>
+    public static RoutedUICommand InsertVideo { get; } = new(
+        "Insert video",
+        nameof(InsertVideo),
+        typeof(MarkdownEditingCommands));
+
+    /// <summary>
     /// The Toggle Strikethrough Formatting Action: the selection is struck through, or
     /// struck-through prose is restored to plain text. It removes a Strikethrough the Projector
     /// loaded exactly as readily as one a previous toggle applied (INV-029).

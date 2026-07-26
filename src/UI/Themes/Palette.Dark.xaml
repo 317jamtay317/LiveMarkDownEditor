@@ -25,6 +25,11 @@
          (not as the code's own background, so a theme recolor never re-formats the document). -->
     <SolidColorBrush x:Key="CodeShadingBrush" Color="#1EFFFFFF" />
 
+    <!-- Row Banding: the shade behind every other Body Row of a Table, so a wide row can be followed
+         across (INV-068). Translucent, so it tints whatever the row sits on rather than painting over
+         it, and referenced dynamically so a theme change recolors without re-formatting. -->
+    <SolidColorBrush x:Key="RowBandingBrush" Color="#14FFFFFF" />
+
     <!-- Syntax Highlighting: one brush per Code Token Kind, which is what a Code Block's colored
          Runs reference (INV-064). Lifted for a dark page rather than reused from the light palette,
          where the same hues would sit too dark to read. A Plain Code Token has no brush of its own

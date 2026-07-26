@@ -1702,6 +1702,92 @@ and tested.
   `JsonWorkspaceStateStoreTests.*_INV067` (the layout survives a file round-trip, and a state file
   without one loads as no layout).
 
+### INV-068 — Row Banding is view-only, and follows a row's position
+- **Statement:** Every other Body Row of a Table carries Row Banding — a shade behind the row — so a
+  wide Table can be read across. Four rules bound it:
+  - **Banding changes no Markdown.** A Table Captures identically whether its rows are banded or
+    not: Row Banding is a shade, and Markdown has no way to say "shaded". Round-Tripping a Table
+    therefore neither gains nor loses anything from it (INV-004/005). This is the Table counterpart
+    of INV-017.
+  - **The header row is never banded.** A Table has exactly one header row and it already carries its
+    own emphasis; shading it would make it read as one of the Body Rows. Banding starts below it, and
+    the *first* Body Row is left plain, so the header, the first row, and the shade form a rhythm
+    rather than two stripes running together.
+  - **Banding follows position, not identity.** A Banded Row is one whose place among the Body Rows
+    is even (the second, fourth, sixth …), so Add Row and Remove Row re-band every row below the one
+    they touched (INV-019). A row does not keep a shade it has been pushed out of, and Add Column /
+    Remove Column leave banding exactly as it was — a column is not a row.
+  - **A banded Table stays banded wherever it is shown.** The Visual Document, the Standalone Page an
+    Export as HTML writes, and an Export as PDF all band the same rows, because they are all showing
+    the one Table (INV-032). The shade is a translucent tint rather than an opaque color, so it reads
+    over the light and the dark palette alike and never fights the text above it.
+- **Enforced by:** `TableEditing.RefreshRowBanding`, the one place a row's shade is decided, called by
+  the Projector when it composes a loaded Table and by Insert Table / Add Row / Remove Row after they
+  change which rows there are — the same shared-seam discipline the rest of the Table actions follow
+  (INV-018). It assigns the shade through a `DynamicResource` reference to `RowBandingBrush`, so a
+  theme change recolors the rows without the document being re-formatted (INV-017). The Capturer reads
+  nothing but cell content, alignment, and the header flag, so a shade cannot reach the Markdown. The
+  Standalone Page's stylesheet bands with `tbody tr:nth-child(even)` and the PDF's `TableWriter` shades
+  the same rows.
+- **Tested by:** `MarkdownRichEditorRowBandingTests.*_INV068`,
+  `HtmlExportTests.*_INV068`, `BlockWriterTests.*_INV068`.
+
+### INV-069 — A Video plays in place, and Captures as the Image syntax it was written with
+- **Statement:** A Video is written in Markdown exactly as an Image is — `![alt](clip.mp4)` — and
+  shown in the Visual Document as a Video Player that plays it where it stands. Five rules bound it:
+  - **The Media Source decides which it is.** A source naming a video file (`.mp4`, `.webm`, `.mov`,
+    `.m4v`, `.mkv`, `.avi`, `.ogv`, `.wmv`) is a Video; a source naming anything else is an Image. The
+    syntax is identical, so nothing else *could* decide it — and it is decided from the source alone,
+    never from what the file turns out to contain, so the decision is the same before the file has
+    been read as after (INV-003).
+  - **A Video resolves and falls back exactly as an Image does.** A relative Video Source resolves
+    against the Base Directory; a missing file, an unplayable one, or a relative source with no Base
+    Directory to resolve against shows the alt text instead of a player (INV-031). A Video that cannot
+    be played must never leave a hole where the author's words were.
+  - **A Video Captures as `![alt](url)` either way.** Whether it is showing its player or its alt
+    text, and whether it is playing, paused, or half-scrubbed, a Video re-emits the Media Source and
+    alt text it was built with — never the absolute path a relative source resolved to, so the
+    Markdown Document stays portable (INV-004/018/031).
+  - **Playing is not an edit.** Starting, pausing, and seeking a Video leave the Markdown Document
+    byte-for-byte unchanged: a Video Player is presentation, and watching a document is not editing
+    it. Nor does a Video ever start itself — a freshly projected Video is paused, because a document
+    that plays at the reader is a document that has taken something from them.
+  - **One Video plays at a time.** Starting a Video pauses every other one, wherever it is — the same
+    document, another Tab, it makes no difference. Two Videos talking over each other is never what a
+    reader asked for, and the reader cannot be listening to both. Only *starting* has this effect:
+    pausing a Video leaves the others exactly as they were, since nothing has taken their place. The
+    rule holds however the play was asked for — the reader's click on the still plate, or the Video
+    Player's own controls once it is running.
+  - **The Rendered Output shows a Video as a video.** Render emits a `<video controls>` element for a
+    Video rather than an `<img>` that could never play, so an Export as HTML carries the same content
+    the editor showed (INV-032). An Export as PDF shows the alt text, which is the only honest thing a
+    page can show of a video.
+- **Enforced by:** `Domain.VideoSource.IsVideo`, the single decision of what a Video Source is, shared
+  by the projection and the render so the two can never disagree; the `MediaSource.Resolve` seam an
+  Image and a Video both resolve through (INV-031); `VideoFormatting.CreateVideo`, the one composition
+  the Projector and Insert Video share, carrying the `VideoRole` (the authored source and alt text)
+  that Capture keys on for either presentation (INV-018); the `VideoPlayerView` control, which owns
+  playback and holds nothing Capture reads; and the `VideoLinkExtension` registered on the shared
+  `GfmPipeline`, which renders the `<video>` element.
+- **The player is browser-backed, and that is not an implementation detail.** WPF's `MediaElement`
+  plays through the legacy Windows Media Player pipeline, which on current Windows fails to decode
+  ordinary H.264 MP4s (`0xC00D109B`, natural video size 0×0) — so a `MediaElement` player would satisfy
+  the fallback rule above by showing alt text for nearly every video a user owns, which is not a Video
+  Player at all. `VideoPlayerView` shows a `<video>` element in the app's embedded browser, which is
+  already carried for Mermaid Diagrams (INV-047) and brings its own codecs. It is created on the *first
+  play*, so an unwatched Video costs nothing and cannot have started itself, and the one-at-a-time rule
+  lives on the `IsPlaying` callback that every play passes through — the reader's click, and the page's
+  own report that it started.
+- **The player's controls are the editor's, drawn in WPF.** The page is hosted through
+  `WebView2CompositionControl` so that it renders into the WPF visual tree — a plain `WebView2` is a
+  native child window and paints straight over the editor's chrome, the status bar included. The cost of
+  that hosting is that a WPF hit-test inside the `RichTextBox` lands on nothing at all where the video
+  is, so the browser could never answer a click: the Play Toggle and the Scrubber are the control's own,
+  the editor routes the click to them, and they drive the page by script. Controls the reader cannot
+  click would be worse than none, so the page is given none.
+- **Tested by:** `VideoSourceTests.*_INV069`, `MarkdownRichEditorVideoTests.*_INV069`,
+  `MarkdigMarkdownRendererTests.*_INV069`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

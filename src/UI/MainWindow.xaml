@@ -424,6 +424,17 @@
                 </Button>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
+                        AutomationProperties.Name="Insert video"
+                        Command="controls:MarkdownEditingCommands.InsertVideo"
+                        CommandTarget="{Binding ElementName=Editor}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Insert video"
+                                             Detail="Insert a video from a file or web address, and play it here in the editor." />
+                    </Button.ToolTip>
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertVideo}" />
+                </Button>
+                <Button Style="{StaticResource IconFormatButton}"
+                        controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
                         AutomationProperties.Name="Block quote"
                         Command="controls:MarkdownEditingCommands.ToggleBlockQuote"
                         CommandTarget="{Binding ElementName=Editor}">
@@ -530,7 +541,7 @@
                               AutomationProperties.Name="Insert">
                         <MenuItem.ToolTip>
                             <controls:CommandTip Heading="Insert"
-                                                 Detail="Insert a link, image, table, flowchart, footnote, definition list, or block quote." />
+                                                 Detail="Insert a link, image, video, table, flowchart, footnote, definition list, or block quote." />
                         </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Insert}" />
@@ -560,6 +571,20 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertImage}" />
                                     <TextBlock Text="Image" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Insert video"
+                                  Command="controls:MarkdownEditingCommands.InsertVideo"
+                                  CommandTarget="{Binding ElementName=Editor}">
+                            <MenuItem.ToolTip>
+                                <controls:CommandTip Heading="Insert video"
+                                                     Detail="Insert a video from a file or web address, and play it here in the editor." />
+                            </MenuItem.ToolTip>
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.InsertVideo}" />
+                                    <TextBlock Text="Video" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>

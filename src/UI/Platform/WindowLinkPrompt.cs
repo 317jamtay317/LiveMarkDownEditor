@@ -8,19 +8,22 @@ namespace UI.Platform;
 /// <summary>
 /// Realises the Link Prompt as a modal <see cref="LinkPromptWindow"/> over the active window. It is
 /// the WPF adapter behind <see cref="ILinkPrompt"/>: keeping it behind the port is what lets Insert
-/// Link and Insert Image (INV-030) be tested headlessly.
+/// Link, Insert Image, and Insert Video (INV-030/069) be tested headlessly.
 /// </summary>
 public sealed class WindowLinkPrompt : ILinkPrompt
 {
     /// <inheritdoc />
-    public LinkDetails? AskForLink(string proposedText) => Ask(forImage: false, proposedText);
+    public LinkDetails? AskForLink(string proposedText) => Ask(LinkPromptKind.Link, proposedText);
 
     /// <inheritdoc />
-    public LinkDetails? AskForImage(string proposedAlt) => Ask(forImage: true, proposedAlt);
+    public LinkDetails? AskForImage(string proposedAlt) => Ask(LinkPromptKind.Image, proposedAlt);
 
-    private static LinkDetails? Ask(bool forImage, string proposedText)
+    /// <inheritdoc />
+    public LinkDetails? AskForVideo(string proposedAlt) => Ask(LinkPromptKind.Video, proposedAlt);
+
+    private static LinkDetails? Ask(LinkPromptKind kind, string proposedText)
     {
-        var viewModel = new LinkPromptViewModel(forImage, proposedText);
+        var viewModel = new LinkPromptViewModel(kind, proposedText);
         var window = new LinkPromptWindow
         {
             DataContext = viewModel,

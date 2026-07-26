@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
+using Domain;
 using Infrastructure.Markdown;
 using Markdig.Extensions.DefinitionLists;
 using Markdig.Extensions.Footnotes;
@@ -391,6 +392,11 @@ public sealed class MarkdownToFlowDocumentProjector
         }
 
         wpfTable.RowGroups.Add(group);
+
+        // Every other Body Row takes Row Banding's shade so a wide row can be followed across. It is
+        // presentation only — the same seam the Table Formatting Actions re-band through, and nothing
+        // Capture reads (INV-068).
+        TableEditing.RefreshRowBanding(wpfTable);
         return wpfTable;
     }
 
@@ -456,6 +462,11 @@ public sealed class MarkdownToFlowDocumentProjector
                 // and Toggle Task Marker, so Capture treats all three identically (INV-018/024).
                 return TaskMarkerEditing.CreateMarker(task.Checked);
 
+            // A Video wears the Image's syntax, so it is the Media Source that tells them apart — and it
+            // is asked before the Image case, because every Video would otherwise match it (INV-069).
+            case LinkInline { IsImage: true } video when VideoSource.IsVideo(video.Url):
+                return ProjectVideo(video, baseDirectory);
+
             case LinkInline { IsImage: true } image:
                 return ProjectImage(image, baseDirectory);
 
@@ -498,6 +509,13 @@ public sealed class MarkdownToFlowDocumentProjector
     // a user-inserted one alike (INV-018/031).
     private static WpfInline ProjectImage(LinkInline image, string? baseDirectory) =>
         ImageFormatting.CreateImage(image.Url ?? string.Empty, ExtractText(image), image.Title, baseDirectory);
+
+    // Shown as a Video Player for the video its Media Source names, or as its alt text when that video
+    // cannot be played — composed through the same seam Insert Video uses, so Capture treats a loaded
+    // Video and a user-inserted one alike (INV-018/069). It is paused: a document does not play at its
+    // reader.
+    private static WpfInline ProjectVideo(LinkInline video, string? baseDirectory) =>
+        VideoFormatting.CreateVideo(video.Url ?? string.Empty, ExtractText(video), video.Title, baseDirectory);
 
     private static string ExtractText(ContainerInline container)
     {

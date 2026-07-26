@@ -88,4 +88,51 @@ public sealed class MarkdigMarkdownRendererTests
         output.Html.ShouldContain("<dt>Markdown</dt>");
         output.Html.ShouldContain("<dd>A markup language.</dd>");
     }
+
+    /// <summary>
+    /// A Video is written with the Image's own syntax, so it would otherwise render as an
+    /// <c>&lt;img&gt;</c> that could never play. The Rendered Output shows it as a video, so an exported
+    /// page carries what the editor showed (INV-069/032).
+    /// </summary>
+    [Fact]
+    public void Render_GivenAVideoSource_ProducesAVideoElement_INV069()
+    {
+        var output = _renderer.Render(new MarkdownDocument("![a clip](media/demo.mp4)\n"));
+
+        output.Html.ShouldContain("<video");
+        output.Html.ShouldContain("src=\"media/demo.mp4\"");
+        output.Html.ShouldContain("controls");
+        output.Html.ShouldNotContain("<img");
+    }
+
+    /// <summary>The alt text stands in for a Video a browser cannot play, exactly as it does in the editor.</summary>
+    [Fact]
+    public void Render_GivenAVideoSource_CarriesItsAltTextAsTheFallback_INV069()
+    {
+        var output = _renderer.Render(new MarkdownDocument("![a clip](demo.webm)\n"));
+
+        output.Html.ShouldContain("a clip");
+    }
+
+    [Fact]
+    public void Render_GivenAnImageSource_StillProducesAnImageElement_INV069()
+    {
+        var output = _renderer.Render(new MarkdownDocument("![a cat](cat.png)\n"));
+
+        output.Html.ShouldContain("<img");
+        output.Html.ShouldNotContain("<video");
+    }
+
+    /// <summary>
+    /// A Link to a video is a Link — the reader is being sent to the file, not shown it. Only the Image
+    /// syntax makes a Video (INV-069).
+    /// </summary>
+    [Fact]
+    public void Render_GivenALinkToAVideo_LeavesItALink_INV069()
+    {
+        var output = _renderer.Render(new MarkdownDocument("[the clip](demo.mp4)\n"));
+
+        output.Html.ShouldContain("<a href=\"demo.mp4\"");
+        output.Html.ShouldNotContain("<video");
+    }
 }

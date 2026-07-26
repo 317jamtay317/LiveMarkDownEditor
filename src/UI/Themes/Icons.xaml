@@ -89,6 +89,10 @@
     <!-- A framed picture: a sun over a mountain, the one shape that reads as "image" at 18px. -->
     <Geometry x:Key="Icon.InsertImage">M3 5 H21 V19 H3 Z M7.5 9.5 A1.2 1.2 0 1 0 9.9 9.5 A1.2 1.2 0 1 0 7.5 9.5 Z M3 16 L8.5 11.5 L13 15 L16.5 12.5 L21 16.5</Geometry>
 
+    <!-- A framed picture with a play triangle in it: the Image icon's frame, so a Video reads as the
+         Image's sibling it is in the syntax, with the one mark that says "this plays" (INV-069). -->
+    <Geometry x:Key="Icon.InsertVideo">M3 5 H21 V19 H3 Z M10 9 L15.5 12 L10 15 Z</Geometry>
+
     <!-- A left rule beside lines of text: the same shape a Block Quote is shown with in the Visual
          Document, the way the checklist icon matches the checkbox a Task Marker shows. The last line
          is short so the block reads as prose rather than as a table. -->
