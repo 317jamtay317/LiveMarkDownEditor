@@ -6,17 +6,17 @@ using Xunit;
 namespace UI.Tests.ViewModels;
 
 /// <summary>
-/// Tests for <see cref="FlowchartBuilderViewModel"/> — the Flowchart Builder's state and behaviour.
-/// Covers INV-053: editing the builder yields no <see cref="FlowchartBuilderViewModel.Result"/> until
+/// Tests for <see cref="DiagramBuilderViewModel"/> — the Diagram Builder's state and behaviour.
+/// Covers INV-053: editing the builder yields no <see cref="DiagramBuilderViewModel.Result"/> until
 /// Insert, Cancel yields <see langword="null"/>, and the emitted source is the Diagram Graph's own
 /// canonical Mermaid; plus the add/connect/reshape/delete behaviour the canvas drives.
 /// </summary>
-public sealed class FlowchartBuilderViewModelTests
+public sealed class DiagramBuilderViewModelTests
 {
     [Fact]
     public void New_FromNull_StartsEmpty()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
 
         builder.Nodes.ShouldBeEmpty();
         builder.Edges.ShouldBeEmpty();
@@ -26,7 +26,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void New_FromExistingSource_ParsesTheDiagramIn()
     {
-        var builder = new FlowchartBuilderViewModel(
+        var builder = new DiagramBuilderViewModel(
             "flowchart LR\n    A[\"Start\"]\n    B{\"Decide\"}\n    A --> B");
 
         builder.Direction.ShouldBe(FlowDirection.LeftRight);
@@ -39,7 +39,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void SeededNodes_AreLaidOutSoTheyDoNotStack()
     {
-        var builder = new FlowchartBuilderViewModel(
+        var builder = new DiagramBuilderViewModel(
             "flowchart TD\n    A[\"A\"]\n    B[\"B\"]\n    A --> B");
 
         (builder.Nodes[0].X == builder.Nodes[1].X && builder.Nodes[0].Y == builder.Nodes[1].Y).ShouldBeFalse();
@@ -48,7 +48,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void AddNode_AddsANodeAndSelectsIt()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
 
         builder.AddNodeCommand.Execute(null);
 
@@ -60,7 +60,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void Connect_AddsAnEdgeBetweenTwoNodes()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.AddNodeCommand.Execute(null);
 
@@ -78,7 +78,7 @@ public sealed class FlowchartBuilderViewModelTests
             .AddNode("Node", NodeShape.Rectangle);
         var withEdge = expected.Connect(expected.Nodes[0].Id, expected.Nodes[1].Id, label: null, EdgeKind.Arrow);
 
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.AddNodeCommand.Execute(null);
         builder.Connect(builder.Nodes[0], builder.Nodes[1]);
@@ -89,7 +89,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void RenamingANode_ReEmitsTheSource()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
 
         builder.Nodes[0].Label = "Start";
@@ -100,7 +100,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void ReshapingTheSelectedNode_ReEmitsTheSource()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.SelectNode(builder.Nodes[0]);
 
@@ -113,7 +113,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void ChangingDirection_ReEmitsTheSource()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
 
         builder.Direction = FlowDirection.LeftRight;
 
@@ -123,7 +123,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void DeletingANode_AlsoRemovesItsIncidentEdges()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.AddNodeCommand.Execute(null);
         builder.Connect(builder.Nodes[0], builder.Nodes[1]);
@@ -138,7 +138,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void DeleteSelected_IsDisabled_WithNoSelection()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
 
         builder.DeleteSelectedCommand.CanExecute(null).ShouldBeFalse();
 
@@ -149,7 +149,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void MovingANode_DoesNotChangeTheSource_INV051()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         var before = builder.MermaidSource;
 
@@ -161,7 +161,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void Editing_ProducesNoResult_UntilInsert_INV053()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.Nodes[0].Label = "Start";
 
@@ -172,7 +172,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void Insert_YieldsTheMermaidSource_INV053()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.Nodes[0].Label = "Start";
 
@@ -186,7 +186,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void Cancel_YieldsNull_INV053()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
 
         builder.CancelCommand.Execute(null);
@@ -198,7 +198,7 @@ public sealed class FlowchartBuilderViewModelTests
     [Fact]
     public void Insert_AfterEditing_RoundTripsThroughTheDomain_INV051()
     {
-        var builder = new FlowchartBuilderViewModel(existingSource: null);
+        var builder = new DiagramBuilderViewModel(existingSource: null);
         builder.AddNodeCommand.Execute(null);
         builder.Nodes[0].Label = "Start";
         builder.SelectNode(builder.Nodes[0]);

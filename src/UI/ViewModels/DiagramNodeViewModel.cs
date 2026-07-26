@@ -4,12 +4,12 @@ using UI.Core;
 namespace UI.ViewModels;
 
 /// <summary>
-/// One Diagram Node on the Flowchart Builder's canvas: its <see cref="NodeId"/>, editable Node Label
+/// One Diagram Node on the Diagram Builder's canvas: its <see cref="NodeId"/>, editable Node Label
 /// and <see cref="NodeShape"/>, and its on-canvas position (<see cref="X"/>/<see cref="Y"/>). The
 /// position is builder view state only — it is never emitted to Mermaid, which computes layout itself
 /// (INV-051), so moving a node changes no Diagram Graph.
 /// </summary>
-public sealed class FlowchartNodeViewModel : ObservableObject
+public sealed class DiagramNodeViewModel : ObservableObject
 {
     /// <summary>The node box's width on the canvas, in device-independent pixels.</summary>
     public const double Width = 132;
@@ -30,7 +30,7 @@ public sealed class FlowchartNodeViewModel : ObservableObject
     /// <param name="shape">The node's shape.</param>
     /// <param name="x">The left edge of the node box on the canvas.</param>
     /// <param name="y">The top edge of the node box on the canvas.</param>
-    public FlowchartNodeViewModel(NodeId id, string label, NodeShape shape, double x, double y)
+    public DiagramNodeViewModel(NodeId id, string label, NodeShape shape, double x, double y)
     {
         Id = id ?? throw new ArgumentNullException(nameof(id));
         _label = label ?? throw new ArgumentNullException(nameof(label));

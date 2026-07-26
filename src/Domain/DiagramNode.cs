@@ -2,7 +2,9 @@ namespace Domain;
 
 /// <summary>
 /// One Diagram Node of a <see cref="DiagramGraph"/>: a <see cref="NodeId"/>, a Node Label (the text
-/// shown in the node), and a <see cref="NodeShape"/>. An immutable value object, compared by value.
+/// shown in the node), and a <see cref="NodeShape"/>. An immutable value object, compared by value. A
+/// Node Label's surrounding whitespace is not content and is trimmed away — no Diagram Kind's source
+/// can carry it outside quotation marks, so keeping it would break the Round-Trip (INV-051).
 /// </summary>
 public sealed record DiagramNode
 {
@@ -17,14 +19,14 @@ public sealed record DiagramNode
         ArgumentNullException.ThrowIfNull(label);
 
         Id = id;
-        Label = label;
+        Label = label.Trim();
         Shape = shape;
     }
 
     /// <summary>The node's stable identifier in Mermaid source.</summary>
     public NodeId Id { get; }
 
-    /// <summary>The Node Label — the text shown in the node. May be empty.</summary>
+    /// <summary>The Node Label — the text shown in the node, trimmed. May be empty.</summary>
     public string Label { get; }
 
     /// <summary>The outline the node is drawn with.</summary>

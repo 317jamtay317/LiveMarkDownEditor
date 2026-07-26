@@ -9,7 +9,7 @@ namespace UI.Controls;
 /// The inline picture of a Mermaid Diagram in the Visual Document: it shows the diagram's rendered
 /// image once the editor's render coordinator supplies it (<see cref="Rendered"/>), and until then — or
 /// if the diagram cannot be rendered — falls back to showing its source text, so a diagram never leaves
-/// a hole (INV-047). Double-clicking it opens the Flowchart Builder (handled by the editor).
+/// a hole (INV-047). Double-clicking it opens the Diagram Builder (handled by the editor).
 /// </summary>
 /// <remarks>
 /// Authored as a custom Control that builds its content in code, per the project's Control exception to
@@ -39,7 +39,7 @@ public sealed class MermaidDiagramView : ContentControl
     public MermaidDiagramView()
     {
         HorizontalAlignment = HorizontalAlignment.Left;
-        Cursor = Cursors.Hand; // double-click to edit in the Flowchart Builder
+        Cursor = Cursors.Hand; // double-click to edit in the Diagram Builder
         Focusable = false;
         Rebuild();
     }

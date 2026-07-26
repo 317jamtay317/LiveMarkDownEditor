@@ -3,18 +3,22 @@ using System.Text.RegularExpressions;
 namespace Domain;
 
 /// <summary>
-/// The one place the Mermaid flowchart syntax lives: emits a <see cref="DiagramGraph"/> as canonical
-/// Mermaid source and parses Mermaid flowchart source back into a graph (INV-051). Pure — no I/O, no
-/// state — so <see cref="DiagramGraph.ToMermaidSource"/> and <see cref="DiagramGraph.Parse"/> stay
-/// deterministic. Emission is exact and parsing is its inverse over the forms emit produces;
+/// The one place the Mermaid flowchart syntax lives: emits a Flowchart <see cref="DiagramGraph"/> as
+/// canonical Mermaid source and parses Mermaid flowchart source back into a graph (INV-051). Pure — no
+/// I/O, no state — so <see cref="DiagramGraph.ToMermaidSource"/> and <see cref="DiagramGraph.Parse"/>
+/// stay deterministic. Emission is exact and parsing is its inverse over the forms emit produces;
 /// hand-authored source is parsed best-effort, and lines it cannot model are ignored.
 /// </summary>
+/// <remarks>
+/// A Flowchart is the one Diagram Kind that carries its Flow Direction as a token on the header
+/// (<c>flowchart LR</c>) rather than as a <c>direction</c> statement.
+/// </remarks>
 internal static partial class FlowchartMermaidFormat
 {
     /// <summary>Emits <paramref name="graph"/> as canonical Mermaid source (INV-051).</summary>
     public static string Emit(DiagramGraph graph)
     {
-        var lines = new List<string> { $"flowchart {DirectionToken(graph.Direction)}" };
+        var lines = new List<string> { $"flowchart {MermaidDirection.HeaderToken(graph.Direction)}" };
         lines.AddRange(graph.Nodes.Select(node => "    " + NodeDeclaration(node)));
         lines.AddRange(graph.Edges.Select(edge => "    " + EdgeLine(edge)));
         return string.Join("\n", lines);
@@ -29,15 +33,8 @@ internal static partial class FlowchartMermaidFormat
             return false;
         }
 
-        var lines = source.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-
-        var i = 0;
-        while (i < lines.Length && lines[i].Trim().Length == 0)
-        {
-            i++;
-        }
-
-        if (i >= lines.Length || !TryParseHeader(lines[i].Trim(), out var direction))
+        var lines = MermaidText.Lines(source);
+        if (lines.Count == 0 || !TryParseHeader(lines[0], out var direction))
         {
             return false;
         }
@@ -46,13 +43,9 @@ internal static partial class FlowchartMermaidFormat
         var index = new Dictionary<string, int>(StringComparer.Ordinal);
         var edges = new List<DiagramEdge>();
 
-        for (i++; i < lines.Length; i++)
+        for (var i = 1; i < lines.Count; i++)
         {
-            var line = lines[i].Trim();
-            if (line.Length == 0)
-            {
-                continue;
-            }
+            var line = lines[i];
 
             if (TryParseEdge(line, out var fromSpec, out var toSpec, out var label, out var kind))
             {
@@ -81,18 +74,10 @@ internal static partial class FlowchartMermaidFormat
 
     // --- Emit helpers ---
 
-    private static string DirectionToken(FlowDirection direction) => direction switch
-    {
-        FlowDirection.LeftRight => "LR",
-        FlowDirection.BottomUp => "BT",
-        FlowDirection.RightLeft => "RL",
-        _ => "TD",
-    };
-
     private static string NodeDeclaration(DiagramNode node)
     {
         var id = node.Id.Value;
-        var label = QuoteLabel(node.Label);
+        var label = MermaidText.Quote(node.Label);
         return node.Shape switch
         {
             NodeShape.Rounded => $"{id}({label})",
@@ -109,7 +94,7 @@ internal static partial class FlowchartMermaidFormat
         var from = edge.FromId.Value;
         var to = edge.ToId.Value;
         return edge.Label is { } label
-            ? $"{from} {op}|{label.Replace("|", "#124;")}| {to}"
+            ? $"{from} {op}|{MermaidText.Encode(label, "|")}| {to}"
             : $"{from} {op} {to}";
     }
 
@@ -120,8 +105,6 @@ internal static partial class FlowchartMermaidFormat
         EdgeKind.Open => "---",
         _ => "-->",
     };
-
-    private static string QuoteLabel(string label) => "\"" + label.Replace("\"", "#quot;") + "\"";
 
     // --- Parse helpers ---
 
@@ -134,13 +117,7 @@ internal static partial class FlowchartMermaidFormat
             return false;
         }
 
-        direction = match.Groups["dir"].Value.ToUpperInvariant() switch
-        {
-            "LR" => FlowDirection.LeftRight,
-            "BT" => FlowDirection.BottomUp,
-            "RL" => FlowDirection.RightLeft,
-            _ => FlowDirection.TopDown,
-        };
+        direction = MermaidDirection.Read(match.Groups["dir"].Value);
         return true;
     }
 
@@ -169,7 +146,7 @@ internal static partial class FlowchartMermaidFormat
         };
 
         var raw = match.Groups["label"];
-        label = raw.Success ? Unquote(raw.Value.Replace("#124;", "|")) : null;
+        label = raw.Success ? MermaidText.Unquote(raw.Value) : null;
         return true;
     }
 
@@ -216,7 +193,7 @@ internal static partial class FlowchartMermaidFormat
                 rest.EndsWith(close, StringComparison.Ordinal))
             {
                 var inner = rest.Substring(open.Length, rest.Length - open.Length - close.Length);
-                label = Unquote(inner);
+                label = MermaidText.Unquote(inner);
                 shape = candidate;
                 return true;
             }
@@ -244,17 +221,6 @@ internal static partial class FlowchartMermaidFormat
         nodes.Add(new DiagramNode(id, spec.Label ?? string.Empty, spec.Shape ?? NodeShape.Rectangle));
         index[spec.Id] = nodes.Count - 1;
         return id;
-    }
-
-    private static string Unquote(string inner)
-    {
-        inner = inner.Trim();
-        if (inner.Length >= 2 && inner[0] == '"' && inner[^1] == '"')
-        {
-            inner = inner.Substring(1, inner.Length - 2);
-        }
-
-        return inner.Replace("#quot;", "\"");
     }
 
     [GeneratedRegex(@"^(flowchart|graph)\b[ \t]*(?<dir>TD|TB|LR|RL|BT)?[ \t]*;?[ \t]*$", RegexOptions.IgnoreCase)]

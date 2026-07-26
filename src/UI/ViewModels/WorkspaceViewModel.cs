@@ -38,7 +38,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// <param name="linkPrompt">Asks the user for a Link's or Image's text and URL (INV-030).</param>
     /// <param name="documentPrinter">Sends the Visual Document to a printer for Print (INV-034).</param>
     /// <param name="renderer">Renders a copied selection to HTML for the clipboard's HTML flavor (INV-035).</param>
-    /// <param name="flowchartBuilder">Opens the Flowchart Builder for Open Flowchart Builder (INV-053).</param>
+    /// <param name="diagramBuilder">Opens the Diagram Builder for Open Diagram Builder (INV-053).</param>
     /// <param name="diagramImageRenderer">Renders each Mermaid Diagram's inline picture (INV-047).</param>
     /// <param name="syntaxHighlighter">Tokenizes each Code Block's code for Syntax Highlighting (INV-064).</param>
     /// <param name="appearance">The visual-theme ViewModel exposed to the shell's chrome.</param>
@@ -56,7 +56,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         ILinkPrompt linkPrompt,
         IDocumentPrinter documentPrinter,
         IMarkdownRenderer renderer,
-        IFlowchartBuilder flowchartBuilder,
+        IDiagramBuilder diagramBuilder,
         IMermaidImageRenderer diagramImageRenderer,
         ISyntaxHighlighter syntaxHighlighter,
         AppearanceViewModel appearance,
@@ -78,7 +78,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         DocumentPrinter = documentPrinter ?? throw new ArgumentNullException(nameof(documentPrinter));
         PrintPreview = printPreview ?? throw new ArgumentNullException(nameof(printPreview));
         Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
-        FlowchartBuilder = flowchartBuilder ?? throw new ArgumentNullException(nameof(flowchartBuilder));
+        DiagramBuilder = diagramBuilder ?? throw new ArgumentNullException(nameof(diagramBuilder));
         DiagramImageRenderer = diagramImageRenderer ?? throw new ArgumentNullException(nameof(diagramImageRenderer));
         SyntaxHighlighter = syntaxHighlighter ?? throw new ArgumentNullException(nameof(syntaxHighlighter));
         Appearance = appearance ?? throw new ArgumentNullException(nameof(appearance));
@@ -201,11 +201,11 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     public IMarkdownRenderer Renderer { get; }
 
     /// <summary>
-    /// The Flowchart Builder that Open Flowchart Builder opens (INV-053). Exposed so the View can hand
+    /// The Diagram Builder that Open Diagram Builder opens (INV-053). Exposed so the View can hand
     /// it to the <c>MarkdownRichEditor</c>, which owns the action but is composed in XAML rather than by
     /// the container — the same reason <see cref="LinkPrompt"/> is exposed.
     /// </summary>
-    public IFlowchartBuilder FlowchartBuilder { get; }
+    public IDiagramBuilder DiagramBuilder { get; }
 
     /// <summary>
     /// The renderer the editing surface uses to render each Mermaid Diagram's inline picture (INV-047).

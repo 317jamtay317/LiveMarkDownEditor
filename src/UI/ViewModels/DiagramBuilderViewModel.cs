@@ -7,29 +7,29 @@ using UI.Core;
 namespace UI.ViewModels;
 
 /// <summary>
-/// The Flowchart Builder's state and behaviour: the Diagram Nodes and Diagram Edges on the canvas, the
-/// Flow Direction, and the commands that add, connect, reshape, and delete them. It edits a Diagram
-/// Graph and exposes its canonical Mermaid source (<see cref="MermaidSource"/>), but touches no
-/// Markdown Document — it only yields a <see cref="Result"/> when the user Inserts, and
-/// <see langword="null"/> when they Cancel (INV-053). The heart of the builder lives here, kept free of
-/// WPF so it is unit-testable (the <see cref="LinkPromptViewModel"/> pattern).
+/// The Diagram Builder's state and behaviour: the Diagram Kind it is authoring, the Diagram Nodes and
+/// Diagram Edges on the canvas, the Flow Direction, and the commands that add, connect, reshape, and
+/// delete them. It edits a Diagram Graph and exposes its canonical Mermaid source
+/// (<see cref="MermaidSource"/>), but touches no Markdown Document — it only yields a
+/// <see cref="Result"/> when the user Inserts, and <see langword="null"/> when they Cancel (INV-053).
+/// The heart of the builder lives here, kept free of WPF so it is unit-testable (the
+/// <see cref="LinkPromptViewModel"/> pattern).
 /// </summary>
-public sealed class FlowchartBuilderViewModel : ObservableObject
+public sealed partial class DiagramBuilderViewModel : ObservableObject
 {
     private const double Margin = 40;
     private const double Gap = 44;
 
     private readonly RelayCommand _deleteSelectedCommand;
-    private FlowchartNodeViewModel? _selectedNode;
-    private FlowchartEdgeViewModel? _selectedEdge;
+    private DiagramKind _kind;
     private FlowDirection _direction;
     private bool? _dialogResult;
     private int _placed;
 
-    /// <summary>Creates the Flowchart Builder, seeded from an existing Mermaid Diagram or empty.</summary>
+    /// <summary>Creates the Diagram Builder, seeded from an existing Mermaid Diagram or empty.</summary>
     /// <param name="existingSource">The Mermaid source to edit graphically, or null to start empty (INV-053).</param>
     /// <param name="isDark">Whether the app is in dark theme, so the live Diagram Preview matches it.</param>
-    public FlowchartBuilderViewModel(string? existingSource, bool isDark = false)
+    public DiagramBuilderViewModel(string? existingSource, bool isDark = false)
     {
         IsDark = isDark;
         InsertCommand = new RelayCommand(() => DialogResult = true);
@@ -38,6 +38,7 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
         _deleteSelectedCommand = new RelayCommand(DeleteSelected, () => HasSelection);
 
         DiagramGraph.TryParse(existingSource, out var graph);
+        _kind = graph.Kind;
         _direction = graph.Direction;
         Seed(graph);
     }
@@ -46,21 +47,58 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
     public bool IsDark { get; }
 
     /// <summary>The Diagram Nodes on the canvas, in order.</summary>
-    public ObservableCollection<FlowchartNodeViewModel> Nodes { get; } = [];
+    public ObservableCollection<DiagramNodeViewModel> Nodes { get; } = [];
 
     /// <summary>The Diagram Edges on the canvas, in order.</summary>
-    public ObservableCollection<FlowchartEdgeViewModel> Edges { get; } = [];
+    public ObservableCollection<DiagramEdgeViewModel> Edges { get; } = [];
+
+    /// <summary>The Diagram Kinds the kind picker offers — every node/arrow diagram the builder authors.</summary>
+    public IReadOnlyList<DiagramKind> Kinds { get; } = Enum.GetValues<DiagramKind>();
 
     /// <summary>The Flow Directions the direction picker offers.</summary>
     public IReadOnlyList<FlowDirection> Directions { get; } = Enum.GetValues<FlowDirection>();
 
-    /// <summary>The Node Shapes the shape picker offers.</summary>
-    public IReadOnlyList<NodeShape> NodeShapes { get; } = Enum.GetValues<NodeShape>();
+    /// <summary>The Node Shapes the shape picker offers — the current Diagram Kind's Shape Set (INV-070).</summary>
+    public IReadOnlyList<NodeShape> NodeShapes => Kind.ShapeSet();
 
-    /// <summary>The Edge Kinds the edge kind picker offers.</summary>
-    public IReadOnlyList<EdgeKind> EdgeKinds { get; } = Enum.GetValues<EdgeKind>();
+    /// <summary>The Edge Kinds the edge kind picker offers — the current Diagram Kind's Edge Set (INV-070).</summary>
+    public IReadOnlyList<EdgeKind> EdgeKinds => Kind.EdgeSet();
 
-    /// <summary>The direction the flowchart flows. Changing it re-emits the source.</summary>
+    /// <summary>
+    /// Which node/arrow diagram is being authored. Changing it keeps every Diagram Node and Diagram
+    /// Edge, coercing any Node Shape or Edge Kind the new kind does not allow to that kind's default,
+    /// and re-emits the source in the new kind's syntax (INV-070). It writes no Markdown Document
+    /// (INV-053).
+    /// </summary>
+    public DiagramKind Kind
+    {
+        get => _kind;
+        set
+        {
+            if (!Set(ref _kind, value))
+            {
+                return;
+            }
+
+            CoerceToKind();
+            Raise(nameof(NodeShapes));
+            Raise(nameof(EdgeKinds));
+            Raise(nameof(HasFlowDirection));
+            Raise(nameof(SelectedNodeShape));
+            Raise(nameof(SelectedEdgeKind));
+            RaiseSource();
+        }
+    }
+
+    /// <summary>
+    /// Whether the current Diagram Kind's Mermaid carries a Flow Direction at all — enables the
+    /// direction picker. An Entity Relationship Diagram's does not; Mermaid lays it out itself
+    /// (INV-051). The chosen <see cref="Direction"/> is kept regardless, so it returns when the kind
+    /// changes back.
+    /// </summary>
+    public bool HasFlowDirection => Kind.CarriesFlowDirection();
+
+    /// <summary>The direction the diagram flows. Changing it re-emits the source.</summary>
     public FlowDirection Direction
     {
         get => _direction;
@@ -107,138 +145,30 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
     /// <summary>Removes the selected Diagram Node (with its incident edges) or the selected Diagram Edge.</summary>
     public ICommand DeleteSelectedCommand => _deleteSelectedCommand;
 
-    /// <summary>The selected Diagram Node, or <see langword="null"/> when none (or an edge) is selected.</summary>
-    public FlowchartNodeViewModel? SelectedNode
-    {
-        get => _selectedNode;
-        private set
-        {
-            if (Set(ref _selectedNode, value))
-            {
-                Raise(nameof(HasSelection));
-                Raise(nameof(HasSelectedNode));
-                Raise(nameof(SelectedNodeShape));
-                _deleteSelectedCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>The selected Diagram Edge, or <see langword="null"/> when none (or a node) is selected.</summary>
-    public FlowchartEdgeViewModel? SelectedEdge
-    {
-        get => _selectedEdge;
-        private set
-        {
-            if (Set(ref _selectedEdge, value))
-            {
-                Raise(nameof(HasSelection));
-                Raise(nameof(HasSelectedEdge));
-                Raise(nameof(SelectedEdgeKind));
-                Raise(nameof(SelectedEdgeLabel));
-                _deleteSelectedCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Whether a Diagram Node or Diagram Edge is currently selected.</summary>
-    public bool HasSelection => SelectedNode is not null || SelectedEdge is not null;
-
-    /// <summary>Whether a Diagram Node is selected — enables the shape picker.</summary>
-    public bool HasSelectedNode => SelectedNode is not null;
-
-    /// <summary>Whether a Diagram Edge is selected — enables the edge kind and label editors.</summary>
-    public bool HasSelectedEdge => SelectedEdge is not null;
-
-    /// <summary>The selected node's shape; setting it reshapes that node. Rectangle when none is selected.</summary>
-    public NodeShape SelectedNodeShape
-    {
-        get => SelectedNode?.Shape ?? NodeShape.Rectangle;
-        set
-        {
-            if (SelectedNode is { } node)
-            {
-                node.Shape = value;
-            }
-        }
-    }
-
-    /// <summary>The selected edge's kind; setting it changes how that edge is drawn. Arrow when none is selected.</summary>
-    public EdgeKind SelectedEdgeKind
-    {
-        get => SelectedEdge?.Kind ?? EdgeKind.Arrow;
-        set
-        {
-            if (SelectedEdge is { } edge)
-            {
-                edge.Kind = value;
-            }
-        }
-    }
-
-    /// <summary>The selected edge's label; setting it relabels that edge. Empty when none is selected.</summary>
-    public string SelectedEdgeLabel
-    {
-        get => SelectedEdge?.Label ?? string.Empty;
-        set
-        {
-            if (SelectedEdge is { } edge)
-            {
-                edge.Label = value;
-            }
-        }
-    }
-
-    /// <summary>Makes <paramref name="node"/> the selection (clearing any other).</summary>
-    /// <param name="node">The node to select.</param>
-    public void SelectNode(FlowchartNodeViewModel node)
-    {
-        ArgumentNullException.ThrowIfNull(node);
-        ClearSelectionFlags();
-        node.IsSelected = true;
-        SelectedEdge = null;
-        SelectedNode = node;
-    }
-
-    /// <summary>Makes <paramref name="edge"/> the selection (clearing any other).</summary>
-    /// <param name="edge">The edge to select.</param>
-    public void SelectEdge(FlowchartEdgeViewModel edge)
-    {
-        ArgumentNullException.ThrowIfNull(edge);
-        ClearSelectionFlags();
-        edge.IsSelected = true;
-        SelectedNode = null;
-        SelectedEdge = edge;
-    }
-
-    /// <summary>Clears the selection.</summary>
-    public void ClearSelection()
-    {
-        ClearSelectionFlags();
-        SelectedNode = null;
-        SelectedEdge = null;
-    }
-
     /// <summary>Moves a node to a new canvas position. View-only — it never changes the source (INV-051).</summary>
     /// <param name="node">The node to move.</param>
     /// <param name="x">The node box's new left edge.</param>
     /// <param name="y">The node box's new top edge.</param>
-    public void MoveNode(FlowchartNodeViewModel node, double x, double y)
+    public void MoveNode(DiagramNodeViewModel node, double x, double y)
     {
         ArgumentNullException.ThrowIfNull(node);
         node.X = x;
         node.Y = y;
     }
 
-    /// <summary>Connects two nodes with a new Arrow edge and re-emits the source.</summary>
+    /// <summary>
+    /// Connects two nodes with a new Diagram Edge of the current Diagram Kind's default Edge Kind, and
+    /// re-emits the source (INV-070).
+    /// </summary>
     /// <param name="from">The node the edge runs from.</param>
     /// <param name="to">The node the edge runs to.</param>
     /// <returns>The new edge presenter.</returns>
-    public FlowchartEdgeViewModel Connect(FlowchartNodeViewModel from, FlowchartNodeViewModel to)
+    public DiagramEdgeViewModel Connect(DiagramNodeViewModel from, DiagramNodeViewModel to)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(to);
 
-        var edge = new FlowchartEdgeViewModel(from, to, label: null, EdgeKind.Arrow);
+        var edge = new DiagramEdgeViewModel(from, to, label: null, Kind.DefaultEdgeKind());
         edge.PropertyChanged += OnEdgeChanged;
         Edges.Add(edge);
         RaiseSource();
@@ -248,11 +178,35 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
     private void AddNode()
     {
         var (x, y) = NextSpot();
-        var node = new FlowchartNodeViewModel(NextId(), "Node", NodeShape.Rectangle, x, y);
+        var node = new DiagramNodeViewModel(NextId(), NewNodeLabel(), Kind.DefaultShape(), x, y);
         node.PropertyChanged += OnNodeChanged;
         Nodes.Add(node);
         SelectNode(node);
         RaiseSource();
+    }
+
+    // What the current Diagram Kind calls a node, so a new one reads as what it is on the canvas.
+    private string NewNodeLabel() => Kind switch
+    {
+        DiagramKind.StateDiagram => "State",
+        DiagramKind.ClassDiagram => "Class",
+        DiagramKind.EntityRelationshipDiagram => "Entity",
+        _ => "Node",
+    };
+
+    // Fits every node and edge to the new Diagram Kind's Shape Set and Edge Set, so the graph stays
+    // valid across the change (INV-052/INV-070). Each setter raises, which re-emits the source.
+    private void CoerceToKind()
+    {
+        foreach (var node in Nodes)
+        {
+            node.Shape = Kind.Coerce(node.Shape);
+        }
+
+        foreach (var edge in Edges)
+        {
+            edge.Kind = Kind.Coerce(edge.Kind);
+        }
     }
 
     private void DeleteSelected()
@@ -277,7 +231,7 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
         }
     }
 
-    private void RemoveEdge(FlowchartEdgeViewModel edge)
+    private void RemoveEdge(DiagramEdgeViewModel edge)
     {
         edge.Detach();
         edge.PropertyChanged -= OnEdgeChanged;
@@ -286,12 +240,12 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
 
     private void Seed(DiagramGraph graph)
     {
-        var byId = new Dictionary<NodeId, FlowchartNodeViewModel>();
+        var byId = new Dictionary<NodeId, DiagramNodeViewModel>();
         for (var i = 0; i < graph.Nodes.Count; i++)
         {
             var node = graph.Nodes[i];
             var (x, y) = LayOut(i, graph.Nodes.Count);
-            var presenter = new FlowchartNodeViewModel(node.Id, node.Label, node.Shape, x, y);
+            var presenter = new DiagramNodeViewModel(node.Id, node.Label, node.Shape, x, y);
             presenter.PropertyChanged += OnNodeChanged;
             Nodes.Add(presenter);
             byId[node.Id] = presenter;
@@ -299,7 +253,7 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
 
         foreach (var edge in graph.Edges)
         {
-            var presenter = new FlowchartEdgeViewModel(byId[edge.FromId], byId[edge.ToId], edge.Label, edge.Kind);
+            var presenter = new DiagramEdgeViewModel(byId[edge.FromId], byId[edge.ToId], edge.Label, edge.Kind);
             presenter.PropertyChanged += OnEdgeChanged;
             Edges.Add(presenter);
         }
@@ -310,17 +264,17 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
     // Builds the domain Diagram Graph from the current presenters — the one place structure becomes a
     // DiagramGraph, validated by Create (INV-052) and emitted canonically (INV-051).
     private DiagramGraph BuildGraph() => DiagramGraph.Create(
-        DiagramKind.Flowchart, Direction, Nodes.Select(node => node.ToDomain()), Edges.Select(edge => edge.ToDomain()));
+        Kind, Direction, Nodes.Select(node => node.ToDomain()), Edges.Select(edge => edge.ToDomain()));
 
     private void OnNodeChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(FlowchartNodeViewModel.Label) or nameof(FlowchartNodeViewModel.Shape)))
+        if (e.PropertyName is not (nameof(DiagramNodeViewModel.Label) or nameof(DiagramNodeViewModel.Shape)))
         {
             return; // a move (X/Y) is view-only and never re-emits (INV-051)
         }
 
         RaiseSource();
-        if (ReferenceEquals(sender, SelectedNode) && e.PropertyName == nameof(FlowchartNodeViewModel.Shape))
+        if (ReferenceEquals(sender, SelectedNode) && e.PropertyName == nameof(DiagramNodeViewModel.Shape))
         {
             Raise(nameof(SelectedNodeShape));
         }
@@ -328,7 +282,7 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
 
     private void OnEdgeChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(FlowchartEdgeViewModel.Label) or nameof(FlowchartEdgeViewModel.Kind)))
+        if (e.PropertyName is not (nameof(DiagramEdgeViewModel.Label) or nameof(DiagramEdgeViewModel.Kind)))
         {
             return;
         }
@@ -339,23 +293,10 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
             return;
         }
 
-        Raise(e.PropertyName == nameof(FlowchartEdgeViewModel.Kind) ? nameof(SelectedEdgeKind) : nameof(SelectedEdgeLabel));
+        Raise(e.PropertyName == nameof(DiagramEdgeViewModel.Kind) ? nameof(SelectedEdgeKind) : nameof(SelectedEdgeLabel));
     }
 
     private void RaiseSource() => Raise(nameof(MermaidSource));
-
-    private void ClearSelectionFlags()
-    {
-        foreach (var node in Nodes)
-        {
-            node.IsSelected = false;
-        }
-
-        foreach (var edge in Edges)
-        {
-            edge.IsSelected = false;
-        }
-    }
 
     private NodeId NextId()
     {
@@ -383,7 +324,7 @@ public sealed class FlowchartBuilderViewModel : ObservableObject
         var columns = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(total)));
         var column = i % columns;
         var row = i / columns;
-        return (Margin + (column * (FlowchartNodeViewModel.Width + Gap)),
-            Margin + (row * (FlowchartNodeViewModel.Height + Gap)));
+        return (Margin + (column * (DiagramNodeViewModel.Width + Gap)),
+            Margin + (row * (DiagramNodeViewModel.Height + Gap)));
     }
 }

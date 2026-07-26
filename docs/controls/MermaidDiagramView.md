@@ -31,7 +31,7 @@ Until the picture arrives — or if the diagram cannot be rendered (no renderer,
 rejects) — the control shows the diagram's **source text** in a code-like box, so a diagram is never an
 empty hole (the Image fallback of INV-031, reached for a diagram).
 
-Double-clicking the picture opens the [Flowchart Builder](../UbiquitousLanguage.md) on that diagram
+Double-clicking the picture opens the [Diagram Builder](../UbiquitousLanguage.md) on that diagram
 (handled by the editor); the [Source Panel](../UbiquitousLanguage.md) edits the raw source.
 
 ## Properties

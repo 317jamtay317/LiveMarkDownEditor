@@ -22,7 +22,7 @@ public sealed record DiagramEdge
 
         FromId = fromId;
         ToId = toId;
-        Label = string.IsNullOrWhiteSpace(label) ? null : label;
+        Label = string.IsNullOrWhiteSpace(label) ? null : label.Trim();
         Kind = kind;
     }
 

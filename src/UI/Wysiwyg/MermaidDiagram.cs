@@ -7,7 +7,7 @@ namespace UI.Wysiwyg;
 /// <summary>
 /// The Mermaid Diagram seam: identifies a Mermaid Diagram by its language, builds the atomic block that
 /// shows its rendered picture in the Visual Document, and reads a diagram block's source back so the
-/// Diagram Preview and the Flowchart Builder can use it. Pure and view-only — it never changes the
+/// Diagram Preview and the Diagram Builder can use it. Pure and view-only — it never changes the
 /// Markdown Document (INV-047).
 /// </summary>
 public static class MermaidDiagram

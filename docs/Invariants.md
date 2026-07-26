@@ -966,7 +966,7 @@ and tested.
   - **Captured as the fenced block.** However it is shown, a Mermaid Diagram Captures as exactly the
     fenced ```mermaid``` Code Block it is, so its source Round-Trips (INV-004).
   - **Edited through the builder or the source, not inline.** Double-clicking the picture opens the
-    Flowchart Builder on it (INV-053); the Source Panel edits the raw source (INV-013). The picture
+    Diagram Builder on it (INV-053); the Source Panel edits the raw source (INV-013). The picture
     itself is not an editable text surface.
   - **Rendered from a profile outside the installation directory.** The browser that renders a diagram
     keeps its own working profile, and that profile lives under the user's local application data —
@@ -1054,56 +1054,89 @@ and tested.
 ### INV-051 — A Diagram Graph round-trips through its Mermaid source, canonically
 - **Statement:** Emitting a Diagram Graph as Mermaid source and parsing that source back yields an
   equal Diagram Graph, and emission is **canonical** — parsing then re-emitting a builder-produced
-  graph never keeps changing the source. Every part is preserved, in order: the Flow Direction, each
-  Diagram Node's Node Id, Node Label, and Node Shape, and each Diagram Edge's From, To, Edge Label, and
-  Edge Kind. It is the Diagram-Graph counterpart of a Round-Trip preserving semantics and converging
-  (INV-004/INV-005). Three rules bound it:
+  graph never keeps changing the source. Every part is preserved, in order: the **Diagram Kind**, the
+  Flow Direction, each Diagram Node's Node Id, Node Label, and Node Shape, and each Diagram Edge's
+  From, To, Edge Label, and Edge Kind. It is the Diagram-Graph counterpart of a Round-Trip preserving
+  semantics and converging (INV-004/INV-005). Five rules bound it:
+  - **The Diagram Kind rides on the header.** Emission writes the kind's own header keyword and
+    node/edge syntax; parsing reads the kind back from that header, so a State Diagram never
+    round-trips into a Flowchart. Exactly one kind can claim any given source. Source no kind claims —
+    a sequence, gantt or pie diagram — does not parse at all, and the builder starts empty (INV-053).
   - **Structure round-trips; layout does not.** A Diagram Graph models nodes and edges, not where they
     sit. Mermaid computes layout, so node positions are neither emitted nor parsed — they are the
-    Flowchart Builder's view state alone (INV-053). Two graphs that differ only in on-canvas position
+    Diagram Builder's view state alone (INV-053). Two graphs that differ only in on-canvas position
     are the same Diagram Graph.
-  - **A Node Label survives verbatim.** A label is emitted quoted, so spaces and punctuation round-trip;
-    a label is never confused with the Node Id, which is emitted bare.
-  - **Emission is deterministic.** The same Diagram Graph always emits the same source — nodes in
-    declaration order, then edges in order — so re-emitting a parsed graph is a fixed point.
-- **Enforced by:** The pure `DiagramGraph.ToMermaidSource` (canonical emit — header, then one
-  declaration per Diagram Node, then one line per Diagram Edge) and the pure static
-  `DiagramGraph.Parse` / `TryParse` (Domain — no I/O, no state), which are inverse over the forms emit
-  produces.
-- **Tested by:** `DiagramGraphTests.*_INV051` — in particular
-  `ToMermaidSource_ThenParse_YieldsAnEqualGraph_INV051`,
-  `Parse_ThenReEmit_IsAFixedPoint_INV051`, and
-  `RoundTrip_PreservesNodeLabelsWithSpaces_INV051`.
+  - **A kind whose Mermaid carries no Flow Direction always flows Top-Down.** A Flowchart writes its
+    direction on the header and a State Diagram and a Class Diagram as a `direction` statement, but an
+    **Entity Relationship Diagram has no such statement**: Mermaid renders `direction LR` inside an
+    `erDiagram` as two further entities called "direction" and "LR". So an ER Diagram Graph is
+    normalised to Top-Down at construction and writes no direction, and a `direction` line found in
+    hand-authored ER source is skipped rather than read as an entity. Source and graph can therefore
+    never disagree about which way a diagram flows.
+  - **A Node Label survives verbatim.** A label is emitted quoted where its Diagram Kind's syntax
+    allows quoting, and otherwise with its reserved characters written as Mermaid entity codes (a
+    State's `:` as `#58;`), so spaces and punctuation round-trip; a label is never confused with the
+    Node Id, which is emitted bare. Surrounding whitespace is not content: it is trimmed at the value
+    object, because no kind's source can carry it outside quotation marks.
+  - **A Terminal is not named in the source.** A State Diagram's Terminal is Mermaid's `[*]` start/end
+    marker, which carries no identifier — and Mermaid draws one circle per occurrence of it. A
+    Round-Trip therefore preserves every Terminal and every transition that touches one, but reads
+    back one Terminal per occurrence with a **freshly minted Node Id**, gathered after the named
+    States. It is the one part of a graph a Round-Trip renames, because the source never named it.
+  - **Emission is deterministic.** The same Diagram Graph always emits the same source — the header,
+    the Flow Direction, then nodes in declaration order, then edges in order — so re-emitting a parsed
+    graph is a fixed point, Terminals included.
+- **Enforced by:** The pure `DiagramGraph.ToMermaidSource` and the pure static `DiagramGraph.Parse` /
+  `TryParse` (Domain — no I/O, no state), which delegate to `DiagramMermaidFormat` — one strategy per
+  Diagram Kind (`FlowchartMermaidFormat`, `StateDiagramMermaidFormat`, `ClassDiagramMermaidFormat`,
+  `EntityRelationshipMermaidFormat`), discriminated by their Mermaid header, sharing `MermaidText`'s
+  quoting and entity codes and `MermaidDirection`'s Flow Direction spelling. They are inverse over the
+  forms emit produces, and best-effort over hand-authored source.
+- **Tested by:** `DiagramGraphTests.*_INV051`, `DiagramGraphStateDiagramTests.*_INV051`,
+  `DiagramGraphClassDiagramTests.*_INV051` and `DiagramGraphEntityRelationshipTests.*_INV051` — in
+  particular `ToMermaidSource_ThenParse_YieldsAnEqualGraph_INV051`,
+  `Parse_ThenReEmit_IsAFixedPoint_INV051`,
+  `RoundTrip_PreservesNodeLabelsWithSpacesAndPunctuation_INV051`,
+  `TryParse_TellsTheDiagramKindFromItsHeader_INV051`, and
+  `RoundTrip_MintsAFreshNodeIdForATerminal_BecauseTheSourceNamesNone_INV051`.
 
 ### INV-052 — A Diagram Graph is always valid
-- **Statement:** A Diagram Graph can never be constructed in an invalid state. Three rules always hold:
+- **Statement:** A Diagram Graph can never be constructed in an invalid state. Four rules always hold:
   - **Node Ids are unique and non-empty.** No two Diagram Nodes share a Node Id, and no Node Id is
     blank — an edge could not otherwise say which node it means.
   - **Every Diagram Edge references declared Diagram Nodes.** An edge whose From or To names a node the
     graph does not declare cannot exist; there are no dangling edges.
   - **Removing a Diagram Node removes its incident Diagram Edges.** Deleting a node cascades to every
     edge that touches it, so the second rule is preserved rather than violated by a deletion.
+  - **Every Node Shape and Edge Kind is one the Diagram Kind allows.** A node draws from its kind's
+    **Shape Set** and an edge from its kind's **Edge Set**, so a Diamond in a State Diagram or a
+    cardinality in a Flowchart cannot exist — the graph could not be written as that kind's Mermaid.
+    Each set's first entry is that kind's default.
   It is the Diagram-Graph counterpart of a Table staying rectangular (INV-019).
-- **Enforced by:** The `DiagramGraph` constructor guard (rejecting duplicate/blank Node Ids and edges
-  to undeclared nodes) and its operations returning new, re-validated graphs — `Connect` refusing an
-  endpoint the graph does not declare, and `RemoveNode` dropping the node together with its incident
-  edges. `DiagramGraph` is an immutable value object, so an operation never mutates an existing graph
-  (the `RecentFiles` pattern).
-- **Tested by:** `DiagramGraphTests.*_INV052` — in particular
+- **Enforced by:** The `DiagramGraph` constructor guard (rejecting duplicate/blank Node Ids, edges to
+  undeclared nodes, and shapes or edge kinds outside the kind's sets) and its operations returning new,
+  re-validated graphs — `Connect` refusing an endpoint the graph does not declare, `AddNode` /
+  `SetNodeShape` refusing a shape the kind does not allow, and `RemoveNode` dropping the node together
+  with its incident edges. The sets themselves are `DiagramKinds.ShapeSet` / `EdgeSet`.
+  `DiagramGraph` is an immutable value object, so an operation never mutates an existing graph (the
+  `RecentFiles` pattern).
+- **Tested by:** `DiagramGraphTests.*_INV052`, `DiagramKindsTests.*_INV052` and
+  `DiagramGraphStateDiagramTests.*_INV052` — in particular
   `Create_WithDuplicateNodeIds_Throws_INV052`,
-  `Connect_ToAnUndeclaredNode_Throws_INV052`, and
-  `RemoveNode_AlsoRemovesItsIncidentEdges_INV052`.
+  `Connect_ToAnUndeclaredNode_Throws_INV052`,
+  `RemoveNode_AlsoRemovesItsIncidentEdges_INV052`, and
+  `Create_WithAShapeTheKindDoesNotAllow_Throws_INV052`.
 
-### INV-053 — The Flowchart Builder is view-only until Insert, which writes canonical Mermaid
-- **Statement:** The Flowchart Builder authors a Diagram Graph over the Mermaid Diagram at the caret,
+### INV-053 — The Diagram Builder is view-only until Insert, which writes canonical Mermaid
+- **Statement:** The Diagram Builder authors a Diagram Graph over the Mermaid Diagram at the caret,
   and touches the Markdown Document only when the user commits. Four rules bound it, the discipline of
   Insert Link (INV-030) and a Formatting Action (INV-018) applied to a whole diagram:
   - **Opening reads, it does not write.** Opening the builder parses the Mermaid Diagram at the caret
-    into a Diagram Graph (or starts empty when the caret is not within a parseable flowchart). Reading
-    the diagram is not an edit.
+    into a Diagram Graph of whichever Diagram Kind its header names (or starts an empty Flowchart when
+    the caret is not within a diagram any kind claims — INV-070). Reading the diagram is not an edit.
   - **Editing in the builder changes no document.** Adding, moving, renaming, reshaping, connecting,
-    and deleting on the canvas change only the builder's Diagram Graph and its view state — never the
-    Markdown Document — until the user Inserts.
+    deleting, and changing the Diagram Kind on the canvas change only the builder's Diagram Graph and
+    its view state — never the Markdown Document — until the user Inserts.
   - **Insert writes canonical Mermaid.** Insert writes the Diagram Graph's Mermaid source as a
     `mermaid` Code Block — **replacing** the Mermaid Diagram the builder was opened on, or **inserting**
     a new Code Block at the caret when it was not opened on one — and the edit Captures canonical
@@ -1112,17 +1145,17 @@ and tested.
   - **Cancel writes nothing.** Dismissing the builder leaves the Markdown Document, the caret, and the
     Visual Document exactly as they were — the Link Prompt's dismissal rule (INV-030) for the whole
     dialog.
-- **Enforced by:** The `IFlowchartBuilder` port (which keeps the WPF builder window out of the editor,
+- **Enforced by:** The `IDiagramBuilder` port (which keeps the WPF builder window out of the editor,
   so these rules are testable headlessly against a stub) yielding the Mermaid source to write or
-  `null` on Cancel; the `FlowchartBuilderViewModel`, which drives the Diagram Graph and emits its
-  source without touching any Markdown Document; and `MarkdownRichEditor.OpenFlowchartBuilderAtCaret`,
+  `null` on Cancel; the `DiagramBuilderViewModel`, which drives the Diagram Graph and emits its
+  source without touching any Markdown Document; and `MarkdownRichEditor.OpenDiagramBuilderAtCaret`,
   which returns before editing when the port yields `null`, and otherwise calls
   `DiagramBlockEditing.InsertOrReplaceDiagramAtCaret` — composing a `mermaid` Code Block through the
   same `CodeFormatting.ApplyCodeBlock` seam the Projector and Toggle Code use (INV-018), inside one
   `BeginChange` unit, so the edit flows through the ordinary Capture path.
-- **Tested by:** `FlowchartBuilderViewModelTests.*_INV053` (editing the builder yields no source until
+- **Tested by:** `DiagramBuilderViewModelTests.*_INV053` (editing the builder yields no source until
   Insert; Cancel yields `null`; the emitted source is the Diagram Graph's own `ToMermaidSource`) and
-  `MarkdownRichEditorFlowchartTests.*_INV053` — in particular
+  `MarkdownRichEditorDiagramBuilderTests.*_INV053` — in particular
   `Insert_WhenOpenedOnADiagram_ReplacesThatDiagram_AndCapturesCanonicalMarkdown_INV053`,
   `Insert_WithNoDiagramAtCaret_InsertsANewBlock_INV053`, and
   `Cancel_MakesNoEdit_INV053`.
@@ -1175,12 +1208,12 @@ and tested.
   seam — so every Block Island is bounded the same way, and a future one inherits the rule by using
   it; and `FlowDocumentToMarkdownCapturer.Capture`, which trims the trailing empty paragraph back off
   so the affordance never reaches the source.
-- **Tested by:** `MarkdownRichEditorFlowchartTests.InsertOrReplace_AtEndOfDocument_LeavesALineBelow_INV055`,
-  `MarkdownRichEditorFlowchartTests.InsertOrReplace_PlacesTheCaretInTextAfterTheDiagram_INV055`,
-  `MarkdownRichEditorFlowchartTests.InsertOrReplace_WhenReplacingADiagram_StillLeavesALineBelow_INV055`,
-  `MarkdownRichEditorFlowchartTests.ADocumentEndingInADiagram_ProjectsALineBelowIt_INV055`,
-  `MarkdownRichEditorFlowchartTests.ADocumentEndingInADiagram_CapturesUnchanged_INV055`,
-  `MarkdownRichEditorFlowchartTests.InsertOrReplace_AtEndOfDocument_StillRoundTrips_INV055`, and
+- **Tested by:** `MarkdownRichEditorDiagramBuilderTests.InsertOrReplace_AtEndOfDocument_LeavesALineBelow_INV055`,
+  `MarkdownRichEditorDiagramBuilderTests.InsertOrReplace_PlacesTheCaretInTextAfterTheDiagram_INV055`,
+  `MarkdownRichEditorDiagramBuilderTests.InsertOrReplace_WhenReplacingADiagram_StillLeavesALineBelow_INV055`,
+  `MarkdownRichEditorDiagramBuilderTests.ADocumentEndingInADiagram_ProjectsALineBelowIt_INV055`,
+  `MarkdownRichEditorDiagramBuilderTests.ADocumentEndingInADiagram_CapturesUnchanged_INV055`,
+  `MarkdownRichEditorDiagramBuilderTests.InsertOrReplace_AtEndOfDocument_StillRoundTrips_INV055`, and
   `MarkdownRichEditorTableTests.InsertTable_AtEndOfDocument_LeavesALineBelow_INV055`.
 
 ### INV-056 — A hidden panel takes no width, and a shown one keeps the width it was dragged to
@@ -1787,6 +1820,43 @@ and tested.
   click would be worse than none, so the page is given none.
 - **Tested by:** `VideoSourceTests.*_INV069`, `MarkdownRichEditorVideoTests.*_INV069`,
   `MarkdigMarkdownRendererTests.*_INV069`.
+
+### INV-070 — The Diagram Builder authors any node/arrow Diagram Kind, and changing the kind keeps the diagram
+- **Statement:** The Diagram Builder is not a flowchart tool that happens to draw boxes: it authors
+  **every** node/arrow Diagram Kind — a Flowchart, a State Diagram, a Class Diagram, or an Entity
+  Relationship Diagram — over one canvas and one Diagram Graph. Four rules bound it, all of them
+  view-only until Insert (INV-053):
+  - **It opens on the kind the diagram already is.** Opening the builder on a Mermaid Diagram reads its
+    Diagram Kind from its header (INV-051), so a state diagram opens as a State Diagram and is written
+    back as one. A diagram no kind claims — a sequence, gantt or pie diagram — opens as an empty
+    Flowchart rather than being guessed at, and nothing is written unless the user Inserts.
+  - **The pickers offer exactly that kind's sets.** The shape picker offers the current kind's Shape
+    Set and the edge picker its Edge Set, so a shape or edge the kind cannot express is never on
+    offer — which is what keeps the Diagram Graph valid by construction (INV-052). A new Diagram Node
+    takes the kind's default shape and is named after what that kind calls one (a **State**, a class,
+    an entity); a newly drawn Diagram Edge takes the kind's default Edge Kind. The direction picker is
+    off for a kind whose Mermaid carries no Flow Direction (INV-051), though the chosen direction is
+    kept so it returns when the kind does.
+  - **Changing the kind keeps the diagram.** Switching kind keeps every Diagram Node and Diagram Edge,
+    with their Node Ids, labels and connections; only a Node Shape or Edge Kind the new kind does not
+    allow is **coerced** to that kind's default. Work is never thrown away by a change of mind, and the
+    result is valid the moment it is made.
+  - **Each kind draws itself on the canvas.** A Terminal is drawn as a filled circle rather than a box,
+    a class relationship's marker sits at the **From** end, and an Entity Relationship cardinality
+    marks both ends with a bar or a crow's foot — so the canvas reads as the kind it is, while the live
+    Diagram Preview beside it stays the exact Mermaid rendering.
+- **Enforced by:** `DiagramKinds` (the Shape Set, Edge Set, defaults and coercion, in the Domain);
+  `DiagramGraph.WithKind`, which rebuilds the graph as another kind through that coercion and
+  re-validates it; `DiagramBuilderViewModel.Kind`, whose setter coerces the presenters and re-raises
+  the pickers and the source; and `DiagramEdgeGeometry` / `NodeShapeGeometryConverter`, which draw each
+  Node Shape and Edge Kind on the canvas — hollow markers on their own layer, so Aggregation reads
+  apart from Composition.
+- **Tested by:** `DiagramBuilderViewModelKindTests.*_INV070`, `DiagramKindsTests.*_INV070`,
+  `DiagramGraphTests.WithKind_*_INV070` and `DiagramEdgeGeometryTests` — in particular
+  `New_FromExistingSource_OpensOnTheKindThatSourceAlreadyIs_INV070`,
+  `ThePickers_OfferExactlyTheKindsOwnShapeSetAndEdgeSet_INV070`,
+  `ChangingTheKind_CoercesAShapeOrEdgeKindTheNewKindDoesNotAllow_INV070`, and
+  `WithKind_KeepsEveryNodeAndEdge_INV070`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

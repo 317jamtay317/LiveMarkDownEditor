@@ -6,9 +6,10 @@ using Xunit;
 namespace Domain.Tests;
 
 /// <summary>
-/// Tests for <see cref="DiagramGraph"/> — the structured node/arrow model of a Mermaid flowchart that
-/// the Flowchart Builder edits. Pins its canonical Mermaid emission and parse round-trip (INV-051),
-/// its validity guards (INV-052), and its immutable value-object operations.
+/// Tests for <see cref="DiagramGraph"/> — the structured node/arrow model of a Mermaid Diagram that
+/// the Diagram Builder edits. Pins its canonical Mermaid emission and parse round-trip (INV-051), its
+/// validity guards (INV-052), its change of Diagram Kind (INV-070), and its immutable value-object
+/// operations. The Flowchart is covered here; the other Diagram Kinds have a test class each.
 /// </summary>
 public sealed class DiagramGraphTests
 {
@@ -169,15 +170,14 @@ public sealed class DiagramGraphTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("sequenceDiagram\n    Alice->>Bob: Hi")]
     [InlineData("Just some prose, not a diagram.")]
-    public void TryParse_GivenSomethingThatIsNotAFlowchart_ReturnsFalse(string? source)
+    public void TryParse_GivenNothingOrSomethingThatIsNotADiagram_ReturnsFalse(string? source)
     {
         DiagramGraph.TryParse(source, out _).ShouldBeFalse();
     }
 
     [Fact]
-    public void Parse_GivenANonFlowchart_Throws()
+    public void Parse_GivenSomethingNoDiagramKindClaims_Throws()
     {
         Should.Throw<FormatException>(() => DiagramGraph.Parse("pie title Pets"));
     }
@@ -286,5 +286,104 @@ public sealed class DiagramGraphTests
 
         graph.Edges[0].Label.ShouldBeNull();
         graph.ToMermaidSource().ShouldEndWith("n1 --> n2");
+    }
+
+    [Fact]
+    public void ALabelsSurroundingWhitespace_IsNotContent_AndIsTrimmedAway_INV051()
+    {
+        var graph = DiagramGraph.Empty(DiagramKind.Flowchart, FlowDirection.TopDown)
+            .AddNode("  Start  ", NodeShape.Rectangle)
+            .AddNode("B", NodeShape.Rectangle);
+        graph = graph.Connect(graph.Nodes[0].Id, graph.Nodes[1].Id, "  yes  ", EdgeKind.Arrow);
+
+        graph.Nodes[0].Label.ShouldBe("Start");
+        graph.Edges[0].Label.ShouldBe("yes");
+    }
+
+    [Theory]
+    [InlineData("flowchart TD\n    a[\"A\"]", DiagramKind.Flowchart)]
+    [InlineData("graph LR\n    a[\"A\"]", DiagramKind.Flowchart)]
+    [InlineData("stateDiagram-v2\n    a : A", DiagramKind.StateDiagram)]
+    [InlineData("stateDiagram\n    a : A", DiagramKind.StateDiagram)]
+    [InlineData("classDiagram\n    class a", DiagramKind.ClassDiagram)]
+    [InlineData("erDiagram\n    a[\"A\"]", DiagramKind.EntityRelationshipDiagram)]
+    public void TryParse_TellsTheDiagramKindFromItsHeader_INV051(string source, DiagramKind expected)
+    {
+        DiagramGraph.TryParse(source, out var graph).ShouldBeTrue();
+        graph.Kind.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("sequenceDiagram\n    Alice->>Bob: Hi")]
+    [InlineData("gantt\n    title A")]
+    [InlineData("pie title Pets")]
+    public void TryParse_GivenAMermaidDiagramThatIsNotANodeArrowGraph_ReturnsFalse(string source)
+    {
+        // Sequence, gantt and pie are not Diagram Kinds — they stay text-authored.
+        DiagramGraph.TryParse(source, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WithKind_KeepsEveryNodeAndEdge_INV070()
+    {
+        var flowchart = SampleDecision();
+
+        var state = flowchart.WithKind(DiagramKind.StateDiagram);
+
+        state.Kind.ShouldBe(DiagramKind.StateDiagram);
+        state.Nodes.Select(node => node.Id).ShouldBe(flowchart.Nodes.Select(node => node.Id));
+        state.Nodes.Select(node => node.Label).ShouldBe(flowchart.Nodes.Select(node => node.Label));
+        state.Edges.Count.ShouldBe(flowchart.Edges.Count);
+        state.Edges[1].Label.ShouldBe("yes");
+    }
+
+    [Fact]
+    public void WithKind_CoercesAnyShapeOrEdgeKindTheNewKindDoesNotAllow_INV070()
+    {
+        var flowchart = DiagramGraph.Empty(DiagramKind.Flowchart, FlowDirection.TopDown)
+            .AddNode("A", NodeShape.Diamond)
+            .AddNode("B", NodeShape.Circle);
+        flowchart = flowchart.Connect(flowchart.Nodes[0].Id, flowchart.Nodes[1].Id, null, EdgeKind.Thick);
+
+        var state = flowchart.WithKind(DiagramKind.StateDiagram);
+
+        state.Nodes.ShouldAllBe(node => node.Shape == NodeShape.Rounded);
+        state.Edges[0].Kind.ShouldBe(EdgeKind.Arrow);
+    }
+
+    [Fact]
+    public void WithKind_ToTheSameKind_ChangesNothing_INV070()
+    {
+        var flowchart = SampleDecision();
+
+        flowchart.WithKind(DiagramKind.Flowchart).ToMermaidSource().ShouldBe(flowchart.ToMermaidSource());
+    }
+
+    [Fact]
+    public void AddNode_WithAShapeTheKindDoesNotAllow_Throws_INV052()
+    {
+        var state = DiagramGraph.Empty(DiagramKind.StateDiagram, FlowDirection.TopDown);
+
+        Should.Throw<ArgumentException>(() => state.AddNode("A", NodeShape.Diamond));
+    }
+
+    [Fact]
+    public void Connect_WithAnEdgeKindTheKindDoesNotAllow_Throws_INV052()
+    {
+        var er = DiagramGraph.Empty(DiagramKind.EntityRelationshipDiagram, FlowDirection.TopDown)
+            .AddNode("A", NodeShape.Rectangle)
+            .AddNode("B", NodeShape.Rectangle);
+
+        Should.Throw<ArgumentException>(() =>
+            er.Connect(er.Nodes[0].Id, er.Nodes[1].Id, null, EdgeKind.Dotted));
+    }
+
+    [Fact]
+    public void SetNodeShape_ToAShapeTheKindDoesNotAllow_Throws_INV052()
+    {
+        var er = DiagramGraph.Empty(DiagramKind.EntityRelationshipDiagram, FlowDirection.TopDown)
+            .AddNode("A", NodeShape.Rectangle);
+
+        Should.Throw<ArgumentException>(() => er.SetNodeShape(er.Nodes[0].Id, NodeShape.Terminal));
     }
 }

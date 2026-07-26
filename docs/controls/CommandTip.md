@@ -29,7 +29,7 @@ as a glaring near-white box — the same bug the stock `TextBox` and `ComboBox` 
 
 Because a `CommandTip` *is* a `ToolTip`, it is assigned straight to an element's `ToolTip` and shown with
 its own template — no stock tooltip is wrapped around it. The plain-string tooltips that remain (the
-Editor Gutter's Fold Toggle, the Flowchart Builder's connector handle) are themed by the sibling implicit
+Editor Gutter's Fold Toggle, the Diagram Builder's connector handle) are themed by the sibling implicit
 `ToolTip` style in `Themes/Controls.xaml`.
 
 ## Properties

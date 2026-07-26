@@ -65,13 +65,13 @@ public static class MarkdownEditingCommands
         [new KeyGesture(Key.M, ModifierKeys.Control | ModifierKeys.Shift)]);
 
     /// <summary>
-    /// Opens the Flowchart Builder — the graphical node/arrow authoring surface — on the Mermaid
-    /// Diagram at the caret (or a new diagram when the caret is not within one), and inserts the
-    /// diagram it returns (Ctrl+Shift+D). Cancelling makes no edit (INV-053).
+    /// Opens the Diagram Builder — the graphical node/arrow authoring surface for every Diagram Kind
+    /// (INV-070) — on the Mermaid Diagram at the caret (or a new diagram when the caret is not within
+    /// one), and inserts the diagram it returns (Ctrl+Shift+D). Cancelling makes no edit (INV-053).
     /// </summary>
-    public static RoutedUICommand OpenFlowchartBuilder { get; } = new(
-        "Flowchart builder",
-        nameof(OpenFlowchartBuilder),
+    public static RoutedUICommand OpenDiagramBuilder { get; } = new(
+        "Diagram builder",
+        nameof(OpenDiagramBuilder),
         typeof(MarkdownEditingCommands),
         [new KeyGesture(Key.D, ModifierKeys.Control | ModifierKeys.Shift)]);
 

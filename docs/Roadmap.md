@@ -75,12 +75,19 @@ work that is still in review, noted inline.
   edit lighting up a whole page reads as noise, not as information. It holds ~2s and fades, and it
   deliberately moves neither caret nor scroll — the reload is someone else's action, and taking the
   reader's place away mid-read is not something they asked for.
-- [ ] **More diagram kinds in the Flowchart Builder.** The Mermaid preview and the graphical
-  Flowchart Builder now cover flowcharts end-to-end — author diagrams as text or on a drag-and-drop
-  node/arrow canvas, preview them live, and export them (INV-047–053). The same `DiagramGraph` model
-  and canvas could extend to the other node/arrow Mermaid kinds — state, ER, class — each a new
-  parse/emit strategy and shape set (a new `DiagramKind`). Non-graph kinds (sequence, gantt, pie) are
-  not node/arrow graphs and stay text-authored with the live preview.
+- [x] **More diagram kinds in the Diagram Builder.** **Done** (INV-070, with INV-051/052 amended): the
+  builder is no longer a flowchart tool that happens to draw boxes — one canvas and one `DiagramGraph`
+  now author every node/arrow **Diagram Kind**: a **Flowchart**, a **State Diagram**, a **Class
+  Diagram**, or an **Entity Relationship Diagram**. Each is a parse/emit strategy of its own
+  (`DiagramMermaidFormat` picks by Mermaid header) plus a **Shape Set** and an **Edge Set** the graph
+  must draw from, so a Diamond in a state diagram or a cardinality in a flowchart cannot be built. It
+  opens on whichever kind the diagram at the caret already is, and changing the kind keeps every node
+  and edge, coercing only what the new kind cannot express. State diagrams gained the **Terminal**
+  (`[*]`) — the one node Mermaid does not name, so a Round-Trip mints it a fresh Node Id — and the
+  canvas draws each kind as itself: hollow inheritance triangles, filled composition diamonds, crow's
+  feet on the many end. The old *Flowchart Builder* is renamed the **Diagram Builder** throughout,
+  since it no longer builds only flowcharts. Non-graph kinds (sequence, gantt, pie) are not node/arrow
+  graphs and stay text-authored with the live preview.
 - [x] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
   **Done** (INV-069): a **Video** is written with the Image's own syntax — `![alt](clip.mp4)` — and told
   apart from an Image by its **Media Source** alone, so nothing new had to be invented for Markdown to

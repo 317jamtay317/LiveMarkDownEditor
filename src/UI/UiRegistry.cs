@@ -26,7 +26,7 @@ public static class UiRegistry
             services.AddSingleton<IUiDispatcher, WpfDispatcher>();
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
             services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
-            services.AddSingleton<IFlowchartBuilder, WindowFlowchartBuilder>();
+            services.AddSingleton<IDiagramBuilder, WindowDiagramBuilder>();
             services.AddSingleton<IDocumentPrinter, PrintDialogDocumentPrinter>();
             services.AddSingleton<IPrintPreview, WindowPrintPreview>();
 

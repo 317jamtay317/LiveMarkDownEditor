@@ -3,12 +3,12 @@ using UI.Core;
 namespace UI.Tests.TestDoubles;
 
 /// <summary>
-/// An <see cref="IFlowchartBuilder"/> that returns whatever it was handed and records the existing
-/// source it was asked with — so Open Flowchart Builder (INV-053) can be driven headlessly, including
+/// An <see cref="IDiagramBuilder"/> that returns whatever it was handed and records the existing
+/// source it was asked with — so Open Diagram Builder (INV-053) can be driven headlessly, including
 /// the Cancel case (a <see langword="null"/> result).
 /// </summary>
 /// <param name="result">The Mermaid source to return, or <see langword="null"/> to act as if cancelled.</param>
-internal sealed class StubFlowchartBuilder(string? result) : IFlowchartBuilder
+internal sealed class StubDiagramBuilder(string? result) : IDiagramBuilder
 {
     /// <summary>The existing source the builder was last asked with.</summary>
     internal string? ReceivedExistingSource { get; private set; }

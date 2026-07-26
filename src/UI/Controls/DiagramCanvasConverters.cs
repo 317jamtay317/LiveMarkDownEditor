@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -9,14 +10,17 @@ namespace UI.Controls;
 
 /// <summary>
 /// Converts a <see cref="NodeShape"/> to the <see cref="Geometry"/> a Diagram Node is drawn with on the
-/// Flowchart Builder's canvas, sized to the node box (<see cref="FlowchartNodeViewModel.Width"/> ×
-/// <see cref="FlowchartNodeViewModel.Height"/>). The live Diagram Preview shows the exact Mermaid
+/// Diagram Builder's canvas, sized to the node box (<see cref="DiagramNodeViewModel.Width"/> ×
+/// <see cref="DiagramNodeViewModel.Height"/>). The live Diagram Preview shows the exact Mermaid
 /// rendering; the canvas shape is a recognisable stand-in.
 /// </summary>
 public sealed class NodeShapeGeometryConverter : IValueConverter
 {
-    private const double W = FlowchartNodeViewModel.Width;
-    private const double H = FlowchartNodeViewModel.Height;
+    private const double W = DiagramNodeViewModel.Width;
+    private const double H = DiagramNodeViewModel.Height;
+
+    /// <summary>The diameter a State Diagram's Terminal is drawn at — a marker, not a box.</summary>
+    public const double TerminalDiameter = 44;
 
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -28,6 +32,8 @@ public sealed class NodeShapeGeometryConverter : IValueConverter
             NodeShape.Stadium => new RectangleGeometry(rect, H / 2, H / 2),
             NodeShape.Circle => new EllipseGeometry(rect),
             NodeShape.Diamond => Diamond(rect),
+            NodeShape.Terminal => new EllipseGeometry(new Rect(
+                (W - TerminalDiameter) / 2, (H - TerminalDiameter) / 2, TerminalDiameter, TerminalDiameter)),
             _ => new RectangleGeometry(rect, 2, 2),
         };
         geometry.Freeze();
@@ -51,56 +57,31 @@ public sealed class NodeShapeGeometryConverter : IValueConverter
 }
 
 /// <summary>
-/// Builds a Diagram Edge's line geometry — the shaft between the two node centres plus an arrowhead at
-/// the target end — from the bound endpoints (<c>X1</c>, <c>Y1</c>, <c>X2</c>, <c>Y2</c>) and the
-/// <see cref="EdgeKind"/>. An Open edge draws no arrowhead. The shaft is stroked and the arrowhead
-/// filled by giving the drawing <c>Path</c> the same Stroke and Fill brush.
+/// Builds a Diagram Edge's line geometry from the bound endpoints (<c>X1</c>, <c>Y1</c>, <c>X2</c>,
+/// <c>Y2</c>), the <see cref="EdgeKind"/>, and the two endpoints' <see cref="NodeShape"/>s — the shaft
+/// plus the markers that end it (<see cref="DiagramEdgeGeometry"/>). The shapes are what hold the line
+/// off each node's outline, so a marker is never buried under the node box. With the converter
+/// parameter <c>Hollow</c> it builds the hollow markers alone, which a second <c>Path</c> draws over
+/// the line filled with the canvas background.
 /// </summary>
 public sealed class EdgeGeometryConverter : IMultiValueConverter
 {
-    private const double Inset = 30; // pull the ends out of the node boxes
-    private const double Head = 12;
-    private const double HalfWing = 6;
-
     /// <inheritdoc />
     public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Length < 5 || values[0] is not double x1 || values[1] is not double y1 ||
-            values[2] is not double x2 || values[3] is not double y2)
+            values[2] is not double x2 || values[3] is not double y2 || values[4] is not EdgeKind kind)
         {
             return Geometry.Empty;
         }
 
         var source = new Point(x1, y1);
         var target = new Point(x2, y2);
-        var delta = target - source;
-        var length = delta.Length;
-        if (length < 1)
-        {
-            return Geometry.Empty;
-        }
-
-        delta /= length;
-        var start = source + (delta * Math.Min(Inset, length / 2));
-        var tip = target - (delta * Math.Min(Inset, length / 2));
-
-        var geometry = new PathGeometry();
-        var shaft = new PathFigure { StartPoint = start };
-        shaft.Segments.Add(new LineSegment(tip, true));
-        geometry.Figures.Add(shaft);
-
-        if (values[4] is not EdgeKind.Open)
-        {
-            var perpendicular = new Vector(-delta.Y, delta.X);
-            var basePoint = tip - (delta * Head);
-            var head = new PathFigure { StartPoint = tip, IsClosed = true };
-            head.Segments.Add(new LineSegment(basePoint + (perpendicular * HalfWing), true));
-            head.Segments.Add(new LineSegment(basePoint - (perpendicular * HalfWing), true));
-            geometry.Figures.Add(head);
-        }
-
-        geometry.Freeze();
-        return geometry;
+        var fromShape = values.Length > 5 && values[5] is NodeShape from ? from : NodeShape.Rectangle;
+        var toShape = values.Length > 6 && values[6] is NodeShape to ? to : NodeShape.Rectangle;
+        return string.Equals(parameter as string, "Hollow", StringComparison.Ordinal)
+            ? DiagramEdgeGeometry.Hollow(source, target, kind, fromShape, toShape)
+            : DiagramEdgeGeometry.Solid(source, target, kind, fromShape, toShape);
     }
 
     /// <inheritdoc />
@@ -120,12 +101,15 @@ public sealed class EdgeThicknessConverter : IValueConverter
         Binding.DoNothing;
 }
 
-/// <summary>Converts an <see cref="EdgeKind"/> to its stroke dash pattern — a Dotted edge is dashed, others solid.</summary>
+/// <summary>
+/// Converts an <see cref="EdgeKind"/> to its stroke dash pattern — a Dotted edge and a Class Diagram's
+/// Dependency are dashed, as Mermaid draws them; every other kind is solid.
+/// </summary>
 public sealed class EdgeDashConverter : IValueConverter
 {
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is EdgeKind.Dotted ? new DoubleCollection([3, 3]) : new DoubleCollection();
+        value is EdgeKind.Dotted or EdgeKind.Dependency ? new DoubleCollection([3, 3]) : new DoubleCollection();
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -142,4 +126,41 @@ public sealed class MidpointConverter : IMultiValueConverter
     /// <inheritdoc />
     public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
+}
+
+/// <summary>
+/// Spells a term the Diagram Builder's pickers show as words — <c>EntityRelationshipDiagram</c> reads
+/// "Entity relationship diagram", <c>OneToMany</c> reads "One to many". Presentation only: the terms
+/// themselves stay the ubiquitous language's, and nothing converts back.
+/// </summary>
+public sealed class PascalCaseWordsConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        var words = new StringBuilder(text.Length + 8);
+        foreach (var character in text)
+        {
+            if (char.IsUpper(character) && words.Length > 0)
+            {
+                words.Append(' ').Append(char.ToLower(character, culture));
+            }
+            else
+            {
+                words.Append(character);
+            }
+        }
+
+        return words.ToString();
+    }
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Binding.DoNothing;
 }

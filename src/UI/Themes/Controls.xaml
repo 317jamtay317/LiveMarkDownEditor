@@ -295,7 +295,7 @@
     </Style>
 
     <!-- The default look for a plain text box: the dialogs' text fields (the Link Prompt's text and URL,
-         the Flowchart Builder's edge label). WPF's stock TextBox is a white, system-drawn control that
+         the Diagram Builder's edge label). WPF's stock TextBox is a white, system-drawn control that
          ignores the palette, so in the dark theme it reads as a glaring white box; this implicit style
          paints it from the palette instead. Two neighbours override it and are left untouched: the Find
          Bar's box carries its own keyed FindBarTextBox style, and the Source Panel (and the canvas rename
@@ -339,7 +339,7 @@
     <!-- The default look for a tooltip. WPF's stock ToolTip is a pale, system-drawn popup that ignores
          the palette — in the dark theme it reads as a glaring near-white box, exactly like the stock
          TextBox and ComboBox above. This implicit style paints it from the palette instead, so a bare
-         string tooltip (the Editor Gutter's Fold Toggle, the Flowchart Builder's connector handle) is
+         string tooltip (the Editor Gutter's Fold Toggle, the Diagram Builder's connector handle) is
          themed with everything else. The Command Bar's richer tooltips are Command Tips, which carry
          their own template (Controls/CommandTip.xaml); this styles the plain-string ones. -->
     <Style TargetType="ToolTip">
@@ -464,7 +464,7 @@
         </Setter>
     </Style>
 
-    <!-- The default look for a dropdown: the Flowchart Builder's direction / shape / edge pickers. Like
+    <!-- The default look for a dropdown: the Diagram Builder's direction / shape / edge pickers. Like
          the text box above, WPF's stock ComboBox is a white, system-drawn control that ignores the
          palette; this implicit style paints both the closed box and its open drop-down list from the
          palette so a dropdown matches the theme in the dark theme rather than glaring white. -->

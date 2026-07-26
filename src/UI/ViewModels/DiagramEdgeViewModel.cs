@@ -5,12 +5,12 @@ using UI.Core;
 namespace UI.ViewModels;
 
 /// <summary>
-/// One Diagram Edge on the Flowchart Builder's canvas: the two nodes it joins, an editable Edge Label
+/// One Diagram Edge on the Diagram Builder's canvas: the two nodes it joins, an editable Edge Label
 /// and <see cref="EdgeKind"/>, and the line geometry between the two node centres. The geometry
 /// follows the nodes — moving either endpoint re-raises the endpoints so the drawn line tracks it —
 /// and is view state only, never emitted (INV-051).
 /// </summary>
-public sealed class FlowchartEdgeViewModel : ObservableObject
+public sealed class DiagramEdgeViewModel : ObservableObject
 {
     private string _label;
     private EdgeKind _kind;
@@ -21,7 +21,7 @@ public sealed class FlowchartEdgeViewModel : ObservableObject
     /// <param name="to">The node the edge runs to.</param>
     /// <param name="label">The optional Edge Label, or null/blank for none.</param>
     /// <param name="kind">How the edge is drawn.</param>
-    public FlowchartEdgeViewModel(FlowchartNodeViewModel from, FlowchartNodeViewModel to, string? label, EdgeKind kind)
+    public DiagramEdgeViewModel(DiagramNodeViewModel from, DiagramNodeViewModel to, string? label, EdgeKind kind)
     {
         From = from ?? throw new ArgumentNullException(nameof(from));
         To = to ?? throw new ArgumentNullException(nameof(to));
@@ -33,10 +33,10 @@ public sealed class FlowchartEdgeViewModel : ObservableObject
     }
 
     /// <summary>The node the edge runs from.</summary>
-    public FlowchartNodeViewModel From { get; }
+    public DiagramNodeViewModel From { get; }
 
     /// <summary>The node the edge runs to.</summary>
-    public FlowchartNodeViewModel To { get; }
+    public DiagramNodeViewModel To { get; }
 
     /// <summary>The optional Edge Label shown on the line. Empty when the edge carries no text.</summary>
     public string Label
@@ -84,7 +84,7 @@ public sealed class FlowchartEdgeViewModel : ObservableObject
 
     private void EndpointMoved(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(FlowchartNodeViewModel.CenterX) or nameof(FlowchartNodeViewModel.CenterY)))
+        if (e.PropertyName is not (nameof(DiagramNodeViewModel.CenterX) or nameof(DiagramNodeViewModel.CenterY)))
         {
             return;
         }
