@@ -1,3 +1,5 @@
+using Application;
+
 namespace UI.ViewModels;
 
 /// <summary>The Dockable Panels of the Workspace — the panes that carry a Panel Header and stand in a Panel Placement (INV-062).</summary>
@@ -110,9 +112,10 @@ public sealed record AutoHideTab(DockablePanel Panel, string Title)
 /// <summary>
 /// The pure rules of the Panel Chrome (INV-062, INV-063): how a Dockable Panel's Placement derives
 /// from its open and pinned state, the guards that keep at least one Document Pane — the Editor
-/// Pane or the Source Panel — Docked at every moment, and the Auto-Hide Bar projections that list
-/// exactly the Auto-Hidden panels. It has no state and does no I/O, so the same chrome state always
-/// yields the same placements — the <see cref="CompactLayout"/> discipline, applied to placement.
+/// Pane or the Source Panel — Docked at every moment, the Auto-Hide Bar projections that list
+/// exactly the Auto-Hidden panels, and the mapping to and from the persisted Panel Layout (INV-067).
+/// It has no state and does no I/O, so the same chrome state always yields the same placements —
+/// the <see cref="CompactLayout"/> discipline, applied to placement.
 /// </summary>
 public static class PanelChrome
 {
@@ -121,6 +124,13 @@ public static class PanelChrome
 
     private static readonly DockablePanel[] RightBarOrder =
         [DockablePanel.SourcePanel, DockablePanel.PreviewPanel];
+
+    /// <summary>Every Dockable Panel — what "all the panels" means to anything that walks them.</summary>
+    public static IReadOnlyList<DockablePanel> All { get; } =
+    [
+        DockablePanel.EditorPane, DockablePanel.SourcePanel, DockablePanel.PreviewPanel,
+        DockablePanel.FolderPanel, DockablePanel.NavigationPanel,
+    ];
 
     /// <summary>Derives a panel's Panel Placement: Closed when not open, Docked while pinned, Auto-Hidden otherwise.</summary>
     /// <param name="state">The chrome state of every panel.</param>
@@ -182,6 +192,54 @@ public static class PanelChrome
     /// <returns>One tab per Auto-Hidden right panel; empty when there are none.</returns>
     public static IReadOnlyList<AutoHideTab> RightAutoHideTabs(PanelChromeState state) =>
         TabsOf(state, RightBarOrder);
+
+    /// <summary>
+    /// The Panel Layout to persist from a chrome state: every panel's open and pinned state, and so
+    /// its Placement, in the shape the Workspace State stores (INV-067). It records what the user
+    /// chose, never the width-driven Compact Layout resolution (INV-059).
+    /// </summary>
+    /// <param name="state">The chrome state of every panel.</param>
+    /// <returns>The Panel Layout to persist.</returns>
+    public static PanelLayout ToLayout(PanelChromeState state) => new(
+        EditorPane: Persisted(state.EditorPane),
+        SourcePanel: Persisted(state.SourcePanel),
+        PreviewPanel: Persisted(state.PreviewPanel),
+        FolderPanel: Persisted(state.FolderPanel),
+        NavigationPanel: Persisted(state.NavigationPanel));
+
+    /// <summary>
+    /// The chrome state a persisted Panel Layout restores to, with the two rules that outrank the
+    /// file applied: the Folder Panel comes back only alongside the Folder Workspace it browses
+    /// (INV-045), and a layout that would leave no Document Pane Docked restores with the Editor Pane
+    /// Docked (INV-063). Restoring is not a reopen, so every other panel keeps the pin it was left
+    /// with — an Auto-Hidden panel comes back Auto-Hidden (INV-062, INV-067).
+    /// </summary>
+    /// <param name="layout">The persisted Panel Layout.</param>
+    /// <param name="hasFolderWorkspace">Whether a Folder Workspace was restored for the Folder Panel to browse.</param>
+    /// <returns>The chrome state to apply.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="layout"/> is <see langword="null"/>.</exception>
+    public static PanelChromeState FromLayout(PanelLayout layout, bool hasFolderWorkspace)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+
+        var state = new PanelChromeState(
+            EditorPane: Restored(layout.EditorPane),
+            SourcePanel: Restored(layout.SourcePanel),
+            PreviewPanel: Restored(layout.PreviewPanel),
+            FolderPanel: Restored(layout.FolderPanel) with
+            {
+                IsOpen = layout.FolderPanel.IsOpen && hasFolderWorkspace,
+            },
+            NavigationPanel: Restored(layout.NavigationPanel));
+
+        return KeepsADocumentPaneDocked(state)
+            ? state
+            : state.With(DockablePanel.EditorPane, new PanelState(IsOpen: true, IsPinned: true));
+    }
+
+    private static PersistedPanelState Persisted(PanelState state) => new(state.IsOpen, state.IsPinned);
+
+    private static PanelState Restored(PersistedPanelState state) => new(state.IsOpen, state.IsPinned);
 
     private static IReadOnlyList<AutoHideTab> TabsOf(PanelChromeState state, DockablePanel[] order) =>
         [.. order

@@ -1679,14 +1679,18 @@ and tested.
     panel with it rather than restoring an empty tree.
 - **Enforced by:** The Application `PanelLayout` snapshot carried on `WorkspaceState` (persisted and
   loaded by `JsonWorkspaceStateStore` exactly as the rest of the state is, INV-037, with a missing
-  field loading as no layout), and the `WorkspaceViewModel` Panel Chrome surface — `PanelLayoutOf` /
-  `RestorePanelLayout`, which map it to and from the `PanelChromeState` the pure `PanelChrome` rules
-  read, apply the `PanelChrome` Document Pane guard on the way in, and persist whenever the chrome
-  state changes rather than on every width-driven recomputation (INV-059).
-- **Tested by:** `WorkspaceViewModelPanelLayoutTests.*_INV067` (a round-trip of each Placement; the
-  default for a missing layout; the Document Pane guard; the Folder Panel following its folder; and
-  that a mere resize does not persist) and `JsonWorkspaceStateStoreTests.*_INV067` (the layout
-  survives a file round-trip, and a state file without one loads as no layout).
+  field loading as no layout); the pure `PanelChrome.ToLayout` / `PanelChrome.FromLayout`, which map
+  it to and from the `PanelChromeState` the rest of the `PanelChrome` rules read and apply both rules
+  that outrank the file — the Folder Panel's folder (INV-045) and the Document Pane guard (INV-063) —
+  on the way in; and the `WorkspaceViewModel`'s `PanelLayoutOf` / `RestorePanelLayout`, which own only
+  the *when*: applying a layout without letting the reopen pin reset touch it, and persisting whenever
+  the chrome state changes rather than on every width-driven recomputation (INV-059).
+- **Tested by:** `PanelChromeTests.*_INV067` (the mapping both ways, the Document Pane guard, and the
+  Folder Panel rule, as pure cases), `WorkspaceViewModelPanelLayoutTests.*_INV067` (a round-trip of
+  each Placement through the Workspace; the default for a missing layout; the Document Pane guard;
+  the Folder Panel following its folder; and that a mere resize does not persist), and
+  `JsonWorkspaceStateStoreTests.*_INV067` (the layout survives a file round-trip, and a state file
+  without one loads as no layout).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
