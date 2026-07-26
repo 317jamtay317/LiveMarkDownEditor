@@ -75,6 +75,37 @@ public sealed class MarkdownPdfComposerTests
         SectionText(doc).ShouldContain("graph TD");
     }
 
+    /// <summary>
+    /// A page cannot play. The alt text is the only honest thing an exported PDF can show of a Video, and
+    /// it is the same fallback an Image that cannot be embedded takes (INV-031/069).
+    /// </summary>
+    [Fact]
+    public void Compose_AVideo_ShowsItsAltText_INV069()
+    {
+        var doc = Compose("Before.\n\n![a clip](media/demo.mp4)\n\nAfter.");
+
+        SectionText(doc).ShouldContain("a clip");
+        ImageCount(doc).ShouldBe(0);
+    }
+
+    /// <summary>The Media Source is never written into the page as if it were prose.</summary>
+    [Fact]
+    public void Compose_AVideo_DoesNotWriteItsMediaSource_INV069()
+    {
+        var doc = Compose("![a clip](media/demo.mp4)");
+
+        SectionText(doc).ShouldNotContain("demo.mp4");
+    }
+
+    /// <summary>A Video with no alt text has only its Media Source left to name it — better than a blank.</summary>
+    [Fact]
+    public void Compose_AVideoWithNoAltText_FallsBackToItsMediaSource_INV069()
+    {
+        var doc = Compose("![](media/demo.mp4)");
+
+        SectionText(doc).ShouldContain("media/demo.mp4");
+    }
+
     [Fact]
     public void Compose_ANonMermaidCodeBlock_IsNeverPlacedAsAnImage_INV050()
     {
