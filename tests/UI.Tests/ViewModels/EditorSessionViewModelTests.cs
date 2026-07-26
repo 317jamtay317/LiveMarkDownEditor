@@ -45,6 +45,42 @@ public sealed class EditorSessionViewModelTests
     }
 
     [Fact]
+    public async Task TabTip_GivenAWatchedFile_IsItsFullPath_INV073()
+    {
+        var session = await LoadedSessionAsync("# Loaded");
+
+        // The Tab shows the file's name alone, so the Tab Tip is where the whole path is read: two
+        // files of the same name are otherwise indistinguishable (INV-073).
+        session.Name.ShouldBe("note.md");
+        session.TabTip.ShouldBe(Path);
+    }
+
+    [Fact]
+    public void TabTip_WhenUnsaved_SaysThereIsNoFileYet_INV073()
+    {
+        var session = CreateSession();
+
+        // An unsaved document has no Watched File and so no path to show. The tip says so rather than
+        // being empty or repeating the bare name (INV-073).
+        session.FilePath.ShouldBeNull();
+        session.TabTip.ShouldNotBeNullOrWhiteSpace();
+        session.TabTip.ShouldNotBe(session.Name);
+    }
+
+    [Fact]
+    public async Task TabTip_FollowsTheWatchedFile_WhenTheSessionIsSaved_INV073()
+    {
+        var session = CreateSession();
+        var unsavedTip = session.TabTip;
+
+        await session.SaveAsync(Path);
+
+        // Saving gives the session a Watched File, so its Tab Tip becomes that file's full path.
+        session.TabTip.ShouldBe(Path);
+        session.TabTip.ShouldNotBe(unsavedTip);
+    }
+
+    [Fact]
     public void EditingMarkdown_MarksUnsavedEdits()
     {
         var session = CreateSession();

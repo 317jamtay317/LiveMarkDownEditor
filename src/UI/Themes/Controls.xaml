@@ -638,6 +638,46 @@
         </Setter>
     </Style>
 
+    <!-- The Tab Context Menu's chrome: the popup behind a Tab's right-click menu, drawn from the
+         active palette rather than in WPF's stock system-menu chrome — the same reason the ToolTip
+         and the command-bar dropdowns are re-templated above. Its entries are CommandMenuEntry. -->
+    <Style x:Key="TabContextMenu" TargetType="ContextMenu">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" Opacity="0.22" BlurRadius="14" ShadowDepth="2" />
+                        </Border.Effect>
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The rule dividing one group of menu entries from the next. -->
+    <Style x:Key="MenuSeparator" TargetType="Separator">
+        <Setter Property="Margin" Value="10,4" />
+        <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Background="{TemplateBinding Background}" SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Muted status-bar text. -->
     <Style x:Key="StatusText" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />

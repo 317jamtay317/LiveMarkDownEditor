@@ -28,6 +28,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     private string _markdown = string.Empty;
     private string? _filePath;
+    private bool _isPinned;
     private bool _hasUnsavedEdits;
     private bool _hasConflict;
     private string _conflictingDiskText = string.Empty;
@@ -89,6 +90,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(Name));
                 Raise(nameof(Title));
+                Raise(nameof(TabTip));
                 Raise(nameof(BaseDirectory));
             }
         }
@@ -164,6 +166,26 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     /// <summary>The Watched File's name, or "Untitled" when unsaved. Shown on the session's Tab.</summary>
     public string Name => FilePath is null ? "Untitled" : Path.GetFileName(FilePath);
+
+    /// <summary>
+    /// The Tab Tip: what this session's Tab shows on hover. The Tab shows the Watched File's
+    /// <see cref="Name"/> alone, so the tip names the file <em>in full</em> — two files of the same
+    /// name are otherwise indistinguishable. An unsaved session has no Watched File and so no path to
+    /// show, and says so rather than repeating the bare name (INV-073).
+    /// </summary>
+    public string TabTip => FilePath ?? "Not saved yet — this document has no file on disk.";
+
+    /// <summary>
+    /// Whether this session's Tab is a Pinned Tab: shown in the Pinned Row above the ordinary Tabs and
+    /// spared by Close All But Pinned (INV-071). Pinning is bookkeeping about the Tab, never about its
+    /// content — it changes neither the Markdown Document nor the Watched File. Set by the
+    /// <see cref="WorkspaceViewModel"/> alone, which owns the two rows and keeps them in step with it.
+    /// </summary>
+    public bool IsPinned
+    {
+        get => _isPinned;
+        internal set => Set(ref _isPinned, value);
+    }
 
     /// <summary>The <see cref="Name"/> with a "*" suffix when edits are unsaved; used as the window title.</summary>
     public string Title => HasUnsavedEdits ? $"{Name} *" : Name;

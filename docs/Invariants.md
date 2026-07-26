@@ -1858,6 +1858,71 @@ and tested.
   `ChangingTheKind_CoercesAShapeOrEdgeKindTheNewKindDoesNotAllow_INV070`, and
   `WithKind_KeepsEveryNodeAndEdge_INV070`.
 
+### INV-071 — Pinning a Tab moves it to the Pinned Row and changes nothing else
+- **Statement:** A Tab is either an ordinary Tab or a **Pinned Tab**, and pinning is bookkeeping about
+  a Tab rather than about what it holds. Four rules bound it:
+  - **The two rows partition the Tabs.** Every open Tab is in exactly one row — the Pinned Row holds
+    precisely the Pinned Tabs, the Ordinary Row precisely the rest — so no Tab is in both rows or in
+    neither, and the two rows together are the Workspace's Tabs in Tab order (the Pinned Row first).
+  - **A row with no Tabs collapses.** The Pinned Row is shown only while at least one Tab is pinned,
+    and the Ordinary Row only while at least one Tab is unpinned: neither leaves an empty band behind
+    when its last Tab goes, and either returns the moment a Tab joins it. The single exception keeps
+    the strip from vanishing altogether — while **nothing** is pinned the Ordinary Row is shown even
+    when empty, so an empty Workspace still presents a tab strip (and the new-tab button beside it,
+    which sits outside both rows and is therefore never collapsed away with one).
+  - **A Tab joins the end of the row it moves to.** Pin Tab appends the Tab to the Pinned Row and
+    Unpin Tab appends it to the ordinary row; neither disturbs the order of the Tabs already there.
+    A pin followed by an unpin may therefore leave a Tab further right than it started — a row is
+    ordered by when its Tabs joined it, not by where they once were — but no Tab is ever lost or
+    duplicated by the move.
+  - **Pinning changes nothing but the row.** Pin Tab and Unpin Tab never change any Markdown Document,
+    never end an Editor Session, and never change which Editor Session is the Active Session — pinning
+    the Tab the user is *not* on does not steal them away from the one they are on, and pinning the
+    Active Session's own Tab leaves it active. A Pinned Tab is not "pinned open": Close Tab and Close
+    All Tabs close it like any other (INV-010, INV-072).
+  - **A pin persists with its Tab.** Which Tabs are pinned is part of the Workspace State, so Restore
+    reopens a Pinned Tab pinned (INV-037). Only saved documents are persisted, so an unsaved Tab's pin
+    is not — there is no path to record it against.
+- **Enforced by:** `WorkspaceViewModel` (the `PinnedTabs` / `UnpinnedTabs` rows, `PinTabCommand` and
+  `UnpinTabCommand`, which move a Tab between the rows without touching `ActiveSession`), and
+  `EditorSessionViewModel.IsPinned`, which the Workspace alone sets. `WorkspaceState.PinnedDocuments`
+  and `JsonWorkspaceStateStore` carry the pins across runs; a state file written before pins existed
+  simply restores nothing pinned.
+- **Tested by:** `WorkspaceViewModelTabsTests.*_INV071` — in particular
+  `Pin_MovesTheTabToTheEndOfThePinnedRow_INV071`,
+  `Pin_LeavesTheActiveSessionAndTheDocumentAlone_INV071`,
+  `Unpin_MovesTheTabToTheEndOfTheOrdinaryRow_INV071`,
+  `TheTwoRows_PartitionTheOpenTabs_INV071`, and
+  `Restore_ReopensAPinnedTabPinned_INV071`.
+
+### INV-072 — Closing many Tabs never silently discards unsaved edits
+- **Statement:** Close All Tabs closes every Tab; Close All But Pinned closes every Tab that is not a
+  Pinned Tab, leaving the Pinned Row untouched. Both are bulk applications of Close Tab and neither
+  weakens INV-010: each Tab holding unsaved edits is asked about in its turn, and **Cancel on any one
+  Tab stops the whole action** — that Tab and every Tab not yet reached stay open, while the Tabs
+  already closed (each saved or discarded by an explicit choice) stay closed. Closing every Tab leaves
+  the Workspace empty rather than re-seeding a fresh one (INV-008).
+- **Enforced by:** `WorkspaceViewModel.CloseAllTabsAsync` and `CloseAllButPinnedAsync`, which walk a
+  snapshot of the Tabs to close and route each through the same `CloseSessionAsync` that INV-010
+  governs, stopping at the first Tab the user keeps.
+- **Tested by:** `WorkspaceViewModelTabsTests.*_INV072` — in particular
+  `CloseAll_ClosesEveryTabIncludingPinned_INV072`,
+  `CloseAllButPinned_LeavesThePinnedRowIntact_INV072`,
+  `CloseAll_WhenCancelledOnOneTab_StopsAndKeepsTheRest_INV072`, and
+  `CloseAll_PromptsForEachTabWithUnsavedEdits_INV072`.
+
+### INV-073 — A Tab Tip names its Watched File in full
+- **Statement:** Hovering a Tab shows its **Tab Tip**: the full path of the Watched File that Tab's
+  Editor Session is editing, because the Tab itself shows only the file's name and two files of the
+  same name are otherwise indistinguishable. A Tab whose Editor Session has **no** Watched File — an
+  unsaved document — has no path to show and says so instead, rather than showing an empty tip or the
+  bare name a second time. A Tab Tip is presentation-only in the strongest sense: showing one never
+  changes the Markdown Document, the Editor Session, the Active Session, or which Tabs are pinned.
+- **Enforced by:** `EditorSessionViewModel.TabTip`, a pure projection of `FilePath` alone, bound to
+  each Tab's tooltip in the tab strip.
+- **Tested by:** `EditorSessionViewModelTests.TabTip_GivenAWatchedFile_IsItsFullPath_INV073` and
+  `EditorSessionViewModelTests.TabTip_WhenUnsaved_SaysThereIsNoFileYet_INV073`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
