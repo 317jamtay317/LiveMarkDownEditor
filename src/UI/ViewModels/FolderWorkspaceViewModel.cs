@@ -86,6 +86,13 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     /// </summary>
     public void CloseFolderPanel() => IsFolderPanelVisible = false;
 
+    /// <summary>
+    /// Shows the Folder Panel — the path a restored Panel Layout takes to bring the panel back as the
+    /// last run left it (INV-067). Only meaningful with a Folder Workspace open; the panel browses a
+    /// Folder Tree, so there is nothing to show without one.
+    /// </summary>
+    public void ShowFolderPanel() => IsFolderPanelVisible = true;
+
     /// <summary>Prompts for a folder and opens it as a Folder Workspace, showing the Folder Panel.</summary>
     public ICommand OpenFolderCommand { get; }
 

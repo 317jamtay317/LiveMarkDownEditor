@@ -1,3 +1,4 @@
+using Application;
 using Shouldly;
 using UI.ViewModels;
 using Xunit;
@@ -205,5 +206,65 @@ public sealed class PanelChromeTests
     {
         AutoHideTab.For(panel).Title.ShouldBe(title);
         AutoHideTab.For(panel).Panel.ShouldBe(panel);
+    }
+
+    [Fact]
+    public void All_ListsEveryDockablePanel_INV062()
+    {
+        PanelChrome.All.ShouldBe(
+        [
+            DockablePanel.EditorPane, DockablePanel.SourcePanel, DockablePanel.PreviewPanel,
+            DockablePanel.FolderPanel, DockablePanel.NavigationPanel,
+        ]);
+    }
+
+    [Fact]
+    public void ToLayout_RecordsEveryPanelsOpenAndPinnedState_INV067()
+    {
+        var state = State(editor: Docked, source: AutoHidden, preview: Closed, folder: Docked, navigation: AutoHidden);
+
+        var layout = PanelChrome.ToLayout(state);
+
+        layout.EditorPane.ShouldBe(new PersistedPanelState(IsOpen: true, IsPinned: true));
+        layout.SourcePanel.ShouldBe(new PersistedPanelState(IsOpen: true, IsPinned: false));
+        layout.PreviewPanel.ShouldBe(new PersistedPanelState(IsOpen: false, IsPinned: true));
+        layout.FolderPanel.ShouldBe(new PersistedPanelState(IsOpen: true, IsPinned: true));
+        layout.NavigationPanel.ShouldBe(new PersistedPanelState(IsOpen: true, IsPinned: false));
+    }
+
+    [Fact]
+    public void FromLayout_ThenToLayout_RoundTripsEveryPlacement_INV067()
+    {
+        // Restoring is not a reopen: an Auto-Hidden panel comes back Auto-Hidden, keeping its pin
+        // exactly as the layout recorded it (INV-062).
+        var state = State(editor: AutoHidden, source: Docked, preview: AutoHidden, folder: Docked, navigation: Closed);
+
+        var restored = PanelChrome.FromLayout(PanelChrome.ToLayout(state), hasFolderWorkspace: true);
+
+        restored.ShouldBe(state);
+    }
+
+    [Fact]
+    public void FromLayout_LeavingNoDocumentPaneDocked_RestoresTheEditorPaneDocked_INV067()
+    {
+        // The Document Pane rule outranks the persisted layout, however the file came to say
+        // otherwise (INV-063).
+        var layout = PanelChrome.ToLayout(State(editor: AutoHidden, source: Closed));
+
+        var restored = PanelChrome.FromLayout(layout, hasFolderWorkspace: false);
+
+        PanelChrome.IsDocked(restored, DockablePanel.EditorPane).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void FromLayout_WithoutAFolderWorkspace_LeavesTheFolderPanelClosed_INV067()
+    {
+        // The Folder Panel browses a Folder Tree, so it returns only alongside the folder it
+        // browses — a persisted root that has gone takes its panel with it (INV-045).
+        var layout = PanelChrome.ToLayout(State(folder: Docked));
+
+        var restored = PanelChrome.FromLayout(layout, hasFolderWorkspace: false);
+
+        PanelChrome.PlacementOf(restored, DockablePanel.FolderPanel).ShouldBe(PanelPlacement.Closed);
     }
 }

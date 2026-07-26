@@ -371,9 +371,18 @@ and tested.
     occurrence hidden inside a Folded Section Body is replaced rather than silently left behind.
   - **Replace All terminates.** It replaces exactly the Matches present when it is invoked, so a
     Replacement that contains the query does not re-match and cannot cascade.
-- **Enforced by:** `MatchReplacer` (which swaps a Match's span for the Replacement through the same
-  `TextRange.Text` mechanism a Spelling Suggestion uses — WPF carries the surrounding formatting into
-  the new text, and flattens where the span had no single formatting), and `MarkdownRichEditor`'s
+- **Enforced by:** `MatchReplacer`, the one seam a Replacement goes through — Replace, Replace All,
+  and a Spelling Suggestion correcting a Misspelling (`MarkdownRichEditor.CorrectMisspelling`) all
+  swap a span for text through it, which is what makes the three inherit formatting identically. A
+  Match lying wholly inside one `Run` is replaced by inserting the Replacement into that Run *first*
+  and deleting the Match only afterwards, so the Run — and the `Bold`, `Italic`, Code Span, or
+  Strikethrough element above it — is never empty and is kept whole. Assigning `TextRange.Text` on its
+  own would not do, because a deletion that runs first costs the formatting two ways: emptying the Run
+  removes it and takes the element above it along, and stopping at the Run's first character leaves the
+  insertion point on its boundary, where WPF resolves formatting from the *preceding* content instead.
+  Both came out plain — correcting a bolded word mid-sentence dropped it out of the bold. A Match that
+  spans a formatting boundary lies in no single Run, so it falls to `TextRange.Text` and flattens —
+  which is exactly the rule above. And `MarkdownRichEditor`'s
   `ReplaceCurrentMatch` / `ReplaceAllMatches`, which Unfold before Replacing All and iterate a
   snapshot of the Match ranges taken before the first edit. The edit then flows through the same
   `OnTextChanged` → Capture path as any other edit, which is what makes the Captured source
@@ -382,8 +391,16 @@ and tested.
   disable it in precisely the case this invariant exists to cover.
 - **Tested by:** `MarkdownRichEditorReplaceTests.*_INV022`, in particular
   `ReplaceAll_CapturesCanonicalMarkdown_ThatRoundTrips_INV022` (anti-corruption),
-  `ReplaceAll_UnfoldsFoldedSections_SoNoMatchIsMissed_INV022`, and
-  `ReplaceAll_WhenReplacementContainsQuery_ReplacesOnlyTheOriginalMatches_INV022` (termination).
+  `ReplaceAll_UnfoldsFoldedSections_SoNoMatchIsMissed_INV022`,
+  `ReplaceAll_WhenReplacementContainsQuery_ReplacesOnlyTheOriginalMatches_INV022` (termination),
+  `Replace_MatchAtTheStartOfFormattedText_InheritsThatFormatting_INV022`,
+  `Replace_MatchIsTheWholeFormattedSpan_InheritsThatFormatting_INV022` and
+  `ReplaceAll_WithMatchesInOneFormattedSpan_ReplacesEveryOne_INV022` (the Run-boundary case, the
+  emptied-Run case, and that replacing one Match in a Run leaves the others' ranges intact); and
+  `MarkdownRichEditorSpellingCorrectionTests.*_INV022` (a Spelling Suggestion inherits the
+  Misspelling's formatting wherever in the formatted span the Misspelling sits — including when the
+  Misspelling *is* the whole span, a single bolded word — Captures canonical Markdown that
+  Round-Trips, and ignores a range left over from a replaced document).
 
 ### INV-023 — A List Toggle preserves its List Items' content
 - **Statement:** Toggle Unordered List, Toggle Ordered List, and Toggle Task List change a List's
@@ -1643,6 +1660,37 @@ and tested.
   Round-Trips against the render oracle and converges — the exactness of the canonical form is what
   these catch), and `MarkdownRichEditorDefinitionListTests.*_INV066` (Toggle Definition List both ways,
   whole blocks, and the caret).
+
+### INV-067 — The Panel Layout is restored across runs
+- **Statement:** The Panel Layout — every Dockable Panel's open and pinned state, and so its Panel
+  Placement (INV-062) — is persisted as part of the Workspace State and restored at startup, so the
+  editor reopens with the panels the user left it with. Four rules bound it:
+  - **Placement survives, not just visibility.** A panel left Docked comes back Docked, one left
+    Auto-Hidden comes back Auto-Hidden, and one left Closed comes back Closed. Restoring is not a
+    reopen, so it does not reset a pin the way opening a Closed panel does (INV-062).
+  - **A missing or unreadable Panel Layout restores the default.** A first run, a state file written
+    before the Panel Layout existed, or a corrupt one starts with the Editor Pane Docked and every
+    other panel Closed — the state the Workspace opens with (INV-062), never a failure.
+  - **The Document Pane rule outranks the persisted layout.** A Panel Layout that would leave no
+    Document Pane Docked — both the Editor Pane and the Source Panel Closed or Auto-Hidden, however
+    the file came to say so — restores with the Editor Pane Docked instead (INV-063).
+  - **The Folder Panel is restored only alongside its folder.** The Folder Panel comes back open only
+    when the Folder Workspace it browses did (INV-045); a persisted root that has gone takes its
+    panel with it rather than restoring an empty tree.
+- **Enforced by:** The Application `PanelLayout` snapshot carried on `WorkspaceState` (persisted and
+  loaded by `JsonWorkspaceStateStore` exactly as the rest of the state is, INV-037, with a missing
+  field loading as no layout); the pure `PanelChrome.ToLayout` / `PanelChrome.FromLayout`, which map
+  it to and from the `PanelChromeState` the rest of the `PanelChrome` rules read and apply both rules
+  that outrank the file — the Folder Panel's folder (INV-045) and the Document Pane guard (INV-063) —
+  on the way in; and the `WorkspaceViewModel`'s `PanelLayoutOf` / `RestorePanelLayout`, which own only
+  the *when*: applying a layout without letting the reopen pin reset touch it, and persisting whenever
+  the chrome state changes rather than on every width-driven recomputation (INV-059).
+- **Tested by:** `PanelChromeTests.*_INV067` (the mapping both ways, the Document Pane guard, and the
+  Folder Panel rule, as pure cases), `WorkspaceViewModelPanelLayoutTests.*_INV067` (a round-trip of
+  each Placement through the Workspace; the default for a missing layout; the Document Pane guard;
+  the Folder Panel following its folder; and that a mere resize does not persist), and
+  `JsonWorkspaceStateStoreTests.*_INV067` (the layout survives a file round-trip, and a state file
+  without one loads as no layout).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

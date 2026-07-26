@@ -83,4 +83,12 @@ work that is still in review, noted inline.
   not node/arrow graphs and stay text-authored with the live preview.
 - [ ] **Videos:** We should be able to add videos to mark down and play them in the Live Editor.
 - [ ] **Alternate color Rows on tables:** The rows should have alternate colors so its easier to read and see.
-- [ ] [ ] Panel memory: [ ] when we close the app we should remember what panelse we had open and the state if they are closed or in autohide or what.
+- [x] **Panel memory.** When the app closes it remembers which panels were open and how they stood.
+  **Done** (INV-067): the **Panel Layout** — every Dockable Panel's open and pinned state, and so its
+  Placement — is persisted alongside the open Tabs and Recent Files and restored at startup, so a
+  panel left Docked comes back Docked, one left Auto-Hidden comes back Auto-Hidden, and one left
+  Closed stays Closed. It saves when a Placement actually changes, not on every resize, so the
+  width-driven Compact Layout collapse is never mistaken for the user's choice (INV-059). Two rules
+  guard the restore: the Document Pane rule outranks the file (a layout leaving neither the Editor
+  Pane nor the Source Panel Docked comes back with the Editor Pane Docked, INV-063), and the Folder
+  Panel returns only alongside the folder it browses (INV-045).

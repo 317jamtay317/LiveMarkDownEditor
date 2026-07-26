@@ -121,6 +121,67 @@ public sealed class MarkdownRichEditorReplaceTests
     }
 
     [Theory]
+    [InlineData("plain **bolld here** text", "plain **bold here** text")]     // bold
+    [InlineData("plain *bolld here* text", "plain *bold here* text")]         // italic
+    [InlineData("plain ~~bolld here~~ text", "plain ~~bold here~~ text")]     // strikethrough
+    [InlineData("plain `bolld here` text", "plain `bold here` text")]         // code span
+    [InlineData("- item **bolld here**", "- item **bold here**")]             // inside a List Item
+    public void Replace_MatchAtTheStartOfFormattedText_InheritsThatFormatting_INV022(
+        string markdown,
+        string expected)
+    {
+        StaThread.Run(() =>
+        {
+            // The Match sits at the *first* character of the formatted span, with plain text before
+            // it. The Match still has a single formatting, so the Replacement inherits it — the
+            // formatting boundary is outside the Match, not inside it.
+            var editor = EditorFinding(markdown, "bolld", "bold");
+
+            MarkdownEditingCommands.Replace.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe(expected);
+        });
+    }
+
+    [Theory]
+    [InlineData("plain **bold** text", "plain **plain** text")]               // bold
+    [InlineData("plain *bold* text", "plain *plain* text")]                   // italic
+    [InlineData("plain ~~bold~~ text", "plain ~~plain~~ text")]               // strikethrough
+    [InlineData("plain `bold` text", "plain `plain` text")]                   // code span
+    [InlineData("- item **bold**", "- item **plain**")]                       // inside a List Item
+    public void Replace_MatchIsTheWholeFormattedSpan_InheritsThatFormatting_INV022(
+        string markdown,
+        string expected)
+    {
+        StaThread.Run(() =>
+        {
+            // The Match is the formatted span's *whole* Run, with plain text before it. Replacing it
+            // empties that Run, which would take the Bold, Italic, Code Span, or Strikethrough element
+            // above it — and then WPF resolves the Replacement's formatting from the plain text before.
+            var editor = EditorFinding(markdown, "bold", "plain");
+
+            MarkdownEditingCommands.Replace.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe(expected);
+        });
+    }
+
+    [Fact]
+    public void ReplaceAll_WithMatchesInOneFormattedSpan_ReplacesEveryOne_INV022()
+    {
+        StaThread.Run(() =>
+        {
+            // Several Matches share one Run, and the first of them starts it. Replacing the first
+            // must leave the later Matches' ranges pointing at their own spans, not at the whole Run.
+            var editor = EditorFinding("plain **alpha beta alpha gamma alpha** text", "alpha", "delta");
+
+            MarkdownEditingCommands.ReplaceAll.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("plain **delta beta delta gamma delta** text");
+        });
+    }
+
+    [Theory]
     [InlineData("**bo**ld text")]                           // bold -> plain
     [InlineData("bo**ld** text")]                           // plain -> bold
     [InlineData("*bo*ld text")]                             // italic

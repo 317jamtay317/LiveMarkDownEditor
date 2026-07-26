@@ -84,6 +84,35 @@ public sealed class JsonWorkspaceStateStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_ThenLoad_RoundTripsThePanelLayout_INV067()
+    {
+        var store = new JsonWorkspaceStateStore(_path);
+        var layout = PanelLayout.Default with
+        {
+            SourcePanel = new PersistedPanelState(IsOpen: true, IsPinned: true),
+            PreviewPanel = new PersistedPanelState(IsOpen: true, IsPinned: false),
+        };
+
+        await store.SaveAsync(new WorkspaceState([], [], null, layout));
+
+        store.Load().Panels.ShouldBe(layout);
+    }
+
+    [Fact]
+    public async Task Load_WhenStateHasNoPanelsField_LoadsWithNoPanelLayout_INV067()
+    {
+        // State written by an earlier version — before the Panel Layout — must still load, leaving
+        // the Workspace's default layout rather than failing.
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(_path, """{ "OpenDocuments": ["C:\\a.md"], "RecentFiles": [] }""");
+
+        var loaded = new JsonWorkspaceStateStore(_path).Load();
+
+        loaded.OpenDocuments.ShouldBe([@"C:\a.md"]);
+        loaded.Panels.ShouldBeNull();
+    }
+
+    [Fact]
     public void Constructor_GivenABlankPath_Throws()
     {
         Should.Throw<ArgumentException>(() => new JsonWorkspaceStateStore("  "));

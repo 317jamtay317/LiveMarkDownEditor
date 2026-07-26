@@ -8,9 +8,11 @@ namespace UI.Find;
 /// Markdown Document as canonical Markdown (INV-022).
 /// </summary>
 /// <remarks>
-/// The Replacement is written verbatim into the Match's span, so it carries the formatting in effect
-/// at the start of the Match and never adapts its case to the Match it replaces. This is the same
-/// mechanism a Spelling Suggestion uses to correct a Misspelling.
+/// The Replacement is written verbatim into the Match's span, never adapting its case to the Match it
+/// replaces, and it inherits the Match's own formatting: replacing a word inside bold text leaves it
+/// bold, while a Match straddling a formatting boundary has no single formatting to inherit and comes
+/// out plain (INV-022). This is the same mechanism a Spelling Suggestion uses to correct a
+/// Misspelling, which is what keeps the two consistent.
 /// </remarks>
 public static class MatchReplacer
 {
@@ -29,7 +31,60 @@ public static class MatchReplacer
     {
         ArgumentNullException.ThrowIfNull(match);
 
-        match.Text = replacement ?? string.Empty;
+        var text = replacement ?? string.Empty;
+        if (text.Length == 0 || !TryReplaceWithinRun(match, text))
+        {
+            match.Text = text;
+        }
+    }
+
+    /// <summary>
+    /// Replaces a Match that lies wholly inside one <see cref="Run"/> by inserting the Replacement into
+    /// that Run and only then deleting the Match, so the Run — and every formatting element above it —
+    /// is kept.
+    /// </summary>
+    /// <returns><see langword="true"/> when the Match was replaced this way.</returns>
+    /// <remarks>
+    /// Assigning <see cref="TextRange.Text"/> alone loses the formatting whenever the deletion empties
+    /// the Run or leaves the insertion point on its first-character boundary: WPF removes an emptied Run
+    /// along with the Bold, Italic, or Span above it, and on a boundary it resolves character formatting
+    /// from the *preceding* content — so correcting a bolded word mid-sentence dropped it out of the
+    /// bold. Inserting first keeps the Run non-empty throughout, which sidesteps both, and carries the
+    /// formatting WPF cannot see as a property with it: a Code Span and a Strikethrough are marked by a
+    /// role tag on the element, not by a value re-appliable afterwards.
+    /// </remarks>
+    private static bool TryReplaceWithinRun(TextRange match, string replacement)
+    {
+        if (match.Start.Parent is not Run run || !ReferenceEquals(run, match.End.Parent))
+        {
+            return false;
+        }
+
+        var start = run.ContentStart.GetOffsetToPosition(match.Start);
+        var end = run.ContentStart.GetOffsetToPosition(match.End);
+        if (start < 0 || end > run.Text.Length || end <= start)
+        {
+            return false;
+        }
+
+        // Insert at the Match's end, inside the Run: nothing is deleted yet, so the Run is certain to
+        // still be there to take the text. Answering false before the insertion hands the whole
+        // replacement back to the caller's TextRange assignment, which costs the formatting but never
+        // the text.
+        var matchStart = run.ContentStart.GetPositionAtOffset(start);
+        if (matchStart is null)
+        {
+            return false;
+        }
+
+        match.End.InsertTextInRun(replacement);
+
+        // The Replacement now sits in the Run from `end` onwards, so deleting the Match cannot empty
+        // it. The Match's own end has moved over the inserted text, so measure the span to delete from
+        // its start instead — an offset inside a Run is a character count, and the Run only grew.
+        var matchEnd = matchStart.GetPositionAtOffset(end - start)!;
+        new TextRange(matchStart, matchEnd).Text = string.Empty;
+        return true;
     }
 
     /// <summary>

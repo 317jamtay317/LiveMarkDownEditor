@@ -1,13 +1,14 @@
-using System.ComponentModel;
 using System.Windows.Input;
 using UI.Core;
 
 namespace UI.ViewModels;
 
 /// <summary>
-/// The Workspace's Panel Chrome surface: every Dockable Panel's pin and flyout state, the close /
-/// pin / flyout commands its Panel Headers and Auto-Hide Bars bind, and the Compact Layout
-/// recomputation that ties placements to the measured width (INV-062, INV-063, INV-059).
+/// The Workspace's Panel Chrome surface: what the View binds to for every Dockable Panel — its
+/// visibility, its open and pinned state, the Auto-Hide Bars' tabs, the open Panel Flyout — and the
+/// commands its Panel Headers, Auto-Hide Bars, and View Menu invoke (INV-062, INV-063). The
+/// placements those commands produce are resolved in <c>WorkspaceViewModel.PanelPlacement.cs</c>, and
+/// persisted in <c>WorkspaceViewModel.PanelLayout.cs</c>.
 /// </summary>
 public sealed partial class WorkspaceViewModel
 {
@@ -24,6 +25,8 @@ public sealed partial class WorkspaceViewModel
     private PanelVisibility _resolved;
     private PanelChromeState _lastChrome;
     private bool _isRecomputingPanels;
+    private bool _isPanelChromeReady;
+    private bool _isRestoringPanels;
 
     private RelayCommand _toggleSourcePanelCommand = null!;
     private RelayCommand _togglePreviewPanelCommand = null!;
@@ -232,190 +235,10 @@ public sealed partial class WorkspaceViewModel
         Folder.PropertyChanged += OnFolderPropertyChanged;
         _lastChrome = ChromeState;
         RecomputePanels();
-    }
 
-    /// <summary>Opens a Workspace-owned panel Docked, or closes it — the View Menu toggles' path (INV-062).</summary>
-    private void TogglePanel(DockablePanel panel)
-    {
-        if (ChromeState.Of(panel).IsOpen)
-        {
-            ClosePanel(panel);
-        }
-        else
-        {
-            SetOpen(panel, true);
-            SetPinned(panel, true);
-            RecomputePanels();
-        }
-    }
-
-    /// <summary>Closes a panel wherever it stands, resetting its pin so reopening docks it (INV-062, INV-063).</summary>
-    private void ClosePanel(DockablePanel panel)
-    {
-        if (!PanelChrome.CanClose(ChromeState, panel))
-        {
-            return;
-        }
-
-        SetOpen(panel, false);
-        SetPinned(panel, true);
-        RecomputePanels();
-    }
-
-    /// <summary>The Pin Toggle: Docked → Auto-Hidden, Auto-Hidden → Docked (INV-062, INV-063).</summary>
-    private void TogglePin(DockablePanel panel)
-    {
-        var chrome = ChromeState;
-        if (PanelChrome.CanUnpin(chrome, panel))
-        {
-            SetPinned(panel, false);
-        }
-        else if (PanelChrome.CanPin(chrome, panel))
-        {
-            SetPinned(panel, true);
-        }
-        else
-        {
-            return;
-        }
-
-        RecomputePanels();
-    }
-
-    /// <summary>Opens an Auto-Hidden panel's Panel Flyout, or dismisses the one already open (INV-062).</summary>
-    private void ToggleFlyout(DockablePanel panel)
-    {
-        if (_flyoutPanel == panel)
-        {
-            SetFlyout(null);
-        }
-        else if (PanelChrome.PlacementOf(ChromeState, panel) == PanelPlacement.AutoHidden)
-        {
-            SetFlyout(panel);
-        }
-    }
-
-    private void SetFlyout(DockablePanel? panel)
-    {
-        if (_flyoutPanel != panel)
-        {
-            _flyoutPanel = panel;
-            RaiseFlyoutProperties();
-        }
-    }
-
-    /// <summary>Writes a panel's open state back to its owner — the Workspace's own flags, the Folder shell, or the Side Dock.</summary>
-    private void SetOpen(DockablePanel panel, bool value)
-    {
-        switch (panel)
-        {
-            case DockablePanel.EditorPane:
-                _isEditorPaneOpen = value;
-                break;
-            case DockablePanel.SourcePanel:
-                _isSourcePanelRequested = value;
-                break;
-            case DockablePanel.PreviewPanel:
-                _isPreviewPanelRequested = value;
-                break;
-            case DockablePanel.FolderPanel when !value:
-                Folder.CloseFolderPanel();
-                break;
-            case DockablePanel.NavigationPanel when !value:
-                SideDock.CloseNavigationPanel();
-                break;
-            default:
-                // The Folder and Navigation panels are opened by their own toggles, never from here.
-                break;
-        }
-    }
-
-    private void SetPinned(DockablePanel panel, bool value)
-    {
-        switch (panel)
-        {
-            case DockablePanel.EditorPane:
-                _isEditorPanePinned = value;
-                break;
-            case DockablePanel.SourcePanel:
-                _isSourcePanelPinned = value;
-                break;
-            case DockablePanel.PreviewPanel:
-                _isPreviewPanelPinned = value;
-                break;
-            case DockablePanel.FolderPanel:
-                _isFolderPanelPinned = value;
-                break;
-            default:
-                _isNavigationPanelPinned = value;
-                break;
-        }
-    }
-
-    // Resolves the whole Panel Chrome: pins reset on reopen (INV-062), the Side Dock told which tabs
-    // are Auto-Hidden, Compact Layout re-resolved over the Docked panels (INV-059/063), and a flyout
-    // whose panel stopped being Auto-Hidden dismissed. Converges: nested notifications re-enter as
-    // no-ops through the guard.
-    private void RecomputePanels()
-    {
-        if (_isRecomputingPanels)
-        {
-            return;
-        }
-
-        _isRecomputingPanels = true;
-        try
-        {
-            ResetPinsOnReopen();
-            var chrome = ChromeState;
-            _lastChrome = chrome;
-
-            SideDock.SetAutoHidden(
-                SideDockTab.Folder,
-                PanelChrome.PlacementOf(chrome, DockablePanel.FolderPanel) == PanelPlacement.AutoHidden);
-            SideDock.SetAutoHidden(
-                SideDockTab.Navigation,
-                PanelChrome.PlacementOf(chrome, DockablePanel.NavigationPanel) == PanelPlacement.AutoHidden);
-
-            var intent = new PanelIntent(
-                SideDock.HasVisibleTab,
-                PanelChrome.IsDocked(chrome, DockablePanel.SourcePanel),
-                PanelChrome.IsDocked(chrome, DockablePanel.PreviewPanel));
-            _resolved = CompactLayout.Resolve(
-                _workspaceWidth, intent, PanelChrome.IsDocked(chrome, DockablePanel.EditorPane));
-            SideDock.SetWidthCollapsed(intent.Dock && !_resolved.Dock);
-
-            // A flyout only ever shows an Auto-Hidden panel; a placement change takes it with it.
-            if (_flyoutPanel is DockablePanel flyout &&
-                PanelChrome.PlacementOf(chrome, flyout) != PanelPlacement.AutoHidden)
-            {
-                _flyoutPanel = null;
-            }
-        }
-        finally
-        {
-            _isRecomputingPanels = false;
-        }
-
-        RaisePanelChrome();
-    }
-
-    // A panel reopened by any toggle comes back Docked, never straight to Auto-Hidden (INV-062): a
-    // closed-to-open transition clears a pin left over from before the panel was closed.
-    private void ResetPinsOnReopen()
-    {
-        foreach (var panel in new[]
-                 {
-                     DockablePanel.EditorPane, DockablePanel.SourcePanel, DockablePanel.PreviewPanel,
-                     DockablePanel.FolderPanel, DockablePanel.NavigationPanel,
-                 })
-        {
-            var now = ChromeState.Of(panel);
-            if (now.IsOpen && !now.IsPinned && !_lastChrome.Of(panel).IsOpen)
-            {
-                SetPinned(panel, true);
-            }
-        }
+        // Only from here on does a chrome change mean the *user* moved a panel. Persisting during
+        // construction would write the default layout over the very state Restore is about to read.
+        _isPanelChromeReady = true;
     }
 
     private void RaisePanelChrome()
@@ -455,23 +278,5 @@ public sealed partial class WorkspaceViewModel
         Raise(nameof(DisplayedSideDockPanel));
         Raise(nameof(IsSideDockPanelPinned));
         _dismissFlyoutCommand.RaiseCanExecuteChanged();
-    }
-
-    private void OnSideDockPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(SideDockViewModel.HasVisibleTab)
-            or nameof(SideDockViewModel.IsNavigationPanelOpen)
-            or nameof(SideDockViewModel.SelectedTab))
-        {
-            RecomputePanels();
-        }
-    }
-
-    private void OnFolderPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(FolderWorkspaceViewModel.IsFolderPanelVisible))
-        {
-            RecomputePanels();
-        }
     }
 }

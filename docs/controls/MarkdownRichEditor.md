@@ -133,6 +133,15 @@ Four behaviours are worth knowing, all pinned by `MarkdownRichEditorReplaceTests
 - **Formatting is inherited only when the Match has one.** Replacing a word inside bold text leaves
   it bold; a Match *spanning* a formatting boundary (`**bo**ld`) has no single formatting to inherit,
   so its Replacement is plain. This holds for bold, italic, code, and strikethrough alike.
+  `MatchReplacer` gets there by *keeping the Run*: a Match lying wholly inside one `Run` has the
+  Replacement inserted into that Run **before** the Match is deleted, so the Run is never empty and
+  the `Bold`/`Italic`/Code Span element above it survives untouched. Assigning `TextRange.Text` alone
+  would not do, because deleting first loses the formatting two ways — a Match that is the *whole*
+  Run (`plain **bolld** text`, a single bolded word) empties it, and WPF removes an emptied Run along
+  with the element above it; a Match merely *starting* the Run (`plain **bolld here**`) leaves the
+  insertion point on the Run's boundary, where WPF takes the formatting from the *preceding* content.
+  Either way the Replacement came out plain. A Match that straddles a boundary lies in no single Run,
+  falls through to `TextRange.Text`, and flattens — which is the rule above.
 - **Replace All Unfolds first.** Find searches only the *visible* document, so an occurrence inside a
   Folded Section Body is invisible to it while still being present in `Markdown`. Replace All calls
   `ExpandAllFolds()` and re-finds before replacing, so "All" means the whole Markdown Document.
