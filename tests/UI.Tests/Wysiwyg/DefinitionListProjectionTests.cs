@@ -94,12 +94,71 @@ public sealed class DefinitionListProjectionTests
     }
 
     [Fact]
-    public void Capture_EmitsAColonAndThreeSpaces_BecauseFewerIsNotADefinitionList_INV066()
+    public void Capture_EmitsAColonAndThreeSpaces_BecauseEveryOtherToolReadsThatForm_INV066()
     {
         StaThread.Run(() =>
         {
             Capturer.Capture(Projector.Project("Markdown\n:   A markup language."))
                 .ShouldBe("Markdown\n:   A markup language.");
+        });
+    }
+
+    [Theory]
+    [InlineData(":")]
+    [InlineData("~")]
+    public void Project_GivenAMarkerAndOneSpace_ShowsTheTermFlushAndTheDescriptionIndented_INV066(
+        string marker)
+    {
+        StaThread.Run(() =>
+        {
+            var document = Projector.Project($"Markdown\n{marker} A markup language.");
+
+            var list = DefinitionList(document);
+            var term = list.Blocks.OfType<Paragraph>().Single(block => block.Tag is BlockSemantic.DefinitionTerm);
+            var description = list.Blocks.OfType<Section>()
+                .Single(block => block.Tag is BlockSemantic.DefinitionDescription);
+
+            Text(term).ShouldBe("Markdown");
+            Text(description).ShouldContain("A markup language.");
+            description.Margin.Left.ShouldBeGreaterThan(term.Margin.Left);
+        });
+    }
+
+    [Fact]
+    public void Project_GivenAMarkerAndOneSpace_ShowsNoRawColonSyntax_INV066()
+    {
+        StaThread.Run(() =>
+        {
+            var document = Projector.Project("Markdown\n: A markup language.");
+
+            new TextRange(document.ContentStart, document.ContentEnd).Text.ShouldNotContain(":");
+        });
+    }
+
+    [Theory]
+    [InlineData(": one space")]
+    [InlineData(":  two spaces")]
+    public void Capture_NormalisesALenientDescriptionToTheCanonicalThreeSpaces_INV066(string authored)
+    {
+        StaThread.Run(() =>
+        {
+            // Reading is lenient, emission is canonical — normalising on the first Round-Trip is
+            // Capture converging (INV-005), not drift.
+            var expected = ":   " + authored[1..].TrimStart();
+
+            Capturer.Capture(Projector.Project($"Term\n{authored}"))
+                .ShouldBe($"Term\n{expected}");
+        });
+    }
+
+    [Fact]
+    public void Capture_GivenAMarkerWithNoSpace_LeavesItAsAParagraph_INV066()
+    {
+        StaThread.Run(() =>
+        {
+            // No space means no Definition — this is what keeps `:---:` and `:shortcode:` safe.
+            Capturer.Capture(Projector.Project("Term\n:no space"))
+                .ShouldBe("Term\n:no space");
         });
     }
 

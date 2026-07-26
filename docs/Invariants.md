@@ -1626,20 +1626,26 @@ and tested.
 - **Statement:** A Definition List projects into the Visual Document as each Definition Term flush
   against the margin with its Definition Descriptions indented beneath it, and Captures back to
   canonical Markdown definition-list syntax — so it Round-Trips, rendering to the same Rendered Output
-  (INV-004) and converging (INV-005). Four rules bound it:
+  (INV-004) and converging (INV-005). Five rules bound it:
   - **An Item is zero or more Terms and the Descriptions that define them.** More than one Term is how
     two words share one Description; **zero** Terms is the ordinary shape of a second Description for
     the Item above it. Both survive a Round-Trip.
   - **Terms and Descriptions are ordinary content.** A Term carries inline formatting; a Description
     may hold more than one block — a further paragraph, a List, a Code Block — and its continuation
     lines are Captured indented so they stay inside the Description.
-  - **Canonical emission is exact, because the syntax is unforgiving.** A Description is emitted as a
-    colon and **three** spaces (`:   text`), its continuation lines indented four; an Item that has a
-    Term is preceded by a blank line, and a term-less one is **not**. None of this is cosmetic:
-    a colon followed by fewer than three spaces is not a definition list at all — it is a paragraph
-    beginning with a colon — and a blank line before a term-less Description makes the Description
-    above it *loose*, which changes the Rendered Output. Emitting either wrongly would break INV-004
-    for every Definition List.
+  - **Reading is lenient, emission is canonical.** A Description is *read* from a colon or tilde
+    followed by **at least one** space — `: text`, `:  text`, and `:   text` all define — because that
+    is what authors write and what PHP Markdown Extra accepts. The marker must still be followed by a
+    space: `:text` with none is a paragraph, which is what keeps a table's `:---:` alignment row, a
+    `~~~` code fence, and a `:shortcode:` from ever being mistaken for a Definition.
+  - **Canonical emission is exact, because the wider ecosystem is unforgiving.** A Description is
+    always emitted as a colon and **three** spaces (`:   text`), its continuation lines indented four;
+    an Item that has a Term is preceded by a blank line, and a term-less one is **not**. None of this
+    is cosmetic: three spaces is the form every other Markdown tool reads, and a blank line before a
+    term-less Description makes the Description above it *loose*, which changes the Rendered Output.
+    Emitting either wrongly would break INV-004 for every Definition List. A Definition List authored
+    with one space is therefore normalised to the canonical three on its first Round-Trip — that is
+    Capture converging (INV-005), not drift.
   - **A Term is not stolen from the prose above it.** A paragraph immediately above a Term becomes
     another Term of that Item, so a Definition List is always Captured separated from the block before
     it by a blank line.
@@ -1649,14 +1655,18 @@ and tested.
   not expressible in Markdown (the whole-blocks rule Toggle Block Quote is bound by, INV-028). A lone
   selected paragraph becomes a Term with one empty Description, which is where the caret lands. Like
   any Formatting Action it Captures canonical Markdown (INV-018).
-- **Enforced by:** `GfmPipeline` enabling Markdig's definition-list extension; `DefinitionListFormatting`,
+- **Enforced by:** `GfmPipeline` enabling Markdig's definition-list extension and swapping in
+  `LenientDefinitionListParser`, which lowers Markdig's "marker plus three spaces" threshold to
+  "marker plus one space" while leaving every other parsing rule alone; `DefinitionListFormatting`,
   the one shared composition — a `DefinitionListRole`-tagged `Section` of `DefinitionTermRole` and
   `DefinitionDescriptionRole` paragraphs — used by both Project and Toggle Definition List, so a
   loaded Definition List and a user-made one are identical to Capture (INV-018); and
   `FlowDocumentToMarkdownCapturer`, which emits the canonical form the rules above fix.
 - **Tested by:** `MarkdigMarkdownRendererTests.*_INV066` (the Rendered Output carries a `<dl>`),
+  `LenientDefinitionListParserTests.*_INV066` (one and two spaces define, no space does not, and the
+  `:---:`/`~~~`/`:shortcode:` neighbours are unharmed),
   `DefinitionListProjectionTests.*_INV066` (Terms flush, Descriptions indented, multiple Terms, a
-  multi-block Description), `WysiwygRoundTripTests.*_INV066`/`_INV004`/`_INV005` (every shape
+  multi-block Description, and a one-space Description normalising to three), `WysiwygRoundTripTests.*_INV066`/`_INV004`/`_INV005` (every shape
   Round-Trips against the render oracle and converges — the exactness of the canonical form is what
   these catch), and `MarkdownRichEditorDefinitionListTests.*_INV066` (Toggle Definition List both ways,
   whole blocks, and the caret).

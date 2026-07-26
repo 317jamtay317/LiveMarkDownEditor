@@ -16,8 +16,9 @@ public static class GfmPipeline
 {
     /// <summary>Creates a fresh GFM-configured <see cref="MarkdownPipeline"/>.</summary>
     /// <returns>A pipeline enabling the GFM extension set on top of CommonMark.</returns>
-    public static MarkdownPipeline Create() =>
-        new MarkdownPipelineBuilder()
+    public static MarkdownPipeline Create()
+    {
+        var builder = new MarkdownPipelineBuilder()
             .UsePipeTables()
             .UseGridTables()
             .UseTaskLists()
@@ -26,6 +27,12 @@ public static class GfmPipeline
             // A Footnote (INV-065) and a Definition List (INV-066) are part of the supported set, so
             // the projection and the Rendered Output must both read them as the constructs they are.
             .UseFootnotes()
-            .UseDefinitionLists()
-            .Build();
+            .UseDefinitionLists();
+
+        // Registered last, and deliberately so: it replaces the parser the line above installs, which
+        // Markdig does not add to the builder until that extension's own setup has run (INV-066).
+        builder.Extensions.AddIfNotAlready(new LenientDefinitionListExtension());
+
+        return builder.Build();
+    }
 }
