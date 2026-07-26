@@ -13,10 +13,10 @@
     <ROW Property="ARPPRODUCTICON" Value="app.exe" Type="8"/>
     <ROW Property="CTRLS" Value="2"/>
     <ROW Property="Manufacturer" Value="James Tays"/>
-    <ROW Property="ProductCode" Value="1033:{043563D0-80EF-4169-96CB-0BCEA5EB5540} " Type="16"/>
+    <ROW Property="ProductCode" Value="1033:{373D33E0-0389-4201-B174-220011664D63} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Mark Down Editor"/>
-    <ROW Property="ProductVersion" Value="1.1.2" Options="32"/>
+    <ROW Property="ProductVersion" Value="1.1.5" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{2CABF2D6-A1F3-4328-83EB-5E055027B2B1}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -666,7 +666,7 @@
     <ROW Component="metadata" ComponentId="{9707218E-0C76-4898-ABE9-DF8E0868265C}" Directory_="Crashpad_Dir" Attributes="0" KeyPath="metadata" Type="0"/>
     <ROW Component="metadata.json" ComponentId="{CF1FF235-A903-4B1D-AB1E-D7C91BC15F87}" Directory_="extensions_crx_cache_Dir" Attributes="0" KeyPath="metadata.json_1" Type="0"/>
     <ROW Component="mscordaccore.dll" ComponentId="{603BE1F5-4406-4404-A660-55245EA9FFBD}" Directory_="APPDIR" Attributes="256" KeyPath="mscordaccore.dll"/>
-    <ROW Component="mscordaccore_amd64_amd64_10.0.626.17701.dll" ComponentId="{56D71A17-C813-416F-852F-8A2098B60578}" Directory_="APPDIR" Attributes="256" KeyPath="mscordaccore_amd64_amd64_10.0.626.17701.dll"/>
+    <ROW Component="mscordaccore_amd64_amd64_10.0.1026.32716.dll" ComponentId="{E80F97EF-34BD-46A3-B331-8EC9884100A7}" Directory_="APPDIR" Attributes="256" KeyPath="mscordaccore_amd64_amd64_10.0.1026.32716.dll"/>
     <ROW Component="mscordbi.dll" ComponentId="{AFAA1B71-0A71-4E07-B0A9-2C66AAE8B144}" Directory_="APPDIR" Attributes="256" KeyPath="mscordbi.dll"/>
     <ROW Component="mscorlib.dll" ComponentId="{52BDD82B-F387-41E5-9C65-D70F752C5F15}" Directory_="APPDIR" Attributes="0" KeyPath="mscorlib.dll"/>
     <ROW Component="mscorrc.dll" ComponentId="{D0E3A63F-A967-4EFF-AB20-19A06956A389}" Directory_="APPDIR" Attributes="256" KeyPath="mscorrc.dll"/>
@@ -841,7 +841,6 @@
     <ROW File="Microsoft.Win32.Registry.dll" Component_="Microsoft.Win32.Registry.dll" FileName="MICRO~35.DLL|Microsoft.Win32.Registry.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Win32.Registry.dll" SelfReg="false"/>
     <ROW File="Microsoft.Win32.SystemEvents.dll" Component_="Microsoft.Win32.SystemEvents.dll" FileName="MICRO~36.DLL|Microsoft.Win32.SystemEvents.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\Microsoft.Win32.SystemEvents.dll" SelfReg="false"/>
     <ROW File="mscordaccore.dll" Component_="mscordaccore.dll" FileName="MSCORD~1.DLL|mscordaccore.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscordaccore.dll" SelfReg="false"/>
-    <ROW File="mscordaccore_amd64_amd64_10.0.626.17701.dll" Component_="mscordaccore_amd64_amd64_10.0.626.17701.dll" FileName="MSCORD~2.DLL|mscordaccore_amd64_amd64_10.0.626.17701.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscordaccore_amd64_amd64_10.0.626.17701.dll" SelfReg="false"/>
     <ROW File="mscordbi.dll" Component_="mscordbi.dll" FileName="mscordbi.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscordbi.dll" SelfReg="false"/>
     <ROW File="mscorlib.dll" Component_="mscorlib.dll" FileName="mscorlib.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscorlib.dll" SelfReg="false"/>
     <ROW File="mscorrc.dll" Component_="mscorrc.dll" FileName="mscorrc.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscorrc.dll" SelfReg="false"/>
@@ -1420,6 +1419,7 @@
     <ROW File="manifest.json_6" Component_="keys.json" FileName="MANIFE~1.JSO|manifest.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\manifest.json" SelfReg="false"/>
     <ROW File="verified_contents.json_1" Component_="verified_contents.json_1" FileName="VERIFI~1.JSO|verified_contents.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\_metadata\verified_contents.json" SelfReg="false"/>
     <ROW File="Variations" Component_="BrowserMetricsspare.pma" FileName="VARIAT~1|Variations" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Variations" SelfReg="false"/>
+    <ROW File="mscordaccore_amd64_amd64_10.0.1026.32716.dll" Component_="mscordaccore_amd64_amd64_10.0.1026.32716.dll" FileName="MSCORD~3.DLL|mscordaccore_amd64_amd64_10.0.1026.32716.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscordaccore_amd64_amd64_10.0.1026.32716.dll" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
     <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
@@ -1736,7 +1736,6 @@
     <ROW Feature_="MainFeature" Component_="Microsoft.Win32.Registry.dll"/>
     <ROW Feature_="MainFeature" Component_="Microsoft.Win32.SystemEvents.dll"/>
     <ROW Feature_="MainFeature" Component_="mscordaccore.dll"/>
-    <ROW Feature_="MainFeature" Component_="mscordaccore_amd64_amd64_10.0.626.17701.dll"/>
     <ROW Feature_="MainFeature" Component_="mscordbi.dll"/>
     <ROW Feature_="MainFeature" Component_="mscorlib.dll"/>
     <ROW Feature_="MainFeature" Component_="mscorrc.dll"/>
@@ -2123,6 +2122,7 @@
     <ROW Feature_="MainFeature" Component_="keys.json"/>
     <ROW Feature_="MainFeature" Component_="verified_contents.json_1"/>
     <ROW Feature_="MainFeature" Component_="WidevineCdm"/>
+    <ROW Feature_="MainFeature" Component_="mscordaccore_amd64_amd64_10.0.1026.32716.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
     <ROW Name="app.exe" SourcePath="..\src\UI\Assets\app.ico" Index="0"/>
