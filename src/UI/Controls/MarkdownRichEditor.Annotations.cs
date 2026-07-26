@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using UI.Find;
 using UI.Spelling;
 
 namespace UI.Controls;
@@ -43,8 +44,38 @@ public sealed partial class MarkdownRichEditor
             misspelling?.Text,
             SharedDictionary.Value,
             commandTarget: this,
-            onCorrect: replacement => ReplaceMisspelling(misspelling, replacement),
+            onCorrect: replacement => CorrectMisspelling(misspelling, replacement),
             onAddToDictionary: AddToDictionary);
+    }
+
+    /// <summary>
+    /// Swaps a Misspelling's span for the chosen Spelling Suggestion. The Suggestion inherits the
+    /// Misspelling's formatting — correcting a word inside bold text leaves it bold — through the same
+    /// <see cref="MatchReplacer"/> a Replace runs through, and the edit Captures back into the Markdown
+    /// source like any other (INV-022).
+    /// </summary>
+    /// <param name="misspelling">
+    /// The Misspelling's span. A <see langword="null"/> range, or one left over from a document that
+    /// has since been replaced, corrects nothing rather than editing the wrong document.
+    /// </param>
+    /// <param name="suggestion">The chosen Spelling Suggestion, inserted verbatim.</param>
+    internal void CorrectMisspelling(TextRange? misspelling, string suggestion)
+    {
+        if (misspelling is null || !misspelling.Start.IsInSameDocument(Document.ContentStart))
+        {
+            return;
+        }
+
+        // Replacing is a delete and an insert; group them so one Ctrl+Z undoes the whole correction.
+        BeginChange();
+        try
+        {
+            MatchReplacer.Replace(misspelling, suggestion);
+        }
+        finally
+        {
+            EndChange();
+        }
     }
 
     // Accepts a Misspelling into the User Dictionary and re-checks, so it stops being marked (INV-040).
@@ -52,16 +83,6 @@ public sealed partial class MarkdownRichEditor
     {
         SharedUserDictionary.Value.Add(word);
         _spellCheckAdorner?.Refresh();
-    }
-
-    // Swaps a Misspelling's span for the chosen Spelling Suggestion. Editing the Visual Document
-    // Captures back into the Markdown source, so the correction flows through like any other edit.
-    private void ReplaceMisspelling(TextRange? misspelling, string replacement)
-    {
-        if (misspelling is { Start.HasValidLayout: true, End.HasValidLayout: true })
-        {
-            misspelling.Text = replacement;
-        }
     }
 
     // Attaches the Code Shading adorner once, when the editor first has an AdornerLayer. The adorner

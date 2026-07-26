@@ -39,9 +39,14 @@ the authoritative list of Misspelling ranges, so it answers one query for the ed
 `MisspellingAt(TextPointer)` returns the Misspelling under a point, or `null`. On a right-click the
 [MarkdownRichEditor](MarkdownRichEditor.md) uses it to decide whether to head the Editor Context Menu
 with Spelling Suggestions — `SpellingSuggestions.For(word, dictionary)` over the same
-`ISpellDictionary`, gathered into the menu by `EditorContextMenu.Fill`. Choosing a suggestion replaces
-the Misspelling's span, which Captures back into the Markdown source like any other edit. Painting
-itself never changes the source.
+`ISpellDictionary`, gathered into the menu by `EditorContextMenu.Fill`. Choosing a suggestion calls
+`MarkdownRichEditor.CorrectMisspelling`, which swaps the Misspelling's span through the same
+`MatchReplacer` a Replace runs through — so a correction inherits the Misspelling's formatting exactly
+as a Replacement does (correcting a word inside bold text leaves it bold, INV-022) — and Captures back
+into the Markdown source like any other edit. The correction is wrapped in `BeginChange()`/`EndChange()`
+so one Ctrl+Z undoes it whole; a range left over from a document that has since been replaced
+(`IsInSameDocument` says no) corrects nothing rather than editing the wrong document. Painting itself
+never changes the source.
 
 The editor must own a `ContextMenu` object from construction for any of this to be reachable: WPF's
 built-in text-editor context menu is a **class handler** on `ContextMenuOpening`, so it runs before the

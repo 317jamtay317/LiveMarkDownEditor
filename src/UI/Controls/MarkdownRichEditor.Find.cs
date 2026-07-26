@@ -130,7 +130,16 @@ public sealed partial class MarkdownRichEditor
             return;
         }
 
-        MatchReplacer.Replace(_matchRanges[_currentMatch], Replacement);
+        // Replacing is a delete and an insert; group them so one Ctrl+Z undoes the whole Replace.
+        BeginChange();
+        try
+        {
+            MatchReplacer.Replace(_matchRanges[_currentMatch], Replacement);
+        }
+        finally
+        {
+            EndChange();
+        }
 
         // The edit already drove a Recompute through OnTextChanged, which clamped the Current Match:
         // the replaced Match is gone from the list, so the same index now names the following Match.
