@@ -13,10 +13,10 @@
     <ROW Property="ARPPRODUCTICON" Value="app.exe" Type="8"/>
     <ROW Property="CTRLS" Value="2"/>
     <ROW Property="Manufacturer" Value="James Tays"/>
-    <ROW Property="ProductCode" Value="1033:{373D33E0-0389-4201-B174-220011664D63} " Type="16"/>
+    <ROW Property="ProductCode" Value="1033:{F91142FF-0A1E-4720-93E0-02C1548130B8} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Mark Down Editor"/>
-    <ROW Property="ProductVersion" Value="1.1.5" Options="32"/>
+    <ROW Property="ProductVersion" Value="1.1.6" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{2CABF2D6-A1F3-4328-83EB-5E055027B2B1}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -161,6 +161,7 @@
     <ROW Component="BookmarkMergedSurfaceOrdering" ComponentId="{28826D5F-7A79-4358-8A66-0C2BED5BE0E0}" Directory_="Default_Dir" Attributes="0" KeyPath="BookmarkMergedSurfaceOrdering" Type="0"/>
     <ROW Component="BrowserMetricsspare.pma" ComponentId="{EDD30279-C85B-4CB2-9075-0A857067642F}" Directory_="EBWebView_Dir" Attributes="0" KeyPath="BrowserMetricsspare.pma" Type="0"/>
     <ROW Component="Cache_Data" ComponentId="{89C5E9E7-D6F1-4D15-A8B2-66217AA051BA}" Directory_="Cache_Data_Dir" Attributes="0"/>
+    <ROW Component="ColorCode.Core.dll" ComponentId="{B0A7E243-7970-436C-A636-E8271A1D6B6A}" Directory_="APPDIR" Attributes="0" KeyPath="ColorCode.Core.dll"/>
     <ROW Component="Cookies" ComponentId="{79A94559-3389-40C7-BCC4-9E3AFADAF573}" Directory_="Network_Dir" Attributes="0" KeyPath="Cookies" Type="0"/>
     <ROW Component="D3DCompiler_47_cor3.dll" ComponentId="{754AD22B-7E42-43B1-9F7E-7673C9A1F3E1}" Directory_="APPDIR" Attributes="256" KeyPath="D3DCompiler_47_cor3.dll"/>
     <ROW Component="DirectWriteForwarder.dll" ComponentId="{5E96B836-961E-4511-A139-65D1768D1FE9}" Directory_="APPDIR" Attributes="256" KeyPath="DirectWriteForwarder.dll"/>
@@ -1420,6 +1421,7 @@
     <ROW File="verified_contents.json_1" Component_="verified_contents.json_1" FileName="VERIFI~1.JSO|verified_contents.json" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\TrustTokenKeyCommitments\2026.3.23.1\_metadata\verified_contents.json" SelfReg="false"/>
     <ROW File="Variations" Component_="BrowserMetricsspare.pma" FileName="VARIAT~1|Variations" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\UI.exe.WebView2\EBWebView\Variations" SelfReg="false"/>
     <ROW File="mscordaccore_amd64_amd64_10.0.1026.32716.dll" Component_="mscordaccore_amd64_amd64_10.0.1026.32716.dll" FileName="MSCORD~3.DLL|mscordaccore_amd64_amd64_10.0.1026.32716.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\mscordaccore_amd64_amd64_10.0.1026.32716.dll" SelfReg="false"/>
+    <ROW File="ColorCode.Core.dll" Component_="ColorCode.Core.dll" FileName="COLORC~1.DLL|ColorCode.Core.dll" Version="65535.65535.65535.65535" Attributes="0" SourcePath="..\src\UI\bin\Release\net10.0-windows\win-x64\publish\ColorCode.Core.dll" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
     <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
@@ -2123,6 +2125,7 @@
     <ROW Feature_="MainFeature" Component_="verified_contents.json_1"/>
     <ROW Feature_="MainFeature" Component_="WidevineCdm"/>
     <ROW Feature_="MainFeature" Component_="mscordaccore_amd64_amd64_10.0.1026.32716.dll"/>
+    <ROW Feature_="MainFeature" Component_="ColorCode.Core.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
     <ROW Name="app.exe" SourcePath="..\src\UI\Assets\app.ico" Index="0"/>

@@ -1,9 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:UI.Controls">
+                    xmlns:controls="clr-namespace:UI.Controls"
+                    xmlns:domain="clr-namespace:Domain;assembly=Domain">
 
-    <!-- Default look for the Flowchart Builder's canvas. Authored as the control's ResourceDictionary
-         alongside the FlowchartCanvas class, per the project's Control conventions. Colors are
+    <!-- Default look for the Diagram Builder's canvas. Authored as the control's ResourceDictionary
+         alongside the DiagramCanvas class, per the project's Control conventions. Colors are
          DynamicResource lookups so the canvas follows the light/dark theme. -->
 
     <controls:NodeShapeGeometryConverter x:Key="NodeShapeGeometry" />
@@ -12,9 +13,10 @@
     <controls:EdgeDashConverter x:Key="EdgeDash" />
     <controls:MidpointConverter x:Key="Midpoint" />
 
-    <!-- One Diagram Edge: a wide transparent hit-line for easy selection, the drawn line (shaft plus
-         arrowhead), and the optional Edge Label at the midpoint. -->
-    <DataTemplate x:Key="FlowchartEdgeTemplate">
+    <!-- One Diagram Edge: a wide transparent hit-line for easy selection, the drawn line (its shaft
+         and the markers filled in the edge's own brush), the hollow markers over it, and the optional
+         Edge Label at the midpoint. -->
+    <DataTemplate x:Key="DiagramEdgeTemplate">
         <Canvas>
             <Path Stroke="Transparent" StrokeThickness="12" Fill="Transparent">
                 <Path.Data>
@@ -24,6 +26,8 @@
                         <Binding Path="X2" />
                         <Binding Path="Y2" />
                         <Binding Path="Kind" />
+                        <Binding Path="From.Shape" />
+                        <Binding Path="To.Shape" />
                     </MultiBinding>
                 </Path.Data>
             </Path>
@@ -38,6 +42,24 @@
                         <Binding Path="X2" />
                         <Binding Path="Y2" />
                         <Binding Path="Kind" />
+                        <Binding Path="From.Shape" />
+                        <Binding Path="To.Shape" />
+                    </MultiBinding>
+                </Path.Data>
+            </Path>
+            <!-- The hollow markers — an Inheritance triangle, an Aggregation diamond — drawn over the
+                 line and filled with the canvas background, so the shaft does not show through. -->
+            <Path x:Name="EdgeHollow" Stroke="{DynamicResource MutedTextBrush}"
+                  Fill="{DynamicResource EditorBackgroundBrush}" StrokeThickness="1.6" StrokeLineJoin="Round">
+                <Path.Data>
+                    <MultiBinding Converter="{StaticResource EdgeGeometry}" ConverterParameter="Hollow">
+                        <Binding Path="X1" />
+                        <Binding Path="Y1" />
+                        <Binding Path="X2" />
+                        <Binding Path="Y2" />
+                        <Binding Path="Kind" />
+                        <Binding Path="From.Shape" />
+                        <Binding Path="To.Shape" />
                     </MultiBinding>
                 </Path.Data>
             </Path>
@@ -65,13 +87,16 @@
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter TargetName="EdgeLine" Property="Stroke" Value="{DynamicResource AccentBrush}" />
                 <Setter TargetName="EdgeLine" Property="Fill" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="EdgeHollow" Property="Stroke" Value="{DynamicResource AccentBrush}" />
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- One Diagram Node: its shape (a Path whose geometry comes from the Node Shape), the Node Label
-         or an inline rename box, and a connector handle to drag out a new edge. -->
-    <DataTemplate x:Key="FlowchartNodeTemplate">
+         or an inline rename box, and a connector handle to drag out a new edge. A State Diagram's
+         Terminal is a marker rather than a box: it is drawn filled, carries no label, and its
+         connector sits at the edge of the drawn circle rather than of the node box. -->
+    <DataTemplate x:Key="DiagramNodeTemplate">
         <Grid Width="132" Height="56" Background="Transparent" Cursor="SizeAll">
             <Path x:Name="Shape" Data="{Binding Shape, Converter={StaticResource NodeShapeGeometry}}"
                   Fill="{DynamicResource SurfaceBrush}" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1.5" />
@@ -90,6 +115,11 @@
                      Margin="0,0,-9,0" ToolTip="Drag from here onto another node to connect them" />
         </Grid>
         <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Shape}" Value="{x:Static domain:NodeShape.Terminal}">
+                <Setter TargetName="Shape" Property="Fill" Value="{DynamicResource TextBrush}" />
+                <Setter TargetName="LabelText" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="Connector" Property="Margin" Value="0,0,35,0" />
+            </DataTrigger>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter TargetName="Shape" Property="Stroke" Value="{DynamicResource AccentBrush}" />
                 <Setter TargetName="Shape" Property="StrokeThickness" Value="2.5" />
@@ -102,17 +132,17 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <Style TargetType="{x:Type controls:FlowchartCanvas}">
+    <Style TargetType="{x:Type controls:DiagramCanvas}">
         <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
         <Setter Property="Focusable" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="{x:Type controls:FlowchartCanvas}">
+                <ControlTemplate TargetType="{x:Type controls:DiagramCanvas}">
                     <Border Background="{TemplateBinding Background}" ClipToBounds="True">
                         <Grid>
                             <!-- Edges beneath the nodes. -->
                             <ItemsControl ItemsSource="{Binding Builder.Edges, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ItemTemplate="{StaticResource FlowchartEdgeTemplate}">
+                                          ItemTemplate="{StaticResource DiagramEdgeTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <Canvas />
@@ -122,7 +152,7 @@
 
                             <!-- Nodes on top, each positioned by its X/Y. -->
                             <ItemsControl ItemsSource="{Binding Builder.Nodes, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ItemTemplate="{StaticResource FlowchartNodeTemplate}">
+                                          ItemTemplate="{StaticResource DiagramNodeTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <Canvas />

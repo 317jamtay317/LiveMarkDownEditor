@@ -500,14 +500,14 @@
                 </Menu>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
-                        AutomationProperties.Name="Flowchart builder"
-                        Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
+                        AutomationProperties.Name="Diagram builder"
+                        Command="controls:MarkdownEditingCommands.OpenDiagramBuilder"
                         CommandTarget="{Binding ElementName=Editor}">
                     <Button.ToolTip>
-                        <controls:CommandTip Heading="Flowchart builder"
-                                             Detail="Build a Mermaid flowchart on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
+                        <controls:CommandTip Heading="Diagram builder"
+                                             Detail="Build a Mermaid flowchart, state, class or ER diagram on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
                     </Button.ToolTip>
-                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
+                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.DiagramBuilder}" />
                 </Button>
                 <Button Style="{StaticResource IconFormatButton}"
                         controls:CommandBarPanel.OverflowGroup="Insert" controls:CommandBarPanel.CollapseOrder="1"
@@ -541,7 +541,7 @@
                               AutomationProperties.Name="Insert">
                         <MenuItem.ToolTip>
                             <controls:CommandTip Heading="Insert"
-                                                 Detail="Insert a link, image, video, table, flowchart, footnote, definition list, or block quote." />
+                                                 Detail="Insert a link, image, video, table, diagram, footnote, definition list, or block quote." />
                         </MenuItem.ToolTip>
                         <MenuItem.Header>
                             <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Insert}" />
@@ -662,17 +662,17 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Flowchart builder"
-                                  Command="controls:MarkdownEditingCommands.OpenFlowchartBuilder"
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" AutomationProperties.Name="Diagram builder"
+                                  Command="controls:MarkdownEditingCommands.OpenDiagramBuilder"
                                   CommandTarget="{Binding ElementName=Editor}">
                             <MenuItem.ToolTip>
-                                <controls:CommandTip Heading="Flowchart builder"
-                                                     Detail="Build a Mermaid flowchart on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
+                                <controls:CommandTip Heading="Diagram builder"
+                                                     Detail="Build a Mermaid flowchart, state, class or ER diagram on a drag-and-drop canvas." Gesture="Ctrl+Shift+D" />
                             </MenuItem.ToolTip>
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Flowchart}" />
-                                    <TextBlock Text="Flowchart…  (Ctrl+Shift+D)" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.DiagramBuilder}" />
+                                    <TextBlock Text="Diagram…  (Ctrl+Shift+D)" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>
@@ -1501,7 +1501,7 @@
                                                      ChangedRegions="{Binding ActiveSession.ChangeHighlight}"
                                                      BaseDirectory="{Binding ActiveSession.BaseDirectory}"
                                                      LinkPrompt="{Binding LinkPrompt}"
-                                                     FlowchartBuilder="{Binding FlowchartBuilder}"
+                                                     DiagramBuilder="{Binding DiagramBuilder}"
                                                      DiagramImageRenderer="{Binding DiagramImageRenderer}"
                                                      SyntaxHighlighter="{Binding SyntaxHighlighter}"
                                                      IsDarkTheme="{Binding Appearance.IsDarkTheme}"

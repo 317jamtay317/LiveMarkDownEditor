@@ -9,11 +9,11 @@ using Xunit;
 namespace UI.Tests.Controls;
 
 /// <summary>
-/// Tests for the Flowchart Builder write-back seam on the <see cref="MarkdownRichEditor"/> (INV-053):
+/// Tests for the Diagram Builder write-back seam on the <see cref="MarkdownRichEditor"/> (INV-053):
 /// Insert replaces the Mermaid Diagram at the caret or inserts a new Code Block, Capturing canonical
 /// Markdown; opening the builder asks it with the diagram at the caret; and Cancel makes no edit.
 /// </summary>
-public sealed class MarkdownRichEditorFlowchartTests
+public sealed class MarkdownRichEditorDiagramBuilderTests
 {
     private const string NewDiagram = "flowchart LR\n    n1[\"New\"]";
 
@@ -71,20 +71,20 @@ public sealed class MarkdownRichEditorFlowchartTests
     }
 
     [Fact]
-    public void OpenFlowchartBuilder_AsksTheBuilderWithTheDiagramAtCaret_AndInsertsItsResult_INV053()
+    public void OpenDiagramBuilder_AsksTheBuilderWithTheDiagramAtCaret_AndInsertsItsResult_INV053()
     {
         StaThread.Run(() =>
         {
-            var builder = new StubFlowchartBuilder(NewDiagram);
+            var builder = new StubDiagramBuilder(NewDiagram);
             var editor = new MarkdownRichEditor
             {
                 Markdown = "```mermaid\nflowchart TD\n    oldNode\n```",
-                FlowchartBuilder = builder,
+                DiagramBuilder = builder,
             };
             var block = editor.Document.Blocks.FirstBlock!;
             editor.Selection.Select(block.ContentStart, block.ContentStart);
 
-            editor.OpenFlowchartBuilderAtCaret();
+            editor.OpenDiagramBuilderAtCaret();
 
             builder.ReceivedExistingSource.ShouldBe("flowchart TD\n    oldNode");
             editor.Markdown.ShouldContain("n1[\"New\"]");
@@ -93,17 +93,17 @@ public sealed class MarkdownRichEditorFlowchartTests
     }
 
     [Fact]
-    public void OpenFlowchartBuilder_WhenCancelled_MakesNoEdit_INV053()
+    public void OpenDiagramBuilder_WhenCancelled_MakesNoEdit_INV053()
     {
         StaThread.Run(() =>
         {
-            var builder = new StubFlowchartBuilder(result: null);
-            var editor = new MarkdownRichEditor { Markdown = "Just prose.", FlowchartBuilder = builder };
+            var builder = new StubDiagramBuilder(result: null);
+            var editor = new MarkdownRichEditor { Markdown = "Just prose.", DiagramBuilder = builder };
             var block = editor.Document.Blocks.FirstBlock!;
             editor.Selection.Select(block.ContentStart, block.ContentStart);
             var before = editor.Markdown;
 
-            editor.OpenFlowchartBuilderAtCaret();
+            editor.OpenDiagramBuilderAtCaret();
 
             builder.TimesAsked.ShouldBe(1);
             editor.Markdown.ShouldBe(before);
@@ -111,14 +111,14 @@ public sealed class MarkdownRichEditorFlowchartTests
     }
 
     [Fact]
-    public void OpenFlowchartBuilder_WithNoBuilderSet_MakesNoEdit_INV053()
+    public void OpenDiagramBuilder_WithNoBuilderSet_MakesNoEdit_INV053()
     {
         StaThread.Run(() =>
         {
             var editor = new MarkdownRichEditor { Markdown = "Just prose." };
             var before = editor.Markdown;
 
-            editor.OpenFlowchartBuilderAtCaret();
+            editor.OpenDiagramBuilderAtCaret();
 
             editor.Markdown.ShouldBe(before);
         });

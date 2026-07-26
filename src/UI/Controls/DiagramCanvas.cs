@@ -8,40 +8,40 @@ using UI.ViewModels;
 namespace UI.Controls;
 
 /// <summary>
-/// The Flowchart Builder's drag-and-drop surface: Diagram Nodes as draggable boxes joined by drawn
+/// The Diagram Builder's drag-and-drop surface: Diagram Nodes as draggable boxes joined by drawn
 /// Diagram Edges. Left-drag a node to move it, drag from a node's connector handle to another node to
 /// connect them, click to select, and double-click to rename. It drives a
-/// <see cref="FlowchartBuilderViewModel"/> — every gesture becomes a call on the builder — and holds no
+/// <see cref="DiagramBuilderViewModel"/> — every gesture becomes a call on the builder — and holds no
 /// diagram state of its own; node positions it sets are builder view state, never emitted to Mermaid
 /// (INV-051).
 /// </summary>
 /// <remarks>
 /// Authored as a custom Control (interaction logic in the class, look in
-/// <c>Controls/FlowchartCanvas.xaml</c>), per the project's Control exception to the zero-code-behind
+/// <c>Controls/DiagramCanvas.xaml</c>), per the project's Control exception to the zero-code-behind
 /// rule — the same pattern as <see cref="MermaidPreview"/>. Its look is an implicit style merged from
-/// the app resources; the class translates mouse gestures into <see cref="FlowchartBuilderViewModel"/>
+/// the app resources; the class translates mouse gestures into <see cref="DiagramBuilderViewModel"/>
 /// calls.
 /// </remarks>
-public sealed class FlowchartCanvas : Control
+public sealed class DiagramCanvas : Control
 {
     /// <summary>Identifies the <see cref="Builder"/> dependency property — the builder this canvas edits.</summary>
     public static readonly DependencyProperty BuilderProperty = DependencyProperty.Register(
         nameof(Builder),
-        typeof(FlowchartBuilderViewModel),
-        typeof(FlowchartCanvas),
+        typeof(DiagramBuilderViewModel),
+        typeof(DiagramCanvas),
         new PropertyMetadata(defaultValue: null));
 
     private Line? _rubberBand;
-    private FlowchartNodeViewModel? _dragNode;
-    private FlowchartNodeViewModel? _connectFrom;
+    private DiagramNodeViewModel? _dragNode;
+    private DiagramNodeViewModel? _connectFrom;
     private Point _dragMouseStart;
     private double _dragNodeStartX;
     private double _dragNodeStartY;
 
-    /// <summary>The <see cref="FlowchartBuilderViewModel"/> whose Diagram Nodes and Edges this canvas presents and edits.</summary>
-    public FlowchartBuilderViewModel? Builder
+    /// <summary>The <see cref="DiagramBuilderViewModel"/> whose Diagram Nodes and Edges this canvas presents and edits.</summary>
+    public DiagramBuilderViewModel? Builder
     {
-        get => (FlowchartBuilderViewModel?)GetValue(BuilderProperty);
+        get => (DiagramBuilderViewModel?)GetValue(BuilderProperty);
         set => SetValue(BuilderProperty, value);
     }
 
@@ -63,8 +63,8 @@ public sealed class FlowchartCanvas : Control
 
         EndEditing();
         var origin = e.OriginalSource as DependencyObject;
-        var node = FindDataContext<FlowchartNodeViewModel>(origin);
-        var edge = FindDataContext<FlowchartEdgeViewModel>(origin);
+        var node = FindDataContext<DiagramNodeViewModel>(origin);
+        var edge = FindDataContext<DiagramEdgeViewModel>(origin);
 
         if (node is not null && e.ClickCount == 2)
         {
@@ -143,7 +143,7 @@ public sealed class FlowchartCanvas : Control
             // The mouse is captured to this canvas, so e.OriginalSource is the canvas, not the node
             // under the cursor — hit-test at the drop point to find the target node instead.
             var dropped = InputHitTest(e.GetPosition(this)) as DependencyObject;
-            var target = FindDataContext<FlowchartNodeViewModel>(dropped);
+            var target = FindDataContext<DiagramNodeViewModel>(dropped);
             if (target is not null && !ReferenceEquals(target, _connectFrom))
             {
                 Builder.Connect(_connectFrom, target);
@@ -163,7 +163,7 @@ public sealed class FlowchartCanvas : Control
         }
     }
 
-    private void BeginMove(FlowchartNodeViewModel node, Point mouse)
+    private void BeginMove(DiagramNodeViewModel node, Point mouse)
     {
         _dragNode = node;
         _dragMouseStart = mouse;
@@ -172,7 +172,7 @@ public sealed class FlowchartCanvas : Control
         CaptureMouse();
     }
 
-    private void BeginConnect(FlowchartNodeViewModel from)
+    private void BeginConnect(DiagramNodeViewModel from)
     {
         _connectFrom = from;
         if (_rubberBand is not null)

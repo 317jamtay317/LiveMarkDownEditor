@@ -179,7 +179,7 @@ public sealed partial class MarkdownRichEditor : RichTextBox
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.ReplaceAll, (_, _) => ReplaceAllMatches(), CanReplaceAll));
         CommandBindings.Add(new CommandBinding(
-            MarkdownEditingCommands.OpenFlowchartBuilder, (_, _) => OpenFlowchartBuilderAtCaret()));
+            MarkdownEditingCommands.OpenDiagramBuilder, (_, _) => OpenDiagramBuilderAtCaret()));
 
         RegisterHeadingLevelGestures();
 

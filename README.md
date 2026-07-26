@@ -28,9 +28,12 @@ person or tool.
   disk stays plain Markdown.
 - The picture **follows your theme**, light or dark, and re-renders as you edit the source. A diagram
   Mermaid can't draw falls back to showing its source, never a blank hole.
-- **Double-click a flowchart** to open the **Flowchart Builder**: a drag-and-drop canvas of nodes and
-  arrows with a live preview. Whatever you build is written straight back as canonical Mermaid source,
-  so the text stays the single source of truth.
+- **Double-click a diagram** to open the **Diagram Builder**: a drag-and-drop canvas of nodes and
+  arrows with a live preview. It builds **flowcharts, state diagrams, class diagrams and ER diagrams** —
+  pick the kind and the shape and edge pickers follow, with `[*]` start/end markers for states,
+  inheritance and composition markers for classes, and crow's-foot cardinalities for entities. Change
+  your mind about the kind and the diagram comes with you. Whatever you build is written straight back
+  as canonical Mermaid source, so the text stays the single source of truth.
 - Diagrams render in **exported HTML and PDF** too, and a toggleable preview pane shows the selected
   diagram larger.
 
@@ -38,7 +41,7 @@ person or tool.
 
 ![The same diagram in dark theme](docs/images/mermaid-diagram-dark.png)
 
-![The Flowchart Builder — a drag-and-drop canvas of nodes and arrows with a live preview](docs/images/flowchart-builder.png)
+![The Diagram Builder — a drag-and-drop canvas of nodes and arrows with a live preview](docs/images/diagram-builder.png)
 
 ### Write
 

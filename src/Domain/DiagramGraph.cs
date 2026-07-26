@@ -1,7 +1,7 @@
 namespace Domain;
 
 /// <summary>
-/// The structured node/arrow model of a Mermaid Diagram that the Flowchart Builder edits: a
+/// The structured node/arrow model of a Mermaid Diagram that the Diagram Builder edits: a
 /// <see cref="DiagramKind"/>, a <see cref="FlowDirection"/>, an ordered list of Diagram Nodes, and an
 /// ordered list of Diagram Edges. It is the graphical counterpart of the diagram's Mermaid source —
 /// <see cref="Parse"/>d from that source and emitted back with <see cref="ToMermaidSource"/> as
@@ -10,9 +10,10 @@ namespace Domain;
 /// <remarks>
 /// An immutable value object (the <see cref="RecentFiles"/> pattern): it is constructed valid and its
 /// operations return new graphs rather than mutating. It cannot be built in an invalid state — Node
-/// Ids are unique and non-blank, and every Diagram Edge references declared Diagram Nodes (INV-052). A
-/// Diagram Graph models only structure; node layout is Mermaid's to compute and is not part of it, so
-/// the builder's on-canvas positions live outside the graph.
+/// Ids are unique and non-blank, every Diagram Edge references declared Diagram Nodes, and every Node
+/// Shape and Edge Kind is one the Diagram Kind allows (INV-052). A Diagram Graph models only structure;
+/// node layout is Mermaid's to compute and is not part of it, so the builder's on-canvas positions live
+/// outside the graph.
 /// </remarks>
 public sealed class DiagramGraph
 {
@@ -28,6 +29,11 @@ public sealed class DiagramGraph
             {
                 throw new ArgumentException($"Duplicate Node Id '{node.Id.Value}'.", nameof(nodes));
             }
+
+            if (!kind.Allows(node.Shape))
+            {
+                throw new ArgumentException($"A {kind} does not draw a Diagram Node as {node.Shape}.", nameof(nodes));
+            }
         }
 
         foreach (var edge in edges)
@@ -36,10 +42,17 @@ public sealed class DiagramGraph
             {
                 throw new ArgumentException("A Diagram Edge references an undeclared Diagram Node.", nameof(edges));
             }
+
+            if (!kind.Allows(edge.Kind))
+            {
+                throw new ArgumentException($"A {kind} does not draw a Diagram Edge as {edge.Kind}.", nameof(edges));
+            }
         }
 
         Kind = kind;
-        Direction = direction;
+        // A kind whose Mermaid carries no direction always flows Top-Down, so its source and its graph
+        // cannot disagree and a Round-Trip stays exact (INV-051).
+        Direction = kind.CarriesFlowDirection() ? direction : FlowDirection.TopDown;
         _nodes = nodes;
         _edges = edges;
     }
@@ -52,7 +65,8 @@ public sealed class DiagramGraph
 
     /// <summary>
     /// Builds a Diagram Graph from nodes and edges, enforcing validity (INV-052): unique non-blank Node
-    /// Ids, and every edge referencing a declared node.
+    /// Ids, every edge referencing a declared node, and every Node Shape and Edge Kind one the Diagram
+    /// Kind allows.
     /// </summary>
     /// <param name="kind">Which node/arrow diagram this is.</param>
     /// <param name="direction">The direction it flows.</param>
@@ -60,7 +74,7 @@ public sealed class DiagramGraph
     /// <param name="edges">The Diagram Edges, in order.</param>
     /// <returns>The Diagram Graph.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="nodes"/> or <paramref name="edges"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when a Node Id is duplicated or an edge references an undeclared node.</exception>
+    /// <exception cref="ArgumentException">Thrown when the nodes or edges would leave the graph invalid.</exception>
     public static DiagramGraph Create(
         DiagramKind kind, FlowDirection direction, IEnumerable<DiagramNode> nodes, IEnumerable<DiagramEdge> edges)
     {
@@ -89,13 +103,32 @@ public sealed class DiagramGraph
         new(Kind, direction, [.. _nodes], [.. _edges]);
 
     /// <summary>
+    /// Returns a copy of this graph as another Diagram Kind, keeping every Diagram Node and Diagram
+    /// Edge — a Node Shape or Edge Kind the new kind does not allow becomes that kind's default, so the
+    /// result is valid (INV-052/INV-070).
+    /// </summary>
+    /// <param name="kind">The Diagram Kind to become.</param>
+    /// <returns>A new Diagram Graph; this instance is unchanged.</returns>
+    public DiagramGraph WithKind(DiagramKind kind)
+    {
+        var nodes = _nodes
+            .Select(node => new DiagramNode(node.Id, node.Label, kind.Coerce(node.Shape)))
+            .ToList();
+        var edges = _edges
+            .Select(edge => new DiagramEdge(edge.FromId, edge.ToId, edge.Label, kind.Coerce(edge.Kind)))
+            .ToList();
+        return new DiagramGraph(kind, Direction, nodes, edges);
+    }
+
+    /// <summary>
     /// Returns a copy of this graph with a new Diagram Node appended, its Node Id freshly minted
     /// (<c>n1</c>, <c>n2</c>, …) so it is unique within the graph.
     /// </summary>
     /// <param name="label">The new node's Node Label. May be empty; never null.</param>
-    /// <param name="shape">The new node's shape.</param>
+    /// <param name="shape">The new node's shape — must be one this graph's Diagram Kind allows (INV-052).</param>
     /// <returns>A new Diagram Graph; this instance is unchanged.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="label"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the Diagram Kind does not allow <paramref name="shape"/>.</exception>
     public DiagramGraph AddNode(string label, NodeShape shape)
     {
         ArgumentNullException.ThrowIfNull(label);
@@ -120,9 +153,10 @@ public sealed class DiagramGraph
 
     /// <summary>Returns a copy of this graph with the given node's shape changed.</summary>
     /// <param name="id">The Node Id of the node to reshape.</param>
-    /// <param name="shape">The new shape.</param>
+    /// <param name="shape">The new shape — must be one this graph's Diagram Kind allows (INV-052).</param>
     /// <returns>A new Diagram Graph; this instance is unchanged.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the Diagram Kind does not allow <paramref name="shape"/>.</exception>
     public DiagramGraph SetNodeShape(NodeId id, NodeShape shape)
     {
         ArgumentNullException.ThrowIfNull(id);
@@ -153,10 +187,10 @@ public sealed class DiagramGraph
     /// <param name="fromId">The Node Id the edge runs from — must be declared in this graph.</param>
     /// <param name="toId">The Node Id the edge runs to — must be declared in this graph.</param>
     /// <param name="label">The optional Edge Label, or null/blank for none.</param>
-    /// <param name="kind">How the edge is drawn.</param>
+    /// <param name="kind">How the edge is drawn — must be one this graph's Diagram Kind allows (INV-052).</param>
     /// <returns>A new Diagram Graph; this instance is unchanged.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="fromId"/> or <paramref name="toId"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when an endpoint is not a declared node (INV-052).</exception>
+    /// <exception cref="ArgumentException">Thrown when an endpoint is not declared, or the kind is not allowed (INV-052).</exception>
     public DiagramGraph Connect(NodeId fromId, NodeId toId, string? label, EdgeKind kind)
     {
         ArgumentNullException.ThrowIfNull(fromId);
@@ -180,34 +214,37 @@ public sealed class DiagramGraph
     }
 
     /// <summary>
-    /// Emits this Diagram Graph as canonical Mermaid source — the header, one declaration per Diagram
-    /// Node in order, then one line per Diagram Edge (INV-051). Layout is not emitted; Mermaid computes
-    /// it.
+    /// Emits this Diagram Graph as canonical Mermaid source in its own Diagram Kind's syntax — the
+    /// header, one declaration per Diagram Node in order, then one line per Diagram Edge (INV-051).
+    /// Layout is not emitted; Mermaid computes it.
     /// </summary>
     /// <returns>The canonical Mermaid source.</returns>
-    public string ToMermaidSource() => FlowchartMermaidFormat.Emit(this);
+    public string ToMermaidSource() => DiagramMermaidFormat.Emit(this);
 
     /// <summary>
-    /// Parses Mermaid flowchart source into a Diagram Graph — the inverse of
-    /// <see cref="ToMermaidSource"/> over the forms it emits, and best-effort over hand-authored source
-    /// (INV-051).
+    /// Parses Mermaid source into a Diagram Graph of whichever Diagram Kind its header names — the
+    /// inverse of <see cref="ToMermaidSource"/> over the forms emit produces, and best-effort over
+    /// hand-authored source (INV-051).
     /// </summary>
     /// <param name="source">The Mermaid source to parse.</param>
     /// <returns>The parsed Diagram Graph.</returns>
-    /// <exception cref="FormatException">Thrown when <paramref name="source"/> is not a Mermaid flowchart.</exception>
+    /// <exception cref="FormatException">Thrown when <paramref name="source"/> is not a node/arrow Mermaid diagram.</exception>
     public static DiagramGraph Parse(string source) =>
-        TryParse(source, out var graph) ? graph : throw new FormatException("The source is not a Mermaid flowchart.");
+        TryParse(source, out var graph)
+            ? graph
+            : throw new FormatException("The source is not a node/arrow Mermaid diagram.");
 
     /// <summary>
-    /// Tries to parse Mermaid flowchart source into a Diagram Graph. Returns <see langword="false"/>
-    /// (with an empty graph) when the source is not a flowchart, so the Flowchart Builder can start
-    /// empty rather than guessing (INV-053).
+    /// Tries to parse Mermaid source into a Diagram Graph. Returns <see langword="false"/> (with an
+    /// empty Flowchart) when no Diagram Kind claims the source — a sequence, gantt or pie diagram, or
+    /// anything that is not a Mermaid diagram — so the Diagram Builder can start empty rather than
+    /// guessing (INV-053).
     /// </summary>
     /// <param name="source">The Mermaid source to parse, or null.</param>
-    /// <param name="graph">The parsed Diagram Graph, or an empty flowchart when parsing fails.</param>
-    /// <returns><see langword="true"/> when the source parses as a flowchart; otherwise <see langword="false"/>.</returns>
+    /// <param name="graph">The parsed Diagram Graph, or an empty Flowchart when parsing fails.</param>
+    /// <returns><see langword="true"/> when a Diagram Kind claimed the source; otherwise <see langword="false"/>.</returns>
     public static bool TryParse(string? source, out DiagramGraph graph) =>
-        FlowchartMermaidFormat.TryParse(source, out graph);
+        DiagramMermaidFormat.TryParse(source, out graph);
 
     // Mints the next free `n#` identifier not already used by a node in this graph.
     private NodeId MintId()

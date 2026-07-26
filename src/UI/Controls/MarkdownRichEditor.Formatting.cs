@@ -247,8 +247,8 @@ public sealed partial class MarkdownRichEditor
     /// <inheritdoc />
     protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        // Double-clicking a Mermaid Diagram's picture opens the Flowchart Builder on that diagram: the
-        // caret is placed on its block so Open Flowchart Builder seeds from — and Insert replaces — it
+        // Double-clicking a Mermaid Diagram's picture opens the Diagram Builder on that diagram: the
+        // caret is placed on its block so Open Diagram Builder seeds from — and Insert replaces — it
         // (INV-047/INV-053). The block is found by the text hit-test (GetPositionFromPoint), since a
         // RichTextBox overlays a text layer over embedded elements — a visual hit-test misses them.
         if (e.ClickCount == 2 &&
@@ -256,7 +256,7 @@ public sealed partial class MarkdownRichEditor
                 is BlockUIContainer { Tag: MermaidDiagramRole } container)
         {
             CaretPosition = container.ContentStart;
-            OpenFlowchartBuilderAtCaret();
+            OpenDiagramBuilderAtCaret();
             e.Handled = true;
             return;
         }

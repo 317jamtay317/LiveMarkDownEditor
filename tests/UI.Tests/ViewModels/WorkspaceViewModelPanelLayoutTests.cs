@@ -37,7 +37,7 @@ public sealed class WorkspaceViewModelPanelLayoutTests
             new StubLinkPrompt(answer: null),
             new FakeDocumentPrinter(),
             new StubMarkdownRenderer(),
-            new StubFlowchartBuilder(result: null),
+            new StubDiagramBuilder(result: null),
             new FakeMermaidImageRenderer(),
             new ColorCodeSyntaxHighlighter(),
             new AppearanceViewModel(_theme),

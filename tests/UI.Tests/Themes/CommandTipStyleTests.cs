@@ -42,7 +42,7 @@ public sealed class CommandTipStyleTests
 
     /// <summary>
     /// The implicit ToolTip style is defined, so a bare string tooltip (the gutter's Fold Toggle, the
-    /// Flowchart Builder's connector) is drawn from the palette rather than in stock white chrome.
+    /// Diagram Builder's connector) is drawn from the palette rather than in stock white chrome.
     /// </summary>
     [Fact]
     public void ToolTipStyle_IsDefined_AndTargetsAToolTip()

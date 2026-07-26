@@ -4,7 +4,7 @@ using System.Windows.Documents;
 namespace UI.Wysiwyg;
 
 /// <summary>
-/// Writes a Mermaid Diagram into the Visual Document for the Flowchart Builder's Insert (INV-053). It
+/// Writes a Mermaid Diagram into the Visual Document for the Diagram Builder's Insert (INV-053). It
 /// composes the diagram's atomic block through the same <see cref="MermaidDiagram.CreateDiagramBlock"/>
 /// seam the Projector uses, so an inserted diagram is shown as its picture and Captures as the fenced
 /// ```mermaid``` block exactly as a projected one does (INV-047) — replacing the Mermaid Diagram at the

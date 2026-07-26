@@ -7,18 +7,18 @@ namespace UI.Controls;
 
 // Mermaid Diagrams: rendering each diagram's picture inline through the injected renderer (cached by
 // source and theme — INV-047), tracking the Diagram the caret is within for the Preview Panel, and
-// opening the Flowchart Builder to author or edit one. Rendering is view-only; writing a diagram back
+// opening the Diagram Builder to author or edit one. Rendering is view-only; writing a diagram back
 // is an edit that Captures like any other (INV-003/INV-053).
 public sealed partial class MarkdownRichEditor
 {
     /// <summary>
-    /// Identifies the <see cref="FlowchartBuilder"/> dependency property. Open Flowchart Builder asks
+    /// Identifies the <see cref="DiagramBuilder"/> dependency property. Open Diagram Builder asks
     /// through it for the diagram to insert; the composition root supplies the real builder, and a test
     /// supplies a stub. Left unset, opening the builder does nothing (INV-053).
     /// </summary>
-    public static readonly DependencyProperty FlowchartBuilderProperty = DependencyProperty.Register(
-        nameof(FlowchartBuilder),
-        typeof(IFlowchartBuilder),
+    public static readonly DependencyProperty DiagramBuilderProperty = DependencyProperty.Register(
+        nameof(DiagramBuilder),
+        typeof(IDiagramBuilder),
         typeof(MarkdownRichEditor),
         new PropertyMetadata(defaultValue: null));
 
@@ -55,13 +55,13 @@ public sealed partial class MarkdownRichEditor
     private readonly MermaidRenderCoordinator _diagramRenderer = new();
 
     /// <summary>
-    /// The Flowchart Builder that Open Flowchart Builder asks for a diagram to insert. Left
+    /// The Diagram Builder that Open Diagram Builder asks for a diagram to insert. Left
     /// <see langword="null"/>, opening the builder makes no edit (INV-053).
     /// </summary>
-    public IFlowchartBuilder? FlowchartBuilder
+    public IDiagramBuilder? DiagramBuilder
     {
-        get => (IFlowchartBuilder?)GetValue(FlowchartBuilderProperty);
-        set => SetValue(FlowchartBuilderProperty, value);
+        get => (IDiagramBuilder?)GetValue(DiagramBuilderProperty);
+        set => SetValue(DiagramBuilderProperty, value);
     }
 
     /// <summary>
@@ -92,13 +92,13 @@ public sealed partial class MarkdownRichEditor
     public string? CurrentDiagramSource => (string?)GetValue(CurrentDiagramSourceProperty);
 
     /// <summary>
-    /// Opens the Flowchart Builder on the Mermaid Diagram at the caret — or a new diagram when the
+    /// Opens the Diagram Builder on the Mermaid Diagram at the caret — or a new diagram when the
     /// caret is not within one — and writes the diagram it returns back into the document. Cancelling
-    /// makes no edit, as does a <see langword="null"/> <see cref="FlowchartBuilder"/> (INV-053).
+    /// makes no edit, as does a <see langword="null"/> <see cref="DiagramBuilder"/> (INV-053).
     /// </summary>
-    public void OpenFlowchartBuilderAtCaret()
+    public void OpenDiagramBuilderAtCaret()
     {
-        var source = FlowchartBuilder?.Build(MermaidDiagram.SourceAt(CaretPosition));
+        var source = DiagramBuilder?.Build(MermaidDiagram.SourceAt(CaretPosition));
         if (source is not null)
         {
             InsertOrReplaceDiagramAtCaret(source);
