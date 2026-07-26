@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows.Input;
+using Application;
 using UI.Core;
 
 namespace UI.ViewModels;
@@ -24,6 +26,8 @@ public sealed partial class WorkspaceViewModel
     private PanelVisibility _resolved;
     private PanelChromeState _lastChrome;
     private bool _isRecomputingPanels;
+    private bool _isPanelChromeReady;
+    private bool _isRestoringPanels;
 
     private RelayCommand _toggleSourcePanelCommand = null!;
     private RelayCommand _togglePreviewPanelCommand = null!;
@@ -232,6 +236,88 @@ public sealed partial class WorkspaceViewModel
         Folder.PropertyChanged += OnFolderPropertyChanged;
         _lastChrome = ChromeState;
         RecomputePanels();
+
+        // Only from here on does a chrome change mean the *user* moved a panel. Persisting during
+        // construction would write the default layout over the very state Restore is about to read.
+        _isPanelChromeReady = true;
+    }
+
+    /// <summary>
+    /// The Panel Layout to persist: every Dockable Panel's open and pinned state, as it stands
+    /// (INV-067). It records the panels' Placement, never the width-driven Compact Layout resolution
+    /// — a narrow window collapses panels for the run it is narrow in, and must not be saved as the
+    /// user's choice (INV-059).
+    /// </summary>
+    private PanelLayout PanelLayoutOf()
+    {
+        var chrome = ChromeState;
+        return new PanelLayout(
+            EditorPane: Persisted(chrome.EditorPane),
+            SourcePanel: Persisted(chrome.SourcePanel),
+            PreviewPanel: Persisted(chrome.PreviewPanel),
+            FolderPanel: Persisted(chrome.FolderPanel),
+            NavigationPanel: Persisted(chrome.NavigationPanel));
+
+        static PersistedPanelState Persisted(PanelState state) => new(state.IsOpen, state.IsPinned);
+    }
+
+    /// <summary>
+    /// Restores a persisted Panel Layout, putting every Dockable Panel back in the Placement the last
+    /// run left it in (INV-067). A <see langword="null"/> layout — a first run, or a state file written
+    /// before the Panel Layout existed — leaves the default layout untouched.
+    /// </summary>
+    /// <param name="layout">The persisted Panel Layout, or <see langword="null"/> when none was saved.</param>
+    /// <remarks>
+    /// Called from <c>RestoreAsync</c> after the Folder Workspace has been restored, because the
+    /// Folder Panel comes back only alongside the folder it browses (INV-045): a persisted root that
+    /// has gone takes its panel with it. Restoring is not a reopen, so the pin a panel was left with
+    /// stands — an Auto-Hidden panel comes back Auto-Hidden rather than Docked (INV-062) — and it is
+    /// not itself a change, so it does not re-persist the state it just read.
+    /// </remarks>
+    private void RestorePanelLayout(PanelLayout? layout)
+    {
+        if (layout is null)
+        {
+            return;
+        }
+
+        _isRestoringPanels = true;
+        try
+        {
+            Restore(DockablePanel.EditorPane, layout.EditorPane);
+            Restore(DockablePanel.SourcePanel, layout.SourcePanel);
+            Restore(DockablePanel.PreviewPanel, layout.PreviewPanel);
+            Restore(DockablePanel.NavigationPanel, layout.NavigationPanel);
+
+            // The Folder Panel browses a Folder Tree, so it comes back only when one did (INV-045).
+            Restore(
+                DockablePanel.FolderPanel,
+                layout.FolderPanel with { IsOpen = layout.FolderPanel.IsOpen && Folder.HasFolder });
+
+            // The Document Pane rule outranks the file: a layout that would leave neither the Editor
+            // Pane nor the Source Panel Docked restores with the Editor Pane Docked (INV-063).
+            if (!PanelChrome.IsDocked(ChromeState, DockablePanel.EditorPane) &&
+                !PanelChrome.IsDocked(ChromeState, DockablePanel.SourcePanel))
+            {
+                Restore(DockablePanel.EditorPane, new PersistedPanelState(IsOpen: true, IsPinned: true));
+            }
+
+            // Take the restored state as the baseline, so no panel reads as newly reopened and has
+            // its pin reset out from under the layout just applied.
+            _lastChrome = ChromeState;
+        }
+        finally
+        {
+            _isRestoringPanels = false;
+        }
+
+        RecomputePanels();
+
+        void Restore(DockablePanel panel, PersistedPanelState state)
+        {
+            SetOpen(panel, state.IsOpen);
+            SetPinned(panel, state.IsPinned);
+        }
     }
 
     /// <summary>Opens a Workspace-owned panel Docked, or closes it — the View Menu toggles' path (INV-062).</summary>
@@ -318,14 +404,30 @@ public sealed partial class WorkspaceViewModel
             case DockablePanel.PreviewPanel:
                 _isPreviewPanelRequested = value;
                 break;
-            case DockablePanel.FolderPanel when !value:
-                Folder.CloseFolderPanel();
-                break;
-            case DockablePanel.NavigationPanel when !value:
-                SideDock.CloseNavigationPanel();
+            // The Folder and Navigation panels own their open state; the Workspace closes them from a
+            // Panel Header's Close Button (INV-062) and re-opens them when a persisted Panel Layout
+            // says the last run left them open (INV-067). Their Command Bar toggles are their own.
+            case DockablePanel.FolderPanel:
+                if (value)
+                {
+                    Folder.ShowFolderPanel();
+                }
+                else
+                {
+                    Folder.CloseFolderPanel();
+                }
+
                 break;
             default:
-                // The Folder and Navigation panels are opened by their own toggles, never from here.
+                if (value)
+                {
+                    SideDock.OpenNavigationPanel();
+                }
+                else
+                {
+                    SideDock.CloseNavigationPanel();
+                }
+
                 break;
         }
     }
@@ -364,10 +466,18 @@ public sealed partial class WorkspaceViewModel
         }
 
         _isRecomputingPanels = true;
+        var chromeChanged = false;
         try
         {
-            ResetPinsOnReopen();
+            // Restoring already put every panel exactly where the layout says; a reopen reset would
+            // undo it, pinning back the panels the last run left Auto-Hidden (INV-067).
+            if (!_isRestoringPanels)
+            {
+                ResetPinsOnReopen();
+            }
+
             var chrome = ChromeState;
+            chromeChanged = chrome != _lastChrome;
             _lastChrome = chrome;
 
             SideDock.SetAutoHidden(
@@ -398,6 +508,27 @@ public sealed partial class WorkspaceViewModel
         }
 
         RaisePanelChrome();
+
+        // Save the layout when a Placement actually changed — not on every recomputation, which a
+        // window resize drives on each measured width (INV-059, INV-067).
+        if (chromeChanged && _isPanelChromeReady && !_isRestoringPanels)
+        {
+            PersistPanelLayout();
+        }
+    }
+
+    // Persists the Panel Layout alongside the rest of the Workspace State, best-effort: a state file
+    // that cannot be written must never take a panel toggle down with it (INV-037).
+    private async void PersistPanelLayout()
+    {
+        try
+        {
+            await PersistStateAsync().ConfigureAwait(true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Serilog.Log.Error(exception, "Failed to persist the Panel Layout");
+        }
     }
 
     // A panel reopened by any toggle comes back Docked, never straight to Auto-Hidden (INV-062): a

@@ -1661,6 +1661,33 @@ and tested.
   these catch), and `MarkdownRichEditorDefinitionListTests.*_INV066` (Toggle Definition List both ways,
   whole blocks, and the caret).
 
+### INV-067 — The Panel Layout is restored across runs
+- **Statement:** The Panel Layout — every Dockable Panel's open and pinned state, and so its Panel
+  Placement (INV-062) — is persisted as part of the Workspace State and restored at startup, so the
+  editor reopens with the panels the user left it with. Four rules bound it:
+  - **Placement survives, not just visibility.** A panel left Docked comes back Docked, one left
+    Auto-Hidden comes back Auto-Hidden, and one left Closed comes back Closed. Restoring is not a
+    reopen, so it does not reset a pin the way opening a Closed panel does (INV-062).
+  - **A missing or unreadable Panel Layout restores the default.** A first run, a state file written
+    before the Panel Layout existed, or a corrupt one starts with the Editor Pane Docked and every
+    other panel Closed — the state the Workspace opens with (INV-062), never a failure.
+  - **The Document Pane rule outranks the persisted layout.** A Panel Layout that would leave no
+    Document Pane Docked — both the Editor Pane and the Source Panel Closed or Auto-Hidden, however
+    the file came to say so — restores with the Editor Pane Docked instead (INV-063).
+  - **The Folder Panel is restored only alongside its folder.** The Folder Panel comes back open only
+    when the Folder Workspace it browses did (INV-045); a persisted root that has gone takes its
+    panel with it rather than restoring an empty tree.
+- **Enforced by:** The Application `PanelLayout` snapshot carried on `WorkspaceState` (persisted and
+  loaded by `JsonWorkspaceStateStore` exactly as the rest of the state is, INV-037, with a missing
+  field loading as no layout), and the `WorkspaceViewModel` Panel Chrome surface — `PanelLayoutOf` /
+  `RestorePanelLayout`, which map it to and from the `PanelChromeState` the pure `PanelChrome` rules
+  read, apply the `PanelChrome` Document Pane guard on the way in, and persist whenever the chrome
+  state changes rather than on every width-driven recomputation (INV-059).
+- **Tested by:** `WorkspaceViewModelPanelLayoutTests.*_INV067` (a round-trip of each Placement; the
+  default for a missing layout; the Document Pane guard; the Folder Panel following its folder; and
+  that a mere resize does not persist) and `JsonWorkspaceStateStoreTests.*_INV067` (the layout
+  survives a file round-trip, and a state file without one loads as no layout).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

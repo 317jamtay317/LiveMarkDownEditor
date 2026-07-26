@@ -92,6 +92,12 @@ public sealed class SideDockViewModel : ObservableObject, IDisposable
     public void CloseNavigationPanel() => SetNavigationOpen(false);
 
     /// <summary>
+    /// Opens the Navigation Panel — the path a restored Panel Layout takes to bring the panel back as
+    /// the last run left it (INV-067). Its Command Bar toggle is the user's own way in.
+    /// </summary>
+    public void OpenNavigationPanel() => SetNavigationOpen(true);
+
+    /// <summary>
     /// Takes a tab out of the strip while its panel is Auto-Hidden, or returns it when the panel is
     /// Pinned back — shown and Selected again (INV-062). The panel's own toggle is untouched: an
     /// Auto-Hidden panel is open, merely off the layout. The Workspace drives this from the Panel

@@ -300,8 +300,9 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
     /// <summary>
     /// Restores the Workspace from the last run: reopens the Watched Files that were open — skipping
-    /// any that have since gone — and loads the Recent Files. Only saved documents are restored; an
-    /// unsaved Tab was never persisted (INV-037). Call once at startup.
+    /// any that have since gone — loads the Recent Files, and puts every Dockable Panel back in the
+    /// Placement it was left in (INV-067). Only saved documents are restored; an unsaved Tab was never
+    /// persisted (INV-037). Call once at startup.
     /// </summary>
     public async Task RestoreAsync()
     {
@@ -311,6 +312,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
         // Reopen the Folder Workspace that was open last run, skipping a root that has gone (INV-045).
         await Folder.RestoreAsync(state.WorkspaceFolder).ConfigureAwait(true);
+
+        // Put every Dockable Panel back where the last run left it. After the folder, because opening
+        // one shows its Folder Panel — the persisted layout has the last word on that (INV-067).
+        RestorePanelLayout(state.Panels);
 
         // The empty Tab the constructor seeds is a placeholder; replace it if we restore real Tabs.
         var placeholder = _sessions.Count == 1 && _sessions[0].FilePath is null && !_sessions[0].HasUnsavedEdits
@@ -344,8 +349,9 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Persists the Workspace: the open Tabs' Watched File paths (unsaved Tabs are skipped) and the
-    /// Recent Files, so the next run can restore them (INV-037).
+    /// Persists the Workspace: the open Tabs' Watched File paths (unsaved Tabs are skipped), the
+    /// Recent Files, the open Folder Workspace's root, and the Panel Layout, so the next run can
+    /// restore them (INV-037, INV-045, INV-067).
     /// </summary>
     public Task PersistStateAsync()
     {
@@ -354,7 +360,11 @@ public sealed partial class WorkspaceViewModel : ObservableObject
             .Select(session => session.FilePath!)
             .ToList();
 
-        return _stateStore.SaveAsync(new WorkspaceState(openDocuments, _recent.Paths, Folder.Folder?.RootPath));
+        return _stateStore.SaveAsync(new WorkspaceState(
+            openDocuments,
+            _recent.Paths,
+            Folder.Folder?.RootPath,
+            PanelLayoutOf()));
     }
 
     /// <summary>
