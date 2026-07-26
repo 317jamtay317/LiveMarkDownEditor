@@ -63,6 +63,17 @@ work that is still in review, noted inline.
 - [x] **Add to Dictionary.** A user dictionary the Dictionary consults, so a Misspelling can be
   accepted permanently. The Misspelling context menu already exists for Spelling Suggestions.
 - [x] **Ctrl+Click to follow a Link** — a URL to the browser, a relative `.md` Link into a new Tab.
+- [x] **Pinned Tabs, a Tab Tip, and a Tab Context Menu.** **Done** (INV-071/072/073): a Tab shows only
+  its file's *name*, which two files called `README.md` share, so hovering one now shows a **Tab Tip**
+  naming its Watched File in full (an unsaved Tab says it has no file yet). Right-clicking a Tab opens
+  a **Tab Context Menu** — Pin/Unpin, Close tab, Close all tabs, Close all but pinned — that acts on
+  the Tab **under the pointer** rather than on the Active Session. A **Pinned Tab** moves to a
+  **Pinned Row** above the ordinary Tabs and is what **Close all but pinned** spares; pinning is pure
+  bookkeeping (it never touches a Markdown Document, ends a session, or changes which Tab is active)
+  and rides along in the Workspace State, so a pin survives a restart. Either row collapses to nothing
+  when it empties, except that the Ordinary Row stays while nothing is pinned so an empty Workspace
+  still has a tab strip. Both bulk closes are applications of Close Tab, so INV-010 still holds for
+  every Tab they touch and Cancel on any one of them stops the run.
 
 ## Bigger swings
 

@@ -25,7 +25,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     private readonly IWorkspaceStateStore _stateStore;
     private readonly IPageSetupStore _pageSetupStore;
     private readonly ICustomMarginsPrompt _customMarginsPrompt;
-    private readonly ObservableCollection<EditorSessionViewModel> _sessions = [];
 
     private EditorSessionViewModel? _activeSession;
     private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
@@ -91,8 +90,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         Folder.OpenFile = OpenPathAsync;
         Folder.PersistState = PersistStateAsync;
 
-        Sessions = new ReadOnlyObservableCollection<EditorSessionViewModel>(_sessions);
-
         NewCommand = new RelayCommand(New);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
@@ -114,9 +111,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         New();
     }
 
-    /// <summary>The open Editor Sessions, one per Tab, in Tab order.</summary>
-    public ReadOnlyObservableCollection<EditorSessionViewModel> Sessions { get; }
-
     /// <summary>
     /// The Active Session: the Tab currently shown in the editing pane and targeted by Save, or
     /// <see langword="null"/> when the Workspace is empty (every Tab has been closed).
@@ -130,6 +124,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
             {
                 Raise(nameof(HasOpenSessions));
                 Raise(nameof(IsWorkspaceEmpty));
+
+                // Which of the two tab rows shows a selection follows the Active Session (INV-071).
+                Raise(nameof(SelectedPinnedTab));
+                Raise(nameof(SelectedUnpinnedTab));
             }
         }
     }
@@ -244,7 +242,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     public void New()
     {
         var session = _createSession();
-        _sessions.Add(session);
+        AddTab(session);
         ActiveSession = session;
     }
 
@@ -274,7 +272,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        var alreadyOpen = _sessions.FirstOrDefault(session =>
+        var alreadyOpen = Sessions.FirstOrDefault(session =>
             session.FilePath is not null &&
             string.Equals(session.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (alreadyOpen is not null)
@@ -285,7 +283,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         {
             var opened = _createSession();
             await opened.LoadAsync(path).ConfigureAwait(true);
-            _sessions.Add(opened);
+            AddTab(opened);
             ActiveSession = opened;
         }
 
@@ -318,8 +316,9 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         RestorePanelLayout(state.Panels);
 
         // The empty Tab the constructor seeds is a placeholder; replace it if we restore real Tabs.
-        var placeholder = _sessions.Count == 1 && _sessions[0].FilePath is null && !_sessions[0].HasUnsavedEdits
-            ? _sessions[0]
+        var seeded = Sessions;
+        var placeholder = seeded.Count == 1 && seeded[0].FilePath is null && !seeded[0].HasUnsavedEdits
+            ? seeded[0]
             : null;
 
         _isRestoring = true;
@@ -342,10 +341,13 @@ public sealed partial class WorkspaceViewModel : ObservableObject
             _isRestoring = false;
         }
 
-        if (placeholder is not null && _sessions.Count > 1)
+        if (placeholder is not null && Sessions.Count > 1)
         {
             RemoveSession(placeholder);
         }
+
+        // Put the Pinned Row back as the last run left it, after every Tab is open (INV-071).
+        RestorePinnedTabs(state.PinnedDocuments);
     }
 
     /// <summary>
@@ -355,7 +357,14 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// </summary>
     public Task PersistStateAsync()
     {
-        var openDocuments = _sessions
+        var openDocuments = Sessions
+            .Where(session => session.FilePath is not null)
+            .Select(session => session.FilePath!)
+            .ToList();
+
+        // Only saved documents are persisted, so an unsaved Tab's pin is not — there is no path to
+        // record it against (INV-037, INV-071).
+        var pinnedDocuments = PinnedTabs
             .Where(session => session.FilePath is not null)
             .Select(session => session.FilePath!)
             .ToList();
@@ -364,7 +373,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
             openDocuments,
             _recent.Paths,
             Folder.Folder?.RootPath,
-            PanelLayoutOf()));
+            PanelLayoutOf())
+        {
+            PinnedDocuments = pinnedDocuments,
+        });
     }
 
     /// <summary>
@@ -471,7 +483,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
     private void RemoveSession(EditorSessionViewModel session)
     {
-        var index = _sessions.IndexOf(session);
+        // Tab order spans both rows, so the neighbour a closing Tab hands activation to may be in the
+        // other one (INV-071).
+        var order = Sessions.ToList();
+        var index = order.IndexOf(session);
         if (index < 0)
         {
             return;
@@ -479,16 +494,16 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
         // Move activation onto a neighbour before removing, so the bound tab-strip selection never
         // transiently goes null while a middle Tab is closed.
-        if (ActiveSession == session && _sessions.Count > 1)
+        if (ActiveSession == session && order.Count > 1)
         {
-            var neighbour = index == _sessions.Count - 1 ? index - 1 : index + 1;
-            ActiveSession = _sessions[neighbour];
+            var neighbour = index == order.Count - 1 ? index - 1 : index + 1;
+            ActiveSession = order[neighbour];
         }
 
-        _sessions.RemoveAt(index);
+        RemoveTab(session);
         session.Dispose();
 
-        if (_sessions.Count == 0)
+        if (Sessions.Count == 0)
         {
             // INV-008: the Workspace may be empty — leave it with no Active Session (do not re-seed).
             // The shell shows the Empty-Workspace Placeholder until the user opens or creates a document.

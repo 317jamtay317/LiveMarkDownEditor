@@ -34,6 +34,36 @@ public sealed class JsonWorkspaceStateStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_ThenLoad_RoundTripsWhichTabsArePinned_INV071()
+    {
+        var store = new JsonWorkspaceStateStore(_path);
+        var state = new WorkspaceState([@"C:\a.md", @"C:\b.md"], [])
+        {
+            PinnedDocuments = [@"C:\a.md"],
+        };
+
+        await store.SaveAsync(state);
+
+        store.Load().PinnedDocuments.ShouldBe([@"C:\a.md"]);
+    }
+
+    [Fact]
+    public async Task Load_FromAStateFileWrittenBeforePinsExisted_PinsNothing_INV071()
+    {
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(
+            _path,
+            """{ "OpenDocuments": ["C:\\a.md"], "RecentFiles": [] }""");
+
+        var loaded = new JsonWorkspaceStateStore(_path).Load();
+
+        // A state file that predates pinning restores its Tabs with nothing pinned, rather than
+        // failing to load at all (INV-037).
+        loaded.OpenDocuments.ShouldBe([@"C:\a.md"]);
+        loaded.PinnedDocuments.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Load_WhenNoFileExists_ReturnsEmpty()
     {
         new JsonWorkspaceStateStore(_path).Load().ShouldBe(WorkspaceState.Empty);

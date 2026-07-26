@@ -33,6 +33,78 @@
     </Window.InputBindings>
 
     <Window.Resources>
+        <!-- One Tab, shared by the Pinned Row and the ordinary row below it: a pin mark while the Tab
+             is pinned (INV-071), the unsaved-edits dot, the file's name, and the close ✕. -->
+        <DataTemplate x:Key="TabContent">
+            <StackPanel Orientation="Horizontal">
+                <!-- A Pinned Tab says so on the Tab itself: the row above is easy to miss when only
+                     one Tab is pinned. -->
+                <Path Width="11" Height="11" Stretch="Uniform" Fill="{x:Null}" Margin="0,0,6,0"
+                      VerticalAlignment="Center" Stroke="{DynamicResource MutedTextBrush}"
+                      StrokeThickness="1.8" StrokeLineJoin="Round" Data="{StaticResource Icon.Pin}"
+                      Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Ellipse Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center"
+                         Fill="{DynamicResource DirtyDotBrush}"
+                         Visibility="{Binding HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                <Button Style="{StaticResource TabCloseButton}" Content="&#x2715;"
+                        Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                        CommandParameter="{Binding}">
+                    <Button.ToolTip>
+                        <controls:CommandTip Heading="Close tab"
+                                             Detail="Close this document. You'll be asked before losing any unsaved edits." Gesture="Ctrl+W" />
+                    </Button.ToolTip>
+                </Button>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- A Tab's container: the themed TabItem look, plus the two things a Tab carries that are
+             about the Workspace rather than about how a Tab is drawn — its Tab Tip (INV-073) and its
+             Tab Context Menu (INV-071, INV-072).
+
+             Tag carries the Workspace across to the menu. A ContextMenu is its own visual tree, so it
+             cannot reach the Workspace by RelativeSource the way the close button above does; it
+             reaches it through PlacementTarget.Tag instead, while its DataContext stays this Tab's
+             Editor Session so every entry acts on the Tab actually under the pointer rather than on
+             the Active Session. -->
+        <Style x:Key="WorkspaceTab" TargetType="ListBoxItem" BasedOn="{StaticResource TabItem}">
+            <Setter Property="ToolTip" Value="{Binding TabTip}" />
+            <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+            <Setter Property="ContextMenu">
+                <Setter.Value>
+                    <ContextMenu Style="{StaticResource TabContextMenu}"
+                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                        <!-- Pin Tab or Unpin Tab — whichever this Tab is not (INV-071). One entry that
+                             swaps, as the conflict bar's View/Hide difference button does. -->
+                        <MenuItem CommandParameter="{Binding}">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource CommandMenuEntry}">
+                                    <Setter Property="Header" Value="Pin tab" />
+                                    <Setter Property="Command"
+                                            Value="{Binding PlacementTarget.Tag.PinTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                            <Setter Property="Header" Value="Unpin tab" />
+                                            <Setter Property="Command"
+                                                    Value="{Binding PlacementTarget.Tag.UnpinTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
+                        <Separator Style="{StaticResource MenuSeparator}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Close tab"
+                                  Command="{Binding PlacementTarget.Tag.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Close all tabs"
+                                  Command="{Binding PlacementTarget.Tag.CloseAllTabsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Style="{StaticResource CommandMenuEntry}" Header="Close all but pinned"
+                                  Command="{Binding PlacementTarget.Tag.CloseAllButPinnedCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    </ContextMenu>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- An Auto-Hide Tab: the sideways button an Auto-Hide Bar shows for one Auto-Hidden panel.
              Activating it opens (or dismisses) that panel's Panel Flyout (INV-062). -->
         <DataTemplate x:Key="AutoHideTabButton">
@@ -1085,39 +1157,41 @@
             </controls:CommandBarPanel>
         </Border>
 
-        <!-- Tab strip: one Tab per open Editor Session, plus a new-tab button. -->
+        <!-- Tab strip: the Pinned Row above the ordinary Tabs, one Tab per open Editor Session, plus
+             a new-tab button. The two rows are two selectors over one Active Session, so each binds
+             its own selection property — a row that does not hold the Active Session shows nothing
+             selected without deselecting the Workspace (INV-008, INV-071). -->
         <Border Grid.Row="1" Background="{DynamicResource WindowBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <!-- The new-tab button sits outside both rows so a collapsed row never takes it with it
+                 (INV-071); it centres against whichever rows are showing. -->
             <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="+"
-                        FontSize="18" Margin="4,4,8,4" Command="{Binding NewCommand}">
+                        FontSize="18" Margin="4,4,8,4" VerticalAlignment="Center"
+                        Command="{Binding NewCommand}">
                     <Button.ToolTip>
                         <controls:CommandTip Heading="New document"
                                              Detail="Start a new, empty document in a new tab." Gesture="Ctrl+N" />
                     </Button.ToolTip>
                 </Button>
-                <ListBox Style="{StaticResource TabStrip}" ItemContainerStyle="{StaticResource TabItem}"
-                         ItemsSource="{Binding Sessions}"
-                         SelectedItem="{Binding ActiveSession, Mode=TwoWay}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center"
-                                         Fill="{DynamicResource DirtyDotBrush}"
-                                         Visibility="{Binding HasUnsavedEdits, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                <Button Style="{StaticResource TabCloseButton}" Content="&#x2715;"
-                                        Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.ToolTip>
-                                        <controls:CommandTip Heading="Close tab"
-                                                             Detail="Close this document. You'll be asked before losing any unsaved edits." Gesture="Ctrl+W" />
-                                    </Button.ToolTip>
-                                </Button>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+
+                <StackPanel>
+                    <!-- The Pinned Row. Shown only while a Tab is pinned, taking no space otherwise. -->
+                    <ListBox Style="{StaticResource TabStrip}" ItemContainerStyle="{StaticResource WorkspaceTab}"
+                             ItemTemplate="{StaticResource TabContent}"
+                             ItemsSource="{Binding PinnedTabs}"
+                             SelectedItem="{Binding SelectedPinnedTab, Mode=TwoWay}"
+                             Visibility="{Binding HasPinnedTabs, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <!-- The Ordinary Row. Collapses once every Tab is pinned away, so the Pinned Row
+                         never sits above an empty band — but stays while nothing is pinned, so an
+                         empty Workspace still shows a tab strip. -->
+                    <ListBox Style="{StaticResource TabStrip}" ItemContainerStyle="{StaticResource WorkspaceTab}"
+                             ItemTemplate="{StaticResource TabContent}"
+                             ItemsSource="{Binding UnpinnedTabs}"
+                             SelectedItem="{Binding SelectedUnpinnedTab, Mode=TwoWay}"
+                             Visibility="{Binding IsOrdinaryRowVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
             </DockPanel>
         </Border>
 
