@@ -1923,6 +1923,64 @@ and tested.
 - **Tested by:** `EditorSessionViewModelTests.TabTip_GivenAWatchedFile_IsItsFullPath_INV073` and
   `EditorSessionViewModelTests.TabTip_WhenUnsaved_SaysThereIsNoFileYet_INV073`.
 
+### INV-074 — A repaint on scroll costs by the Viewport, not by the document
+- **Statement:** Scrolling repaints presentation only — the Editor Gutter's Line Numbers and Fold
+  Toggles, Code Shading, the Spell Check squiggles, the Find highlights, the Change Highlight — and
+  the work a repaint does is bounded by what the **Viewport** shows, not by how long the document is
+  or by how far it has been scrolled. Three rules bound it:
+  - **An overlay draws its Viewport Slice, and resolves layout for nothing else.** Asking WPF where a
+    span sits (`TextPointer.GetCharacterRect`) forces it to resolve text layout, and that is the whole
+    cost of a repaint. An overlay therefore resolves layout only for the members of its Viewport
+    Slice: culling *after* asking is not culling at all. The count of layout resolutions per repaint
+    is bounded by what the Viewport can hold — a few tens of lines — however many Code Regions,
+    Misspellings or Matches the document contains.
+  - **A Line Number is found from the Viewport, not counted from the start of the document.** The
+    Editor Gutter numbers the lines the Viewport shows. It reaches them by anchoring at the Viewport
+    and reading forward, so scrolling to the end of a long document costs no more than scrolling to
+    the beginning. The ordinal a Line Number displays still counts every rendered line above it —
+    including soft-wrapped continuations, excluding a Folded Section Body (INV-011) — but that count
+    is *remembered* across repaints and recomputed only when the document's layout changes.
+  - **A Document Extent is remembered until layout changes it.** What a repaint may cache is where
+    things sit, keyed to a layout: an edit, a resize, a Fold or a re-Project invalidates it. Nothing
+    about the Markdown Document is cached, and a stale cache can only mean an overlay draws in the
+    wrong place for a frame — never that a document is read or written wrongly. Every one of these
+    repaints stays presentation-only in the sense the surrounding invariants require (INV-011,
+    INV-016, INV-017, INV-040, INV-060): making them cheaper never makes them writers.
+- **Enforced by:** `UI.Scrolling.ViewportSlice` (the pure slice of a document-ordered set that a
+  Viewport reaches) together with `EditorGutter`, `CodeShadingAdorner`, `SpellCheckAdorner`,
+  `FindHighlightAdorner` and `ChangeHighlightAdorner`, each of which resolves layout only within its
+  slice.
+- **Tested by:** `ViewportSliceTests.*_INV074`.
+
+### INV-075 — A Wheel Notch moves the Viewport by a Scroll Step, and the Viewport travels there smoothly
+- **Statement:** A Wheel Notch over a scrollable surface moves that surface's **Scroll Target** by one
+  **Scroll Step**, and the Viewport then **Smooth Scrolls** to meet it. Four rules bound it:
+  - **A Scroll Step is measured in lines of the surface, not in pixels.** One notch moves the number
+    of lines the system is configured to scroll, multiplied by the surface's own line height — so a
+    notch moves the same amount of *reading* whatever the surface's font, rather than a fixed distance
+    that happens to be a line and a half here and three lines elsewhere. Where the system asks for a
+    screen at a time, one notch is one Viewport.
+  - **A wheel delta moves proportionally to its size.** A delta of more than one notch — which is how
+    Windows reports a fast spin — travels proportionally further, and a sub-notch delta from a
+    precision touchpad travels proportionally less rather than being rounded up to a whole step.
+    Spinning harder therefore covers more ground, which is the whole of what makes a wheel feel
+    responsive.
+  - **Notches accumulate onto the Scroll Target.** A notch arriving while the Viewport is still
+    travelling moves the Scroll Target further on rather than restarting the travel from where the
+    Viewport currently is, so a burst of notches sums. The Scroll Target never leaves
+    `[0, scrollable height]`.
+  - **The Viewport's travel always terminates.** Each frame closes a fixed fraction of the remaining
+    gap, and once the gap is under a pixel the Viewport lands exactly on the Scroll Target and the
+    travel ends. An approach that only ever halves the distance would animate forever.
+  Wheel handling is presentation-only in the sense INV-015, INV-058 and INV-074 require: it moves
+  Viewports and never reads or writes a Markdown Document. A notch a surface cannot act on — it has
+  no scrollable height, or it is already at the limit the notch pushes toward — is left unhandled for
+  whatever else may want it, rather than swallowed.
+- **Enforced by:** `UI.Scrolling.ScrollStep` (the pure arithmetic — the Scroll Step, the Scroll Target
+  and the settling of a Viewport onto it) together with the `UI.Controls.SmoothScroll` behaviour,
+  which reads the surface's metrics and moves its Viewport and does no arithmetic of its own.
+- **Tested by:** `ScrollStepTests.*_INV075`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

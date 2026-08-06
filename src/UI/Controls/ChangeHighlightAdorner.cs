@@ -5,6 +5,8 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Domain;
+using UI.Diagnostics;
+using UI.Scrolling;
 using UI.Wysiwyg;
 
 namespace UI.Controls;
@@ -34,6 +36,11 @@ public sealed class ChangeHighlightAdorner : Adorner
     private const double SeamTickHeight = 2d;
 
     private readonly RichTextBox _editor;
+
+    // The Viewport Slice index over the changed Blocks, so a repaint measures only the shading on
+    // screen rather than every Changed Region of the reload (INV-074).
+    private readonly EditorViewportIndex _onScreen = new();
+
     private IReadOnlyList<ChangeHighlightTarget> _targets = [];
 
     /// <summary>Creates the adorner over <paramref name="editor"/>, repainting as it scrolls or resizes.</summary>
@@ -50,6 +57,7 @@ public sealed class ChangeHighlightAdorner : Adorner
         _editor.SizeChanged += OnRepaintNeeded;
     }
 
+
     /// <summary>
     /// Shows the Change Highlight for <paramref name="regions"/>, restarting the hold-then-fade. An
     /// empty set clears the highlight outright, which is how an edit or a fresh document takes a
@@ -61,6 +69,9 @@ public sealed class ChangeHighlightAdorner : Adorner
         _targets = regions is { Count: > 0 }
             ? ChangeHighlightScanner.Scan(_editor.Document, regions)
             : [];
+
+        // The scanner walks the document, so the targets arrive in document order.
+        _onScreen.Rebuild(_targets, static target => target.Block.ContentStart, static target => target.Block.ContentEnd);
 
         BeginAnimation(OpacityProperty, null);
         if (_targets.Count == 0)
@@ -80,6 +91,7 @@ public sealed class ChangeHighlightAdorner : Adorner
         fade.Completed += (_, _) =>
         {
             _targets = [];
+            _onScreen.Clear();
             InvalidateVisual();
         };
 
@@ -108,19 +120,36 @@ public sealed class ChangeHighlightAdorner : Adorner
             return;
         }
 
+        var stopwatch = ScrollProfiler.Start();
+        var drawn = 0;
+        var layoutQueries = 0;
+
+        var slice = _onScreen.Slice(_editor, _targets.Count, ref layoutQueries);
+        if (slice.IsEmpty)
+        {
+            ScrollProfiler.Record(stopwatch, "ChangeHighlightAdorner.OnRender", 0, 0, layoutQueries);
+            return;
+        }
+
         var viewportWidth = _editor.ActualWidth;
         var viewportHeight = _editor.ActualHeight;
         drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, viewportWidth, viewportHeight)));
 
-        foreach (var target in _targets)
+        for (var index = slice.First; index <= slice.Last; index++)
         {
-            Draw(drawingContext, target, fill, marker, viewportWidth, viewportHeight);
+            if (Draw(drawingContext, _targets[index], fill, marker, viewportWidth, viewportHeight))
+            {
+                drawn++;
+            }
         }
 
         drawingContext.Pop();
+        // Both ends of each sliced target Block are resolved, so two queries per target drawn.
+        ScrollProfiler.Record(
+            stopwatch, "ChangeHighlightAdorner.OnRender", slice.Count, drawn, layoutQueries + (slice.Count * 2));
     }
 
-    private void Draw(
+    private bool Draw(
         DrawingContext drawingContext,
         ChangeHighlightTarget target,
         Brush fill,
@@ -134,19 +163,19 @@ public sealed class ChangeHighlightAdorner : Adorner
             var endRect = target.Block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
             if (startRect == Rect.Empty || endRect == Rect.Empty)
             {
-                return;
+                return false;
             }
 
             if (endRect.Bottom < 0 || startRect.Top > viewportHeight)
             {
-                return;
+                return false;
             }
 
             var left = startRect.Left - BlockPadding;
             var right = EditorTextColumn.RightEdge(_editor);
             if (right <= left)
             {
-                return;
+                return false;
             }
 
             switch (target.Kind)
@@ -163,11 +192,14 @@ public sealed class ChangeHighlightAdorner : Adorner
                     DrawSeam(drawingContext, marker, left, endRect.Bottom + BlockPadding);
                     break;
             }
+
+            return true;
         }
         catch (InvalidOperationException)
         {
             // A pointer into a document that has just been replaced — ignore. A highlight only ever
             // describes the document it was resolved against, and the next reload resolves afresh.
+            return false;
         }
     }
 

@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using UI.Diagnostics;
+using UI.Scrolling;
 
 namespace UI.Controls;
 
@@ -19,6 +21,11 @@ namespace UI.Controls;
 public sealed class FindHighlightAdorner : Adorner
 {
     private readonly RichTextBox _editor;
+
+    // The Viewport Slice index over the Matches, so a repaint measures only the highlights on screen
+    // rather than every Match in the document (INV-074).
+    private readonly EditorViewportIndex _onScreen = new();
+
     private IReadOnlyList<TextRange> _matches = [];
     private int _currentIndex = -1;
 
@@ -62,6 +69,7 @@ public sealed class FindHighlightAdorner : Adorner
     {
         _matches = matches;
         _currentIndex = currentIndex;
+        _onScreen.Rebuild(matches);
         InvalidateVisual();
     }
 
@@ -74,18 +82,35 @@ public sealed class FindHighlightAdorner : Adorner
             return;
         }
 
+        var stopwatch = ScrollProfiler.Start();
+        var drawn = 0;
+        var layoutQueries = 0;
+
+        var slice = _onScreen.Slice(_editor, _matches.Count, ref layoutQueries);
+        if (slice.IsEmpty)
+        {
+            ScrollProfiler.Record(stopwatch, "FindHighlightAdorner.OnRender", 0, 0, layoutQueries);
+            return;
+        }
+
         var viewportHeight = _editor.ActualHeight;
         drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, _editor.ActualWidth, viewportHeight)));
-        for (var index = 0; index < _matches.Count; index++)
+        for (var index = slice.First; index <= slice.Last; index++)
         {
             var isCurrent = index == _currentIndex;
-            DrawHighlight(drawingContext, _matches[index], viewportHeight, isCurrent);
+            if (DrawHighlight(drawingContext, _matches[index], viewportHeight, isCurrent))
+            {
+                drawn++;
+            }
         }
 
         drawingContext.Pop();
+        // Both ends of each sliced Match are resolved, so two queries per Match drawn.
+        ScrollProfiler.Record(
+            stopwatch, "FindHighlightAdorner.OnRender", slice.Count, drawn, layoutQueries + (slice.Count * 2));
     }
 
-    private void DrawHighlight(DrawingContext drawingContext, TextRange range, double viewportHeight, bool isCurrent)
+    private bool DrawHighlight(DrawingContext drawingContext, TextRange range, double viewportHeight, bool isCurrent)
     {
         try
         {
@@ -93,31 +118,33 @@ public sealed class FindHighlightAdorner : Adorner
             var endRect = range.End.GetCharacterRect(LogicalDirection.Backward);
             if (startRect == Rect.Empty || endRect == Rect.Empty)
             {
-                return;
+                return false;
             }
 
             // Highlight only same-line, in-viewport Matches; a wrapped Match (rare for a short query)
             // is skipped rather than painted as a giant band.
             if (Math.Abs(startRect.Top - endRect.Top) > 0.5 || startRect.Bottom < 0 || startRect.Top > viewportHeight)
             {
-                return;
+                return false;
             }
 
             var left = startRect.Left;
             var right = endRect.Right;
             if (right - left < 1)
             {
-                return;
+                return false;
             }
 
             var box = new Rect(left - 1, startRect.Top, right - left + 2, startRect.Height);
             var fill = isCurrent ? _currentBrush : _matchBrush;
             drawingContext.DrawRoundedRectangle(fill, isCurrent ? _currentOutline : null, box, 2, 2);
+            return true;
         }
         catch (InvalidOperationException)
         {
             // A pointer left over from a document that has just been replaced — ignore; the editor
             // recomputes the Match ranges against the new document.
+            return false;
         }
     }
 }
