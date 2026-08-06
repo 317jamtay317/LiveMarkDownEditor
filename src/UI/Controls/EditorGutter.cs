@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Diagnostics;
 
 namespace UI.Controls;
 
@@ -62,7 +63,18 @@ public sealed class EditorGutter : Canvas
         typeof(EditorGutter),
         new PropertyMetadata(Brushes.SteelBlue));
 
+    // How far the gutter will walk from its remembered anchor before giving up and recounting from the
+    // start of the document. A scroll moves a few lines, so the walk is normally a handful of steps;
+    // a jump (Ctrl+End, Navigate to a heading) is what the recount is for.
+    private const int MaxAnchorWalk = 400;
+
     private bool _refreshQueued;
+
+    // The last line the gutter numbered, and the ordinal it gave it. Line Numbers count every rendered
+    // line above them, which is the one thing that cannot be read off the Viewport — so it is
+    // remembered between repaints and recounted only when the document's layout changes (INV-074).
+    private TextPointer? _anchorLine;
+    private int _anchorNumber;
 
     /// <summary>Initialises the gutter, refreshing once it is loaded into the visual tree.</summary>
     public EditorGutter()
@@ -120,13 +132,27 @@ public sealed class EditorGutter : Canvas
         gutter.ScheduleRefresh();
     }
 
-    private void OnEditorInvalidated(object? sender, EventArgs e) => ScheduleRefresh();
+    private void OnEditorInvalidated(object? sender, EventArgs e)
+    {
+        // A resize re-wraps the document, which renumbers every line below the change.
+        _anchorLine = null;
+        ScheduleRefresh();
+    }
 
     // A scroll fires many ScrollChanged events in quick succession (a wheel notch or drag emits a
-    // burst). Rebuilding the gutter — a full GetCharacterRect walk that forces layout — on every one
-    // is the dominant cost of scrolling. Coalescing to a single refresh per dispatcher cycle keeps
-    // scrolling smooth; the numbers trail the content by at most a frame.
-    private void OnEditorScrolled(object? sender, ScrollChangedEventArgs e) => ScheduleRefresh();
+    // burst). Coalescing the rebuild to a single refresh per dispatcher cycle keeps scrolling smooth;
+    // the numbers trail the content by at most a frame.
+    private void OnEditorScrolled(object? sender, ScrollChangedEventArgs e)
+    {
+        // A change of extent or viewport means the document was edited or re-laid-out, so the
+        // remembered line ordinal no longer describes it. A pure scroll leaves the numbering alone.
+        if (e.ExtentHeightChange != 0d || e.ViewportHeightChange != 0d)
+        {
+            _anchorLine = null;
+        }
+
+        ScheduleRefresh();
+    }
 
     private void ScheduleRefresh()
     {
@@ -171,11 +197,27 @@ public sealed class EditorGutter : Canvas
     // the numbering naturally reflects only what is currently visible.
     private void BuildLineNumbers(MarkdownRichEditor editor, double viewportHeight)
     {
+        var stopwatch = ScrollProfiler.Start();
+        var walked = 0;
+        var drawn = 0;
+        var layoutQueries = 0;
+
+        // Start at the Viewport rather than at the start of the document, so scrolling to the end of a
+        // long document costs no more than scrolling to the beginning (INV-074).
+        var first = FirstVisibleLine(editor, ref layoutQueries);
+        if (first is null)
+        {
+            ScrollProfiler.Record(stopwatch, "EditorGutter.BuildLineNumbers", 0, 0, layoutQueries);
+            return;
+        }
+
         var fontSize = editor.FontSize > 0 ? editor.FontSize : 13d;
-        var line = editor.Document.ContentStart.GetLineStartPosition(0);
-        var number = 1;
+        var line = first.Value.Line;
+        var number = first.Value.Number;
         while (line is not null)
         {
+            walked++;
+            layoutQueries++;
             var rect = line.GetCharacterRect(LogicalDirection.Forward);
             if (rect != Rect.Empty)
             {
@@ -188,6 +230,7 @@ public sealed class EditorGutter : Canvas
                 if (rect.Bottom >= 0)
                 {
                     AddLineNumber(number, rect, fontSize, editor.FontFamily);
+                    drawn++;
                 }
             }
 
@@ -199,6 +242,81 @@ public sealed class EditorGutter : Canvas
 
             number++;
         }
+
+        ScrollProfiler.Record(stopwatch, "EditorGutter.BuildLineNumbers", walked, drawn, layoutQueries);
+    }
+
+    // The first rendered line the Viewport shows, together with its Line Number. One hit-test finds the
+    // line; the ordinal comes from the remembered anchor, which a scroll leaves only a few lines away.
+    private (TextPointer Line, int Number)? FirstVisibleLine(MarkdownRichEditor editor, ref int layoutQueries)
+    {
+        layoutQueries++;
+        var line = editor.GetPositionFromPoint(new Point(0, 0), snapToText: true)?.GetLineStartPosition(0);
+        if (line is null)
+        {
+            return null;
+        }
+
+        var number = NumberOf(editor, line, ref layoutQueries);
+        _anchorLine = line;
+        _anchorNumber = number;
+        return (line, number);
+    }
+
+    // The Line Number of a line: stepped from the remembered anchor when it is near enough, and counted
+    // from the start of the document only when there is no usable anchor. The count itself never asks
+    // where a line sits on screen, so even the fallback is far cheaper than measuring every line.
+    private int NumberOf(MarkdownRichEditor editor, TextPointer line, ref int layoutQueries)
+    {
+        if (_anchorLine is not null && _anchorLine.IsInSameDocument(line))
+        {
+            var direction = line.CompareTo(_anchorLine);
+            if (direction == 0)
+            {
+                return _anchorNumber;
+            }
+
+            var step = direction > 0 ? 1 : -1;
+            var cursor = _anchorLine;
+            var number = _anchorNumber;
+            for (var walked = 0; walked < MaxAnchorWalk; walked++)
+            {
+                var next = cursor.GetLineStartPosition(step, out var moved);
+                layoutQueries++;
+                if (next is null || moved == 0)
+                {
+                    break;
+                }
+
+                cursor = next;
+                number += step;
+                if (cursor.CompareTo(line) == 0)
+                {
+                    return number;
+                }
+            }
+        }
+
+        return CountFromStart(editor, line, ref layoutQueries);
+    }
+
+    private static int CountFromStart(MarkdownRichEditor editor, TextPointer line, ref int layoutQueries)
+    {
+        var cursor = editor.Document.ContentStart.GetLineStartPosition(0);
+        var number = 1;
+        while (cursor is not null && cursor.CompareTo(line) < 0)
+        {
+            cursor = cursor.GetLineStartPosition(1, out var moved);
+            layoutQueries++;
+            if (moved == 0)
+            {
+                break;
+            }
+
+            number++;
+        }
+
+        return number;
     }
 
     private void AddLineNumber(int number, Rect rect, double fontSize, FontFamily fontFamily)
@@ -221,13 +339,26 @@ public sealed class EditorGutter : Canvas
 
     private void BuildFoldToggles(MarkdownRichEditor editor, double viewportHeight)
     {
-        foreach (var block in editor.Document.Blocks)
+        var stopwatch = ScrollProfiler.Start();
+        var walked = 0;
+        var drawn = 0;
+        var rects = 0;
+
+        // Begin at the Block the Viewport opens on rather than at the first Block of the document: a
+        // Fold Toggle above the Viewport is not drawn, so probing for one is pure waste (INV-074).
+        rects++;
+        var start = TopLevelBlockAt(editor, editor.GetPositionFromPoint(new Point(0, 0), snapToText: true))
+            ?? editor.Document.Blocks.FirstBlock;
+
+        for (var block = start; block is not null; block = block.NextBlock)
         {
+            walked++;
             if (!editor.IsSectionHeading(block))
             {
                 continue;
             }
 
+            rects++;
             var rect = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
             if (rect == Rect.Empty || rect.Bottom < 0)
             {
@@ -242,7 +373,34 @@ public sealed class EditorGutter : Canvas
             }
 
             AddFoldToggle(editor, block, rect);
+            drawn++;
         }
+
+        ScrollProfiler.Record(stopwatch, "EditorGutter.BuildFoldToggles", walked, drawn, rects);
+    }
+
+    // The top-level Block a position sits in — climbing out of a List Item or Table Cell, because the
+    // gutter walks the document's own Block sequence and a nested Paragraph is not part of it.
+    private static Block? TopLevelBlockAt(MarkdownRichEditor editor, TextPointer? position)
+    {
+        if (position is null)
+        {
+            return null;
+        }
+
+        TextElement? element = position.Paragraph;
+        Block? topLevel = position.Paragraph;
+        while (element?.Parent is TextElement parent)
+        {
+            if (parent is Block block)
+            {
+                topLevel = block;
+            }
+
+            element = parent;
+        }
+
+        return topLevel?.Parent == editor.Document ? topLevel : null;
     }
 
     private void AddFoldToggle(MarkdownRichEditor editor, Block heading, Rect rect)

@@ -31,6 +31,24 @@ Code Shading is split so that only the editor Control touches the document:
    text column for a Code Block, a snug box hugging the text for an inline Code Span. It fills with
    the `CodeShadingBrush` looked up from the active palette, so the shade follows the light/dark theme.
 
+## What an inline Code Span's shade costs
+
+Nearly every Code Span sits on one visual line, and such a span is described entirely by its two ends:
+[`CodeSpanShade.Box`](../../src/UI/Wysiwyg/CodeSpanShade.cs) turns the start and end character
+rectangles into the box to draw, so a repaint resolves **two** layout positions for a span however many
+characters it holds. It also does the Viewport cull on those two rectangles, before anything else is
+computed — culling a span only once its every character has been measured is not culling at all, which
+is the first rule [INV-074](../Invariants.md#inv-074) states.
+
+The per-character walk survives only as the fallback for a span that genuinely **wraps** across a line
+end, where no single box covers it and one box per visual line is the point. Previously that walk ran
+for *every* span: a `GetCharacterRect` at every insertion position, each forcing WPF to resolve text
+layout, so a screen of code-heavy prose cost hundreds of layout resolutions per repaint.
+
+`Box` orders the two edges with `Min`/`Max` rather than assuming the end lies right of the start. A
+degenerate or bidi-reversed span can put it on the left, and a negative width throws inside `Rect`'s
+constructor — an exception raised during a render takes the app down.
+
 ## Where a Code Block's panel ends
 
 A Code Block's panel spans the **text column**, not the control. Its left edge needs no help — the

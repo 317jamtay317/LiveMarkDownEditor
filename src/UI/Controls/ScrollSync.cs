@@ -1,6 +1,6 @@
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using UI.Scrolling;
 
 namespace UI.Controls;
@@ -38,9 +38,18 @@ public static class ScrollSync
         typeof(ScrollSync),
         new PropertyMetadata(null, OnSyncPartnerChanged));
 
-    // True while a partner is being scrolled to follow a scroll we are already handling, so the
-    // induced ScrollChanged does not bounce back and re-drive the originating view.
-    private static bool _isSyncing;
+    // Two offsets are the same scroll position if they are this close. Enough to absorb the rounding
+    // a view applies when it snaps a requested offset to a line boundary.
+    private const double SameOffset = 0.5d;
+
+    // The offset each view was last scrolled *to* by a sync, so the ScrollChanged that follows can be
+    // recognised as our own echo and not bounced back.
+    //
+    // A flag held across the ScrollTo call cannot do this: the induced ScrollChanged is raised at the
+    // next layout pass, long after the flag has been cleared, so the echo always escaped. Held against
+    // the view rather than in one static field because Tabs give one editing surface per Editor
+    // Session, and a shared flag would let one Tab's sync suppress another's.
+    private static readonly ConditionalWeakTable<FrameworkElement, StrongBox<double>> Induced = [];
 
     /// <summary>Sets the Scroll Sync partner of <paramref name="element"/>.</summary>
     /// <param name="element">The scrollable view to keep in sync.</param>
@@ -74,52 +83,34 @@ public static class ScrollSync
 
     private static void OnViewScrolled(object sender, ScrollChangedEventArgs e)
     {
-        // Ignore the echo of a scroll we ourselves induced, and horizontal-only changes (no vertical
-        // movement to mirror).
-        if (_isSyncing || sender is not FrameworkElement source || GetSyncPartner(source) is not { } partner)
+        if (sender is not FrameworkElement source || GetSyncPartner(source) is not { } partner)
         {
             return;
         }
 
+        // Horizontal-only changes have no vertical movement to mirror.
         if (e.VerticalChange == 0d && e.ExtentHeightChange == 0d && e.ViewportHeightChange == 0d)
         {
             return;
         }
 
-        var (offset, sourceScrollable) = Metrics(source);
-        var (_, partnerScrollable) = Metrics(partner);
-        var target = ProportionalScroll.TargetOffset(offset, sourceScrollable, partnerScrollable);
+        var view = ScrollableView.Of(source);
 
-        _isSyncing = true;
-        try
+        // The echo of a sync we ourselves induced. Recognised by where the view has landed rather than
+        // by a flag, because the echo arrives a layout pass later than the call that caused it.
+        if (Induced.TryGetValue(source, out var induced) && Math.Abs(view.Offset - induced.Value) < SameOffset)
         {
-            ScrollTo(partner, target);
+            Induced.Remove(source);
+            return;
         }
-        finally
-        {
-            _isSyncing = false;
-        }
-    }
 
-    // The vertical offset and scrollable height of either kind of partner: a text view that scrolls its
-    // own content, or a ScrollViewer that scrolls its child.
-    private static (double Offset, double Scrollable) Metrics(FrameworkElement view) => view switch
-    {
-        TextBoxBase text => (text.VerticalOffset, text.ExtentHeight - text.ViewportHeight),
-        ScrollViewer scroller => (scroller.VerticalOffset, scroller.ScrollableHeight),
-        _ => (0d, 0d),
-    };
+        var target = ProportionalScroll.TargetOffset(
+            view.Offset,
+            view.ScrollableHeight,
+            ScrollableView.Of(partner).ScrollableHeight);
 
-    private static void ScrollTo(FrameworkElement view, double offset)
-    {
-        switch (view)
-        {
-            case TextBoxBase text:
-                text.ScrollToVerticalOffset(offset);
-                break;
-            case ScrollViewer scroller:
-                scroller.ScrollToVerticalOffset(offset);
-                break;
-        }
+        // Remembered before the move, since a view may raise its ScrollChanged synchronously.
+        Induced.AddOrUpdate(partner, new StrongBox<double>(target));
+        ScrollableView.ScrollTo(partner, target);
     }
 }

@@ -1545,6 +1545,7 @@
                                               CommandParameter="{x:Static viewModels:DockablePanel.EditorPane}" />
                 <ScrollViewer x:Name="EditorScroller" Focusable="False"
                               AutomationProperties.AutomationId="EditorCanvas"
+                              controls:SmoothScroll.IsEnabled="True"
                               VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
                     <Grid controls:PageView.IsEnabled="{Binding IsPageViewEnabled}"
                           controls:PageView.Editor="{Binding ElementName=Editor}"
@@ -1651,6 +1652,7 @@
                                      AutomationProperties.AutomationId="SourcePanel"
                                      Text="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged, Delay=120}"
                                      controls:ScrollSync.SyncPartner="{Binding ElementName=Editor}"
+                                     controls:SmoothScroll.IsEnabled="True"
                                      AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
                                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                      FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"

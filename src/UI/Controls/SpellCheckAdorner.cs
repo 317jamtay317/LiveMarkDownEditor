@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
+using UI.Diagnostics;
+using UI.Scrolling;
 using UI.Spelling;
 
 namespace UI.Controls;
@@ -30,6 +32,10 @@ public sealed class SpellCheckAdorner : Adorner
     private readonly ISpellDictionary _dictionary;
     private readonly DispatcherTimer _debounce;
     private readonly List<TextRange> _misspellings = [];
+
+    // The Viewport Slice index over the Misspellings, so a repaint measures only the squiggles on
+    // screen rather than every Misspelling in the document (INV-074).
+    private readonly EditorViewportIndex _onScreen = new();
 
     /// <summary>Creates the adorner over <paramref name="editor"/> and begins watching for edits.</summary>
     /// <param name="editor">The editor whose Visual Document is spell-checked.</param>
@@ -85,6 +91,7 @@ public sealed class SpellCheckAdorner : Adorner
         // The prior ranges belong to the outgoing document; drop them at once so a repaint before the
         // rescan never touches a stale pointer, then re-scan once edits settle.
         _misspellings.Clear();
+        _onScreen.Clear();
         InvalidateVisual();
         QueueRescan();
     }
@@ -121,6 +128,8 @@ public sealed class SpellCheckAdorner : Adorner
             }
         }
 
+        // ProseRuns walks the document in order, so the Misspellings are already in document order.
+        _onScreen.Rebuild(_misspellings);
         InvalidateVisual();
     }
 
@@ -208,17 +217,34 @@ public sealed class SpellCheckAdorner : Adorner
             return;
         }
 
+        var stopwatch = ScrollProfiler.Start();
+        var drawn = 0;
+        var layoutQueries = 0;
+
+        var slice = _onScreen.Slice(_editor, _misspellings.Count, ref layoutQueries);
+        if (slice.IsEmpty)
+        {
+            ScrollProfiler.Record(stopwatch, "SpellCheckAdorner.OnRender", 0, 0, layoutQueries);
+            return;
+        }
+
         var viewportHeight = _editor.ActualHeight;
         drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, _editor.ActualWidth, viewportHeight)));
-        foreach (var range in _misspellings)
+        for (var index = slice.First; index <= slice.Last; index++)
         {
-            DrawSquiggle(drawingContext, range, viewportHeight);
+            if (DrawSquiggle(drawingContext, _misspellings[index], viewportHeight))
+            {
+                drawn++;
+            }
         }
 
         drawingContext.Pop();
+        // DrawSquiggle resolves both ends of each range it is given, so two queries per sliced range.
+        ScrollProfiler.Record(
+            stopwatch, "SpellCheckAdorner.OnRender", slice.Count, drawn, layoutQueries + (slice.Count * 2));
     }
 
-    private static void DrawSquiggle(DrawingContext drawingContext, TextRange range, double viewportHeight)
+    private static bool DrawSquiggle(DrawingContext drawingContext, TextRange range, double viewportHeight)
     {
         try
         {
@@ -226,13 +252,13 @@ public sealed class SpellCheckAdorner : Adorner
             var endRect = range.End.GetCharacterRect(LogicalDirection.Backward);
             if (startRect == Rect.Empty || endRect == Rect.Empty)
             {
-                return;
+                return false;
             }
 
             // Only the same-line, in-viewport case; a wrapped word (rare for an identifier) is skipped.
             if (Math.Abs(startRect.Top - endRect.Top) > 0.5 || startRect.Bottom < 0 || startRect.Top > viewportHeight)
             {
-                return;
+                return false;
             }
 
             var left = startRect.Left;
@@ -240,15 +266,17 @@ public sealed class SpellCheckAdorner : Adorner
             var y = startRect.Bottom - 1;
             if (right - left < 1)
             {
-                return;
+                return false;
             }
 
             drawingContext.DrawGeometry(null, SquigglePen, BuildSquiggle(left, right, y));
+            return true;
         }
         catch (InvalidOperationException)
         {
             // A pointer left over from a document that has just been replaced — ignore; the pending
             // rescan will rebuild the ranges against the new document.
+            return false;
         }
     }
 
