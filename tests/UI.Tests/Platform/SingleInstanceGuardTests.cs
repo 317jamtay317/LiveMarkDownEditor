@@ -59,6 +59,23 @@ public sealed class SingleInstanceGuardTests
     }
 
     [Fact]
+    public async Task Listen_MakesTheHolderReachableBeforeItReturns_INV020()
+    {
+        var name = UniqueName();
+        using var holder = SingleInstanceGuard.TryAcquire(name);
+        var received = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        holder!.Listen(path => received.TrySetResult(path));
+
+        // No grace period and no waiting: a later launch that forwards the instant the holder starts
+        // listening must still be heard, or its Startup Document is lost to a scheduling race.
+        SingleInstanceGuard.ForwardDocumentPath(name, @"C:\docs\note.md", timeoutMilliseconds: 0)
+            .ShouldBeTrue();
+        var path = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        path.ShouldBe(@"C:\docs\note.md");
+    }
+
+    [Fact]
     public void ForwardDocumentPath_WithNoHolder_ReturnsFalse_INV020()
     {
         SingleInstanceGuard.ForwardDocumentPath(UniqueName(), @"C:\docs\note.md", timeoutMilliseconds: 200)
