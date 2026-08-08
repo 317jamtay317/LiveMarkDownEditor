@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Domain;
 
 namespace UI.Controls;
@@ -55,11 +57,28 @@ public sealed class FolderPanel : TreeView
     {
         base.OnMouseDoubleClick(e);
 
-        if (ResolveEntry(e.OriginalSource as DependencyObject) is { Kind: FolderEntryKind.File } file)
+        if (ActivateAt(e.OriginalSource as DependencyObject))
         {
-            Activate(file);
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Activates the Folder Entry whose row contains <paramref name="clicked"/>, when that entry is a
+    /// File. A double-click lands on a visual inside the row — its glyph or its name — so the row that
+    /// visual sits in is what names the entry.
+    /// </summary>
+    /// <param name="clicked">The visual the click landed on (a double-click's <c>OriginalSource</c>).</param>
+    /// <returns><see langword="true"/> when a File was activated; otherwise <see langword="false"/>.</returns>
+    internal bool ActivateAt(DependencyObject? clicked)
+    {
+        if (ResolveEntry(clicked) is not { Kind: FolderEntryKind.File } file)
+        {
+            return false;
+        }
+
+        Activate(file);
+        return true;
     }
 
     /// <summary>Activates the selected entry on Enter when it is a File.</summary>
@@ -81,16 +100,21 @@ public sealed class FolderPanel : TreeView
         panel.ItemsSource = (e.NewValue as FolderWorkspace)?.Entries;
     }
 
-    private FolderEntry? ResolveEntry(DependencyObject? source)
+    private static FolderEntry? ResolveEntry(DependencyObject? source)
     {
-        if (source is null)
+        // A double-click's OriginalSource is a visual inside the row, so walk up to the row itself.
+        // ItemsControl.ContainerFromElement cannot do this: a nested row belongs to its parent row, not
+        // to the TreeView, so asking the TreeView for it skips past every File below the top level.
+        while (source is not null and not TreeViewItem)
         {
-            return null;
+            // A click can land on a ContentElement (a Run inside the row's name), which has no visual
+            // parent of its own — its logical parent leads back into the visual tree.
+            source = source is Visual or Visual3D
+                ? VisualTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
         }
 
-        // A double-click's OriginalSource is a visual inside the row; walk up to the TreeViewItem.
-        var container = ContainerFromElement(source) as TreeViewItem;
-        return container?.DataContext as FolderEntry;
+        return (source as TreeViewItem)?.DataContext as FolderEntry;
     }
 
     private void Activate(FolderEntry entry)

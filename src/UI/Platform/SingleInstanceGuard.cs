@@ -72,7 +72,28 @@ public sealed class SingleInstanceGuard : IDisposable
     public void Listen(Action<string> onDocumentPathReceived)
     {
         ArgumentNullException.ThrowIfNull(onDocumentPathReceived);
-        _listener ??= Task.Run(() => ListenLoopAsync(onDocumentPathReceived, _cancellation.Token));
+
+        if (_listener is not null)
+        {
+            return;
+        }
+
+        NamedPipeServerStream server;
+        try
+        {
+            // The pipe is opened here rather than on the listener's own thread: Listen must not return
+            // before a later launch could connect, or a launch that forwards while this thread is still
+            // being scheduled loses its Startup Document (INV-020).
+            server = OpenPipe();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // The pipe name is taken or barred; this process simply does not listen, exactly as a
+            // failure inside the loop would have left it.
+            return;
+        }
+
+        _listener = Task.Run(() => ListenLoopAsync(server, onDocumentPathReceived, _cancellation.Token));
     }
 
     /// <summary>Releases the instance so the next launch can acquire it, and stops listening.</summary>
@@ -100,24 +121,24 @@ public sealed class SingleInstanceGuard : IDisposable
     }
 
     // Serves one later-launch client at a time: accept, read its single path message, hand it to the
-    // callback, and go back to listening until disposed.
-    private async Task ListenLoopAsync(Action<string> onDocumentPathReceived, CancellationToken token)
+    // callback, and reopen the pipe for the next launch until disposed. The first pipe is opened by
+    // Listen, so the holder is already reachable by the time this loop starts.
+    private async Task ListenLoopAsync(
+        NamedPipeServerStream opened, Action<string> onDocumentPathReceived, CancellationToken token)
     {
+        var server = opened;
         while (!token.IsCancellationRequested)
         {
             try
             {
-                await using var server = new NamedPipeServerStream(
-                    PipeNameFor(_name),
-                    PipeDirection.In,
-                    maxNumberOfServerInstances: 1,
-                    PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
-                await server.WaitForConnectionAsync(token).ConfigureAwait(false);
+                await using (server.ConfigureAwait(false))
+                {
+                    await server.WaitForConnectionAsync(token).ConfigureAwait(false);
 
-                using var reader = new StreamReader(server);
-                var path = await reader.ReadToEndAsync(token).ConfigureAwait(false);
-                onDocumentPathReceived(path);
+                    using var reader = new StreamReader(server);
+                    var path = await reader.ReadToEndAsync(token).ConfigureAwait(false);
+                    onDocumentPathReceived(path);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -127,8 +148,29 @@ public sealed class SingleInstanceGuard : IDisposable
             {
                 // The client vanished mid-handshake; keep serving the next launch.
             }
+
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                server = OpenPipe();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return;
+            }
         }
     }
+
+    private NamedPipeServerStream OpenPipe() => new(
+        PipeNameFor(_name),
+        PipeDirection.In,
+        maxNumberOfServerInstances: 1,
+        PipeTransmissionMode.Byte,
+        PipeOptions.Asynchronous);
 
     // The pipe namespace is machine-wide where the mutex's Local\ namespace is per-session; scoping
     // the pipe by user keeps two users' editors from crossing paths.
