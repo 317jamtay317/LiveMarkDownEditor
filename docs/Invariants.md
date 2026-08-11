@@ -331,14 +331,19 @@ and tested.
 - **Statement:** Launching the editor with a Startup Document opens that file into the Workspace at
   startup. If the editor is already running, the Startup Document is forwarded to the running
   instance — whose Workspace opens it, or activates its existing Tab (INV-009) — and no second
-  editor window appears (Single Instance).
+  editor window appears (Single Instance). The holder is reachable the moment it starts listening —
+  a launch that forwards while the holder is still starting up is heard, not dropped.
 - **Enforced by:** `StartupArguments` (parsing the Startup Document from the command line),
   `WorkspaceViewModel.OpenPathAsync` (the same dedupe-and-load path the file picker uses), and the
-  `SingleInstanceGuard` (a named mutex plus named pipe that forwards the path to the first instance),
-  wired together in the composition root (`Program`).
+  `SingleInstanceGuard` (a named mutex plus named pipe that forwards the path to the first instance) —
+  whose `Listen` opens the pipe on the calling thread before it returns, so the holder never advertises
+  itself through the mutex while its pipe is still waiting to be scheduled — wired together in the
+  composition root (`Program`).
 - **Tested by:** `StartupArgumentsTests.*`,
   `WorkspaceViewModelTests.OpenPath_WhenFileAlreadyOpen_ActivatesExistingTab_INV009_INV020`,
-  `SingleInstanceGuardTests.*_INV020`.
+  `SingleInstanceGuardTests.*_INV020` (including
+  `Listen_MakesTheHolderReachableBeforeItReturns_INV020`, which forwards with no connect timeout at
+  all).
 
 ### INV-021 — Viewing the Conflict Difference is view-only and deterministic
 - **Statement:** Computing a Conflict Difference is a pure, deterministic function of the two sides —
@@ -881,7 +886,8 @@ and tested.
   Workspace, unlike the Outline, is a view onto disk. Activating a **File** opens its Markdown Document
   in a Tab through the same path the file picker uses, so a file already open in the Workspace
   activates its existing Tab rather than duplicating it (INV-009), and opening it is not an edit.
-  Activating a **Folder** does nothing but its own Expand/Collapse.
+  Activating a **Folder** does nothing but its own Expand/Collapse. **Depth does not matter:** a File
+  nested any number of Folders down the Folder Tree activates exactly as one at the root does.
 - **Enforced by:** `FolderWorkspaceViewModel` — its `OpenFolderCommand`, `ToggleFolderPanelCommand`,
   and `IsFolderPanelVisible` drive only presentation state, and its `ActivateEntryCommand` resolves a
   File to its absolute path and routes it to `WorkspaceViewModel.OpenPathAsync` (the same
@@ -889,7 +895,8 @@ and tested.
   Control, which reads the Folder Tree and raises activation without mutating any document.
 - **Tested by:** `FolderWorkspaceViewModelTests.*_INV043` (opening a folder builds the tree; activating
   a File opens it through the callback with its canonical path; toggling the panel and browsing the
-  tree change no document).
+  tree change no document) and `FolderPanelTests.*_INV043` (double-clicking a File activates it at the
+  root, one Folder down, and two Folders down; double-clicking a Folder activates nothing).
 
 ### INV-044 — A Folder Workspace tracks its root live
 - **Statement:** While a Folder Workspace is open, a Markdown Document added, removed, or renamed

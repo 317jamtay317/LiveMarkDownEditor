@@ -31,11 +31,16 @@ through its `ActivateCommand`:
   no document.
 - **Activating** — because a `TreeView`'s `SelectedItem` is read-only (unlike the `ListBox` the
   OutlinePanel derives from), activation is driven from input rather than a selection change:
-  `OnMouseDoubleClick` resolves the double-clicked row to its Folder Entry (via
-  `ItemsControl.ContainerFromElement`) and, when it is a **File**, runs `ActivateCommand` with that
-  entry; `OnKeyDown` does the same for **Enter** on the selected row. The Workspace routes the command
-  to its `OpenPathAsync`, so activating a File opens it in a Tab — activating one already open just
-  activates its existing Tab (INV-009). A **Folder** double-click is left to its native Expand/Collapse.
+  `OnMouseDoubleClick` resolves the double-clicked row to its Folder Entry and, when it is a **File**,
+  runs `ActivateCommand` with that entry; `OnKeyDown` does the same for **Enter** on the selected row.
+  The Workspace routes the command to its `OpenPathAsync`, so activating a File opens it in a Tab —
+  activating one already open just activates its existing Tab (INV-009). A **Folder** double-click is
+  left to its native Expand/Collapse.
+  - The click lands on a visual *inside* the row, so the row is found by walking up the visual tree to
+    the nearest `TreeViewItem`. `ItemsControl.ContainerFromElement` cannot be used for this: a nested
+    row belongs to its parent row, not to the `TreeView`, so asking the panel for the container of a
+    nested click returns the top-level ancestor row instead — which, being a **Folder**, activates
+    nothing. That was the cause of Files inside a Folder refusing to open (INV-043).
 
 ## Properties
 
