@@ -53,6 +53,42 @@ internal static class TableEditing
     }
 
     /// <summary>
+    /// Answers Enter inside a Table: from its last row the caret goes to the line below the Table —
+    /// the line a Block Island always keeps (INV-055) — and from any other row to the same column of
+    /// the row below. A pipe table cell is one line, so Enter never splits one: WPF would answer it
+    /// with a second paragraph in the cell that Capture then discards (INV-077).
+    /// </summary>
+    /// <param name="editor">The editor whose caret is moved.</param>
+    /// <returns><see langword="true"/> when the caret was inside a Table and has been moved — so the
+    /// key is handled; <see langword="false"/> when it was not, leaving Enter to the editor.</returns>
+    internal static bool TryLeaveTable(RichTextBox editor)
+    {
+        var caretCell = VisualDocumentTraversal.AncestorOf<TableCell>(editor.CaretPosition);
+        var caretRow = VisualDocumentTraversal.AncestorOf<TableRow>(editor.CaretPosition);
+        var table = VisualDocumentTraversal.AncestorOf<WpfTable>(editor.CaretPosition);
+        if (caretCell is null || caretRow is null || table is null)
+        {
+            return false;
+        }
+
+        // A Table's rows read in one sequence however many Row Groups hold them, so "the row below"
+        // and "the last row" mean the same thing whether or not the header sits in a group of its own.
+        var rows = table.RowGroups.SelectMany(rowGroup => rowGroup.Rows).ToList();
+        var nextRow = rows.ElementAtOrDefault(rows.IndexOf(caretRow) + 1);
+        var landing = nextRow is null
+            ? LineBelow(editor, table)
+            : CellBelow(caretRow, caretCell, nextRow).ContentEnd;
+
+        if (landing is null)
+        {
+            return false;
+        }
+
+        editor.Selection.Select(landing, landing);
+        return true;
+    }
+
+    /// <summary>
     /// The Add Row Formatting Action: inserts a new empty row immediately below the caret's row,
     /// minted at the Table's column count (INV-019), and moves the caret into its first cell.
     /// No-op when the caret is not inside a Table.
@@ -375,6 +411,37 @@ internal static class TableEditing
             ? table.RowGroups[0].Rows[0]
             : null;
     }
+
+    // The caret's landing place below a Table: the line INV-055 keeps under a Block Island. Null when
+    // the block after the Table holds no text position to land in — a Mermaid Diagram, which holds a
+    // picture — leaving Enter to the editor rather than moving the caret somewhere it cannot type.
+    private static TextPointer? LineBelow(RichTextBox editor, WpfTable table)
+    {
+        if (editor.Document.Blocks.LastBlock != table)
+        {
+            return VisualDocumentTraversal.EnsureParagraphAfter(editor.Document, table) is { } paragraph
+                ? paragraph.ContentStart
+                : table.NextBlock?.ContentStart.GetNextInsertionPosition(LogicalDirection.Forward);
+        }
+
+        // A Table that ends the document already has its trailing line (INV-055); minting one here is
+        // the safety net for a Table that reached the end without one, and — unlike the caret move
+        // itself — it changes the Visual Document, so it belongs in a change unit of its own.
+        editor.BeginChange();
+        try
+        {
+            return VisualDocumentTraversal.EnsureParagraphAfter(editor.Document, table)?.ContentStart;
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+    }
+
+    // The cell directly below the caret's, clamped to the row below's last cell. A Table is kept
+    // rectangular (INV-019), so the clamp only ever matters for a Table loaded from ragged source.
+    private static TableCell CellBelow(TableRow caretRow, TableCell caretCell, TableRow nextRow) =>
+        nextRow.Cells[Math.Min(caretRow.Cells.IndexOf(caretCell), nextRow.Cells.Count - 1)];
 
     // Inserts the Table relative to the caret's block: in place of an empty paragraph (which stays,
     // as the line below the Table), after a non-empty block, or at the end of a block-less document.

@@ -269,4 +269,15 @@ public sealed class WysiwygRoundTripTests
             visibleText.ShouldNotContain("- Item");
         });
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\n\n")]
+    public void RoundTrip_GivenNoBlocksAtAll_CapturesBackToEmpty_INV076(string markdown)
+    {
+        // The line a Visual Document always keeps to type in is an affordance, not content: Capture
+        // trims it off again, so an empty document Captures as the empty string (INV-076).
+        StaThread.Run(() => RoundTrip(markdown).ShouldBeEmpty());
+    }
 }

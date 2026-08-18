@@ -1,7 +1,9 @@
+using System.Windows;
 using System.Windows.Documents;
 using Shouldly;
 using UI.Controls;
 using UI.Tests.Wysiwyg;
+using UI.Wysiwyg;
 using Xunit;
 
 namespace UI.Tests.Controls;
@@ -459,5 +461,136 @@ public sealed class MarkdownRichEditorTableTests
             // A Table is a Block Island: it must never be the document's last block (INV-055).
             editor.Document.Blocks.LastBlock.ShouldBeOfType<Paragraph>();
         });
+    }
+
+    [Fact]
+    public void Enter_OnTheLastRow_PutsTheCaretOnTheLineBelowTheTable_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable + "\n\nafter text" };
+            VisualDocumentText.PlaceCaretAfter(editor, "b2");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeTrue();
+
+            TableEditing.IsInTable(editor.CaretPosition).ShouldBeFalse();
+            BlockOf(editor.CaretPosition).ShouldBe(editor.Document.Blocks.LastBlock);
+        });
+    }
+
+    [Fact]
+    public void Enter_OnTheLastRow_OfATableThatEndsTheDocument_LandsOnTheLineBelow_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable };
+            VisualDocumentText.PlaceCaretAfter(editor, "a2");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeTrue();
+
+            // INV-055 keeps a line below a Table that ends the document; this is how the user reaches it.
+            TableEditing.IsInTable(editor.CaretPosition).ShouldBeFalse();
+            BlockOf(editor.CaretPosition).ShouldBe(editor.Document.Blocks.LastBlock);
+            editor.Document.Blocks.LastBlock.ShouldBeOfType<Paragraph>();
+        });
+    }
+
+    [Fact]
+    public void Enter_OnARowAboveTheLast_MovesToTheSameColumnOfTheRowBelow_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable };
+            VisualDocumentText.PlaceCaretAfter(editor, "b1");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeTrue();
+
+            // A pipe table cell is one line, so Enter moves down instead of splitting it.
+            TableEditing.IsInTable(editor.CaretPosition).ShouldBeTrue();
+            CellTextAt(editor.CaretPosition).ShouldBe("b2");
+        });
+    }
+
+    [Fact]
+    public void Enter_OnTheHeaderRow_MovesIntoTheFirstBodyRow_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable };
+            VisualDocumentText.PlaceCaretAfter(editor, "B");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeTrue();
+
+            CellTextAt(editor.CaretPosition).ShouldBe("b1");
+        });
+    }
+
+    [Fact]
+    public void Enter_InATable_ChangesNothingInTheMarkdownDocument_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable };
+            VisualDocumentText.PlaceCaretAfter(editor, "b2");
+
+            TableEditing.TryLeaveTable(editor);
+
+            // Moving the caret is not an edit, and the trailing line is Capture-invisible (INV-055).
+            editor.Markdown.ShouldBe(TwoColumnTable);
+        });
+    }
+
+    [Fact]
+    public void Enter_WithACellSelected_CollapsesTheSelectionRatherThanReplacingIt_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = TwoColumnTable };
+            VisualDocumentText.SelectText(editor, "b1");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeTrue();
+
+            editor.Selection.IsEmpty.ShouldBeTrue();
+            editor.Markdown.ShouldBe(TwoColumnTable);
+            CellTextAt(editor.CaretPosition).ShouldBe("b2");
+        });
+    }
+
+    [Fact]
+    public void Enter_OutsideATable_IsLeftToTheEditor_INV077()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "before text\n\n" + TwoColumnTable };
+            VisualDocumentText.PlaceCaretAfter(editor, "before text");
+
+            TableEditing.TryLeaveTable(editor).ShouldBeFalse();
+        });
+    }
+
+    private static Block? BlockOf(TextPointer? position)
+    {
+        for (DependencyObject? node = position?.Parent; node is TextElement element; node = element.Parent)
+        {
+            if (element is Block block && block.Parent is FlowDocument)
+            {
+                return block;
+            }
+        }
+
+        return null;
+    }
+
+    private static string CellTextAt(TextPointer? position)
+    {
+        for (DependencyObject? node = position?.Parent; node is TextElement element; node = element.Parent)
+        {
+            if (element is TableCell cell)
+            {
+                return new TextRange(cell.ContentStart, cell.ContentEnd).Text;
+            }
+        }
+
+        throw new InvalidOperationException("The caret is not inside a Table cell.");
     }
 }

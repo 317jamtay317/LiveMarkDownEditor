@@ -1988,6 +1988,56 @@ and tested.
   which reads the surface's metrics and moves its Viewport and does no arithmetic of its own.
 - **Tested by:** `ScrollStepTests.*_INV075`.
 
+### INV-076 — A Visual Document always has a line to type in
+- **Statement:** A Visual Document is **never empty of blocks**. Projecting Markdown that yields no
+  block at all — an empty document, or one holding nothing but whitespace — yields a single empty
+  paragraph, so there is always a line the caret can sit in and a block a Formatting Action can act
+  on. It is the counterpart of INV-055 at the other end of the document: that rule keeps the *last*
+  block from trapping the caret, this one keeps a document from having no block to place it in.
+- **Why:** Every block-level Formatting Action — Toggle Unordered List, Toggle Ordered List, Toggle
+  Task List, Set Heading Level, Toggle Block Quote, Toggle Code — resolves the caret to the top-level
+  block containing it and edits that block. In a document with no blocks the caret's own parent is
+  the `FlowDocument`, and there is no block on either side of it to fall back to, so every one of
+  those actions has nothing to act on and silently does nothing. The user clicks a live-looking
+  button on a new document and the document does not change — the action appears broken until they
+  happen to type a character first.
+- **The paragraph is an affordance, not content.** **Capture drops it** — it is a trailing empty
+  paragraph, which Capture already trims (INV-055) — so an empty document still Captures as the empty
+  string. Projecting is unchanged as a pure function of its inputs (INV-003), and the Round-Trip
+  still converges (INV-005): empty Markdown projects to one empty paragraph and Captures back to
+  empty Markdown.
+- **Enforced by:** `MarkdownToFlowDocumentProjector.Project`, which appends an empty paragraph when
+  the projected document holds no blocks, and `FlowDocumentToMarkdownCapturer.Capture`, whose
+  existing trailing-empty trim takes it back off again.
+- **Tested by:** `MarkdownToFlowDocumentProjectorTests.*_INV076`,
+  `WysiwygRoundTripTests.*_INV076`, and `MarkdownRichEditorListTests.*_INV076`.
+
+### INV-077 — Enter on a Table's last row leaves the Table
+- **Statement:** Pressing Enter while the caret is in the **last row** of a Table puts the caret on
+  the **line below the Table** — the line INV-055 guarantees is there — rather than splitting the
+  cell. It is the gesture that reaches that line: INV-055 promises the line exists, and this promises
+  the user can get to it from where they are, without hunting for it with the mouse or reaching for
+  the Source Panel.
+- **Why:** A Table is a Block Island, and the last row is where a user runs out of document. Enter is
+  what anyone reaches for to start a new line, and inside a cell WPF answers it by splitting the cell
+  into a second paragraph — which a pipe table cannot express, so Capture discards it. The keystroke
+  changes what is on screen and changes nothing in the Markdown Document: the one gesture the user
+  tries is also the one that lies to them.
+- **It never splits a cell.** A pipe table cell is one line, so Enter anywhere else in a Table moves
+  the caret to the same column of the row below instead of splitting. Enter's meaning — go to the
+  next line — is kept, and no edit is made that Capture would silently drop.
+- **Moving the caret is not an edit.** Neither move changes a block, so the Markdown Document is
+  untouched and the Editor Session gains no unsaved edits — a selection inside the Table is
+  **collapsed rather than replaced**, because Enter here means "go to the next line" and not "type
+  over this". The one document change it can make is the trailing line itself, when the Table ends
+  the document and INV-055's paragraph is not there yet — and that paragraph is Capture-invisible for
+  exactly the reason INV-055 gives.
+- **Enforced by:** `TableEditing.TryLeaveTableAtCaret`, reached from
+  `MarkdownRichEditor.OnPreviewKeyDown` alongside the Task List's Enter (INV-023), and using the same
+  `VisualDocumentTraversal.EnsureParagraphAfter` seam INV-055 uses so the line below a Table is minted
+  in exactly one place.
+- **Tested by:** `MarkdownRichEditorTableTests.*_INV077`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
