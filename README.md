@@ -31,7 +31,8 @@ Markdown is never in your way — but it is exactly what gets written to disk.
   play toggle, a scrubber, and the elapsed and total time.
 - **Block quotes** and **thematic breaks**.
 - **Tables** with a header row, per-column alignment, and add / remove row and column. Every other
-  body row is shaded so the eye can follow a row across a wide table.
+  body row is shaded so the eye can follow a row across a wide table. Enter walks down the rows, and
+  from the last row it takes you out to the line below the table.
 - **Footnotes** — cite one anywhere and the note lands in a footnote section at the end of the
   document, numbered for you.
 - **Definition lists** for glossaries: a term flush to the margin, its definitions indented beneath.

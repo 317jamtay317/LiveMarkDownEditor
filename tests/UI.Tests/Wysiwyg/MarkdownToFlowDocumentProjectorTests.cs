@@ -75,4 +75,32 @@ public sealed class MarkdownToFlowDocumentProjectorTests
             second.ShouldBe(first);
         });
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\n\n")]
+    public void Project_GivenNoBlocksAtAll_StillLeavesALineToTypeIn_INV076(string markdown)
+    {
+        StaThread.Run(() =>
+        {
+            var document = Projector.Project(markdown);
+
+            // With no block at all the caret's own parent is the FlowDocument, and every block-level
+            // Formatting Action has nothing to act on (INV-076).
+            var paragraph = document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<Paragraph>();
+            new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text.ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
+    public void Project_GivenMarkdownThatHasBlocks_AddsNoExtraLine_INV076()
+    {
+        StaThread.Run(() =>
+        {
+            var document = Projector.Project("alpha");
+
+            document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<Paragraph>();
+        });
+    }
 }

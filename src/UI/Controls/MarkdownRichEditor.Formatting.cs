@@ -213,6 +213,18 @@ public sealed partial class MarkdownRichEditor
     public bool ContinueTaskListAtCaret() => ListFormatting.TryContinueTaskList(this);
 
     /// <summary>
+    /// Answers Enter inside a Table: from its last row the caret goes to the line below the Table —
+    /// the line a Block Island always keeps (INV-055) — and from any other row to the same column of
+    /// the row below, because a pipe table cell is one line and Enter must not split it (INV-077).
+    /// Called by the control's Enter handling.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the caret was inside a Table and has been moved; otherwise
+    /// <see langword="false"/>, so Enter behaves as it normally does.
+    /// </returns>
+    public bool LeaveTableAtCaret() => TableEditing.TryLeaveTable(this);
+
+    /// <summary>
     /// Gives the List Item at the caret an unchecked Task Marker when the item before it has one and
     /// it does not — the rule that makes Enter continue a Task List (INV-023). A no-op anywhere else.
     /// </summary>
@@ -236,6 +248,14 @@ public sealed partial class MarkdownRichEditor
         // Enter in a Task List carries the checkbox to the new item, the way WPF carries a bullet or
         // a number (INV-023). Shift+Enter is a soft break within the same item, so it is left alone.
         if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && ContinueTaskListAtCaret())
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // Enter in a Table moves the caret down rather than splitting the cell: from the last row to
+        // the line below the Table, which is how the user gets out of a Block Island (INV-077).
+        if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && LeaveTableAtCaret())
         {
             e.Handled = true;
             return;

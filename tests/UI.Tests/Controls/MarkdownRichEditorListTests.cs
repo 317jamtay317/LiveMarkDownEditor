@@ -541,6 +541,37 @@ public sealed class MarkdownRichEditorListTests
         });
     }
 
+    [Fact]
+    public void ToggleOrderedList_OnAnEmptyDocument_StartsTheList_INV076()
+    {
+        StaThread.Run(() =>
+        {
+            // A brand new document: nothing typed yet, so the only line there is is an empty one.
+            var editor = new MarkdownRichEditor { Markdown = "alpha" };
+            editor.Markdown = string.Empty;
+            editor.CaretPosition = editor.Document.ContentStart;
+
+            MarkdownEditingCommands.ToggleOrderedList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("1. ");
+        });
+    }
+
+    [Fact]
+    public void ToggleUnorderedList_OnAnEmptyDocument_StartsTheList_INV076()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "alpha" };
+            editor.Markdown = string.Empty;
+            editor.CaretPosition = editor.Document.ContentStart;
+
+            MarkdownEditingCommands.ToggleUnorderedList.Execute(parameter: null, target: editor);
+
+            editor.Markdown.ShouldBe("- ");
+        });
+    }
+
     private static void SelectWholeDocument(MarkdownRichEditor editor)
     {
         var blocks = editor.Document.Blocks.ToList();

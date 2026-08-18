@@ -93,6 +93,15 @@ public sealed class MarkdownToFlowDocumentProjector
                 footnotes, anchors, block => ProjectBlock(block, baseDirectory)));
         }
 
+        // Markdown holding no block at all — an empty document, or nothing but whitespace — would
+        // otherwise project to a document with no block to put the caret in, leaving every
+        // block-level Formatting Action with nothing to act on (INV-076). Capture trims this
+        // paragraph off again as the trailing empty it is, so the Round-Trip is unchanged (INV-005).
+        if (document.Blocks.Count == 0)
+        {
+            document.Blocks.Add(new Paragraph { Margin = BodySpacing });
+        }
+
         return document;
     }
 

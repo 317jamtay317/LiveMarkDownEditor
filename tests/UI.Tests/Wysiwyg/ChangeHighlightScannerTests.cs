@@ -124,14 +124,20 @@ public sealed class ChangeHighlightScannerTests
     }
 
     [Fact]
-    public void Scan_GivenAnEmptyDocument_TargetsNothing_INV060()
+    public void Scan_GivenADocumentEmptiedByTheReload_MarksTheSeamOnTheOneLineLeft_INV060()
     {
         StaThread.Run(() =>
         {
+            // An emptied document still has the one line a Visual Document always keeps (INV-076), and
+            // a Removed seam falling at the end hangs on the last Block — which is that line. The line
+            // records no source range of its own, so it anchors the seam and is never itself shaded.
             var document = Projector.Project(string.Empty);
             var regions = ReloadDifference.Compute(new MarkdownSource("alpha"), MarkdownSource.Empty);
 
-            ChangeHighlightScanner.Scan(document, regions).ShouldBeEmpty();
+            var target = ChangeHighlightScanner.Scan(document, regions).ShouldHaveSingleItem();
+
+            target.Kind.ShouldBe(ChangeHighlightTargetKind.RemovedBelow);
+            target.Block.ShouldBe(document.Blocks.LastBlock);
         });
     }
 
