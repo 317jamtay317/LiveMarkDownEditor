@@ -14,6 +14,7 @@ Markdown and updates live when it changes underneath you, even from another pers
 - [Live updates](#live-updates) · [Navigating](#getting-around) · [Panels](#panels-and-layout)
 - [Pages and printing](#pages-and-printing) · [Getting content in and out](#getting-content-in-and-out)
 - [Writing aids](#writing-aids) · [Keyboard shortcuts](#keyboard-shortcuts) · [Building](#building)
+- [How it compares](docs/Comparison.md) — beside Typora, VS Code, and Haroopad
 
 ---
 
@@ -243,6 +244,8 @@ dotnet test MarkdownEditor.slnx
 
 - **[How to use the editor](https://github.com/317jamtay317/LiveMarkDownEditor/wiki)** — the wiki, with
   a guide to every part of the app and a control reference.
+- **[How it compares](docs/Comparison.md)** — LiveMarkDownEditor beside Typora, VS Code with
+  Markdown All in One, and Haroopad, with the gaps stated plainly.
 - [docs/UbiquitousLanguage.md](docs/UbiquitousLanguage.md) and
   [docs/Invariants.md](docs/Invariants.md) are the authoritative domain documents; see
   [CLAUDE.md](CLAUDE.md) for how work is done in this repository.
