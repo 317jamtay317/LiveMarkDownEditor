@@ -30,7 +30,8 @@ Markdown is never in your way — but it is exactly what gets written to disk.
 - **Links** and **images**, inserted through a prompt so a URL has somewhere to be typed.
 - **Videos** — written with the image's own syntax (`![clip](clip.mp4)`) and played in place, with a
   play toggle, a scrubber, and the elapsed and total time.
-- **Block quotes** and **thematic breaks**.
+- **Block quotes** and **thematic breaks**. Press Enter twice at the end of a quote to stop
+  quoting and carry on writing below it.
 - **Tables** with a header row, per-column alignment, and add / remove row and column. Every other
   body row is shaded so the eye can follow a row across a wide table. Enter walks down the rows, and
   from the last row it takes you out to the line below the table.

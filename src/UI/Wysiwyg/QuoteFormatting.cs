@@ -66,6 +66,106 @@ internal static class QuoteFormatting
         || (VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start) is not null
             && !FootnoteFormatting.IsInFootnoteSection(editor.Selection.Start));
 
+    /// <summary>
+    /// Answers Enter on an empty line inside a Block Quote: the line leaves the quote and becomes a
+    /// plain paragraph below it, with the caret on it. A Block Quote has no closing mark to type past,
+    /// so this is the way out of one from the keyboard — two Enters at the end of a quoted paragraph
+    /// stop the quoting and carry on writing below it (INV-078). A line in the middle of a quote
+    /// splits it, the blocks below staying quoted as a second Block Quote, and a quote the line was
+    /// alone in is removed. The blocks are moved, never rebuilt, so they survive exactly as they do
+    /// under <see cref="Toggle"/> (INV-028).
+    /// </summary>
+    /// <param name="editor">The editor whose caret Enter was pressed at.</param>
+    /// <returns>
+    /// <see langword="true"/> when the line left the quote; <see langword="false"/> when the caret is
+    /// not on an empty line of a Block Quote, so Enter behaves as it normally does.
+    /// </returns>
+    internal static bool TryLeaveQuote(RichTextBox editor)
+    {
+        if (VisualDocumentTraversal.AncestorOf<Paragraph>(editor.CaretPosition) is not { } line
+            || line.Parent is not Section { Tag: BlockSemantic.Quote } quote
+            || !IsEmpty(line)
+            || BlocksAround(quote) is not { } siblings)
+        {
+            return false;
+        }
+
+        editor.BeginChange();
+        try
+        {
+            var below = quote.Blocks.SkipWhile(block => block != line).Skip(1).ToList();
+
+            quote.Blocks.Remove(line);
+            line.Margin = BodySpacing;
+            siblings.InsertAfter(quote, line);
+
+            // The blocks below the line were quoted before Enter and are still quoted after it, so
+            // they carry on in a Block Quote of their own beneath the line that left.
+            if (below.Count > 0)
+            {
+                var rest = new Section();
+                ApplyQuote(rest);
+                siblings.InsertAfter(line, rest);
+                foreach (var block in below)
+                {
+                    quote.Blocks.Remove(block);
+                    rest.Blocks.Add(block);
+                }
+            }
+
+            // A quote the line was alone in is a left rule around nothing, and Capture would emit a
+            // stray marker for it.
+            if (quote.Blocks.Count == 0)
+            {
+                siblings.Remove(quote);
+            }
+
+            editor.Selection.Select(line.ContentStart, line.ContentStart);
+        }
+        finally
+        {
+            editor.EndChange();
+        }
+
+        return true;
+    }
+
+    // Whether the line holds nothing at all. It is walked rather than read through its Inlines
+    // because WPF's own paragraph break carries the formatting across as empty runs — and nests them,
+    // so a line that looks empty can hold a Span holding a Run — while an Image's picture, a Video
+    // Player and a soft break are content the walk must still find.
+    private static bool IsEmpty(Paragraph line)
+    {
+        for (var pointer = line.ContentStart;
+             pointer is not null && pointer.CompareTo(line.ContentEnd) < 0;
+             pointer = pointer.GetNextContextPosition(LogicalDirection.Forward))
+        {
+            if (pointer.GetAdjacentElement(LogicalDirection.Forward) is LineBreak or InlineUIContainer)
+            {
+                return false;
+            }
+
+            if (pointer.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text
+                && pointer.GetTextInRun(LogicalDirection.Forward).Length > 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // The blocks the Block Quote itself sits among — where the line that leaves it lands. A quote is
+    // usually a top-level block, but it can be nested in another quote or held by a List Item, and
+    // the line leaves one level: into whichever of them holds the quote.
+    private static BlockCollection? BlocksAround(Section quote) => quote.Parent switch
+    {
+        FlowDocument document => document.Blocks,
+        Section section => section.Blocks,
+        ListItem item => item.Blocks,
+        _ => null,
+    };
+
     // Moves every top-level block the selection touches into one new Block Quote, in its place.
     private static void Quote(RichTextBox editor)
     {
