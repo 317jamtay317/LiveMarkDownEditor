@@ -116,6 +116,28 @@ function Write-Detail {
     Write-Host "    $Message" -ForegroundColor DarkGray
 }
 
+function Write-PayloadFileList {
+    <#
+    .SYNOPSIS
+        Writes a capped, labelled list of payload files.
+    .DESCRIPTION
+        The payload runs to hundreds of files, so a drift report that printed all of them would
+        bury the handful that matter. @() keeps a single path an array - $shown.Count on a bare
+        string throws under Set-StrictMode.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]] $Path,
+        [Parameter(Mandatory = $true)][string] $Label,
+        [Parameter(Mandatory = $true)][string] $Color
+    )
+
+    $shown = @($Path | Select-Object -First 20)
+    foreach ($file in $shown) { Write-Host "    ${Label}: $file" -ForegroundColor $Color }
+    if ($Path.Count -gt $shown.Count) {
+        Write-Host "    ... and $($Path.Count - $shown.Count) more" -ForegroundColor $Color
+    }
+}
+
 function Invoke-Native {
     <#
     .SYNOPSIS
@@ -232,6 +254,46 @@ function Get-MissingPayloadFile {
 
     # The leading comma keeps an empty result a list instead of $null.
     return ,$missing
+}
+
+function Get-UnshippedPayloadFile {
+    <#
+    .SYNOPSIS
+        Returns every file in the payload folder the installer project does not reference.
+    .DESCRIPTION
+        Get-MissingPayloadFile only looks outwards from the .aip, so a file the publish has newly
+        started producing is silently left out of the MSI instead of failing the release. Walking
+        the folder back the other way surfaces it while the release can still be stopped, and it
+        names the replacement whenever a runtime component has simply been renamed - the
+        version-stamped mscordaccore_amd64_amd64_<build>.dll changes name on every .NET servicing
+        update.
+
+        This is reported, not thrown: dotnet publish does not clean its output folder, so leftovers
+        from an older publish are a normal reason for a file here to go unreferenced.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string] $AipPath,
+        [Parameter(Mandatory = $true)][string] $PublishDirectory
+    )
+
+    $unshipped = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-Path -LiteralPath $PublishDirectory)) { return ,$unshipped }
+
+    $installerDirectory = Split-Path -Parent $AipPath
+    $xml = [xml](Get-Content -LiteralPath $AipPath -Raw)
+
+    $referenced = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in $xml.SelectNodes('//ROW[@SourcePath]')) {
+        $source = $row.GetAttribute('SourcePath')
+        if ([string]::IsNullOrWhiteSpace($source) -or $source.StartsWith('<')) { continue }
+        [void] $referenced.Add([System.IO.Path]::GetFullPath((Join-Path $installerDirectory $source)))
+    }
+
+    foreach ($file in Get-ChildItem -LiteralPath $PublishDirectory -Recurse -File) {
+        if (-not $referenced.Contains($file.FullName)) { $unshipped.Add($file.FullName) }
+    }
+
+    return ,$unshipped
 }
 
 function Get-NextVersion {
@@ -372,17 +434,31 @@ if ($SkipPublish) {
 }
 
 Write-Step 'Verifying the installer payload'
-$missing = Get-MissingPayloadFile -AipPath $aipPath
+$missing   = Get-MissingPayloadFile -AipPath $aipPath
+$unshipped = Get-UnshippedPayloadFile -AipPath $aipPath -PublishDirectory $publishDirectory
+
 if ($missing.Count -gt 0) {
-    $shown = $missing | Select-Object -First 20
     Write-Host ''
-    foreach ($file in $shown) { Write-Host "    missing: $file" -ForegroundColor Red }
-    if ($missing.Count -gt $shown.Count) {
-        Write-Host "    ... and $($missing.Count - $shown.Count) more" -ForegroundColor Red
+    Write-PayloadFileList -Path $missing -Label 'missing' -Color Red
+
+    # A missing file paired with an unreferenced one is the signature of a rename, which is how a
+    # .NET servicing update presents itself: the payload folder already holds the replacement.
+    if ($unshipped.Count -gt 0) {
+        Write-Host ''
+        Write-Host '    The payload folder holds files the installer project does not reference.' -ForegroundColor Yellow
+        Write-Host '    A missing file above was most likely renamed to one of these:' -ForegroundColor Yellow
+        Write-PayloadFileList -Path $unshipped -Label 'unreferenced' -Color Yellow
     }
+
     throw "$($missing.Count) file(s) referenced by the installer project are not on disk. Add or remove them in Advanced Installer before releasing."
 }
 Write-Detail 'Every file the installer project references is present.'
+
+if ($unshipped.Count -gt 0) {
+    Write-Host ''
+    Write-PayloadFileList -Path $unshipped -Label 'unreferenced' -Color Yellow
+    Write-Warning "$($unshipped.Count) file(s) in the payload folder are not referenced by the installer project and will not ship. Add them in Advanced Installer, or delete them if they are leftovers from an older publish."
+}
 
 if ($PSCmdlet.ShouldProcess($aipPath, "Set the version to $nextVersion")) {
     Write-Step "Setting the version to $nextVersion"
