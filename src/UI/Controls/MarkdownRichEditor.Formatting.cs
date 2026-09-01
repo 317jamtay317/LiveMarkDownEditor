@@ -213,6 +213,19 @@ public sealed partial class MarkdownRichEditor
     public bool ContinueTaskListAtCaret() => ListFormatting.TryContinueTaskList(this);
 
     /// <summary>
+    /// Answers Enter on an empty line inside a Block Quote: the line leaves the quote and becomes a
+    /// plain paragraph below it, taking the caret with it — a Block Quote has no closing mark to type
+    /// past, so two Enters at the end of a quoted paragraph are how the user stops quoting (INV-078).
+    /// A line in the middle of a quote splits it, the blocks below staying quoted. Called by the
+    /// control's Enter handling.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the line left the quote; otherwise <see langword="false"/>, so
+    /// Enter behaves as it normally does.
+    /// </returns>
+    public bool LeaveBlockQuoteAtCaret() => QuoteFormatting.TryLeaveQuote(this);
+
+    /// <summary>
     /// Answers Enter inside a Table: from its last row the caret goes to the line below the Table —
     /// the line a Block Island always keeps (INV-055) — and from any other row to the same column of
     /// the row below, because a pipe table cell is one line and Enter must not split it (INV-077).
@@ -248,6 +261,14 @@ public sealed partial class MarkdownRichEditor
         // Enter in a Task List carries the checkbox to the new item, the way WPF carries a bullet or
         // a number (INV-023). Shift+Enter is a soft break within the same item, so it is left alone.
         if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && ContinueTaskListAtCaret())
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // Enter on an empty line of a Block Quote leaves the quote, since a quote has no closing
+        // mark to type past (INV-078). Shift+Enter is a soft break within the line, so it is left alone.
+        if (e.Key == Key.Return && Keyboard.Modifiers == ModifierKeys.None && LeaveBlockQuoteAtCaret())
         {
             e.Handled = true;
             return;

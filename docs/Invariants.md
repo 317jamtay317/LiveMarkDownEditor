@@ -2038,6 +2038,34 @@ and tested.
   in exactly one place.
 - **Tested by:** `MarkdownRichEditorTableTests.*_INV077`.
 
+### INV-078 — Enter on an empty line in a Block Quote leaves the quote
+- **Statement:** Pressing Enter while the caret sits on an **empty line of a Block Quote** takes that
+  line out of the quote: it becomes a plain paragraph below the quote, and the caret goes with it.
+  Two Enters at the end of a quoted paragraph are therefore how a user stops quoting and carries on
+  writing — the first opens the empty line, the second leaves.
+- **Why:** A Block Quote has no closing mark to type past. Everything a user writes inside one stays
+  inside it, and the only other ways out are Toggle Block Quote (which unquotes the paragraph they
+  are standing in rather than starting a new one) and the mouse. Enter on a blank line is the gesture
+  every editor answers with "you are done with this block", and the empty quoted line it otherwise
+  leaves behind is captured as a bare `>` the user never meant to write.
+- **It leaves from where the caret is.** An empty line in the middle of a Block Quote splits it: the
+  blocks above it stay in the quote, the blocks below it become a second Block Quote, and the new
+  paragraph sits between them. Those blocks are **moved**, never rebuilt, so their content and kind
+  survive exactly as they do under Toggle Block Quote (INV-028).
+- **A quote left with nothing in it goes away.** When the empty line was the Block Quote's only
+  block, the quote is removed rather than left behind empty — an empty quote is a left rule
+  around nothing, and Capture would emit a stray `>` for it.
+- **Only an empty line leaves.** A line holding anything at all — text, a soft break, an Image —
+  is a line the user is still writing, so Enter breaks it exactly as WPF always has. So does Enter on
+  an empty line inside a List or a Definition List within a quote: that line belongs to the structure
+  it is in, which answers Enter its own way.
+- **It leaves one level at a time.** Inside a nested Block Quote the line leaves into the quote
+  around it, not straight to the top level, because that is the one level the user asked to leave.
+- **Enforced by:** `QuoteFormatting.TryLeaveQuote`, reached from
+  `MarkdownRichEditor.OnPreviewKeyDown` alongside the Task List's Enter (INV-023) and the Table's
+  (INV-077), and moving blocks through the same rules `QuoteFormatting` already applies (INV-028).
+- **Tested by:** `MarkdownRichEditorQuoteTests.*_INV078`.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.
