@@ -14,6 +14,12 @@ public sealed class StubFilePicker : IFilePicker
     /// <summary>The path returned by <see cref="PickSave"/>.</summary>
     public string? SaveResult { get; set; }
 
+    /// <summary>The file name <see cref="PickSave"/> was last seeded with.</summary>
+    public string? SuggestedSaveName { get; private set; }
+
+    /// <summary>The Save Folder <see cref="PickSave"/> was last offered (INV-080).</summary>
+    public string? SaveFolder { get; private set; }
+
     /// <summary>The target returned by <see cref="PickHtmlExport"/>.</summary>
     public HtmlExportTarget? HtmlExportResult { get; set; }
 
@@ -30,7 +36,12 @@ public sealed class StubFilePicker : IFilePicker
     public string? PickOpen() => OpenResult;
 
     /// <inheritdoc />
-    public string? PickSave(string? suggestedFileName) => SaveResult;
+    public string? PickSave(string? suggestedFileName, string? folder)
+    {
+        SuggestedSaveName = suggestedFileName;
+        SaveFolder = folder;
+        return SaveResult;
+    }
 
     /// <inheritdoc />
     public HtmlExportTarget? PickHtmlExport(string? suggestedFileName)

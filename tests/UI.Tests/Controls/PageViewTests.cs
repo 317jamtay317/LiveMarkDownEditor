@@ -45,7 +45,7 @@ public sealed class PageViewTests
             var surface = BuildSurface(setup);
 
             surface.Editor.Width.ShouldBe(1056d);
-            surface.Editor.Padding.ShouldBe(new Thickness(48d));
+            surface.Editor.ContentInset.ShouldBe(new Thickness(48d));
         });
     }
 
@@ -57,7 +57,7 @@ public sealed class PageViewTests
             var surface = BuildSurface(setup: null);
 
             surface.Editor.Width.ShouldBe(816d);
-            surface.Editor.Padding.ShouldBe(new Thickness(96d));
+            surface.Editor.ContentInset.ShouldBe(new Thickness(96d));
         });
     }
 
@@ -73,7 +73,38 @@ public sealed class PageViewTests
                 new PageSetup(PageOrientation.Landscape, PrintMargins.For(MarginPreset.Wide)));
 
             surface.Editor.Width.ShouldBe(1056d);
-            surface.Editor.Padding.ShouldBe(new Thickness(192d, 96d, 192d, 96d));
+            surface.Editor.ContentInset.ShouldBe(new Thickness(192d, 96d, 192d, 96d));
+        });
+    }
+
+    [Fact]
+    public void EnterPageView_PutsTheMarginsOnTheDocument_NotOnTheControlsPadding_INV079()
+    {
+        StaThread.Run(() =>
+        {
+            var surface = BuildSurface(PageSetup.Default);
+
+            // A padded surface whose own scrolling is off places a Pointer Selection's moving end
+            // Padding.Top pixels below the pointer, so the Print Margins ride on the Visual Document
+            // instead — where they are part of the text layout and the drag lands where the pointer is.
+            surface.Editor.Document.PagePadding.ShouldBe(new Thickness(96d));
+            surface.Editor.Padding.ShouldBe(new Thickness(0d));
+        });
+    }
+
+    [Fact]
+    public void ExitPageView_RestoresTheSurfacesOwnPadding_AndDropsTheInset_INV079()
+    {
+        StaThread.Run(() =>
+        {
+            var surface = BuildSurface(PageSetup.Default);
+
+            PageView.SetIsEnabled(surface.Grid, false);
+
+            surface.Editor.ContentInset.ShouldBe(default(Thickness));
+            surface.Editor.Document.PagePadding.ShouldBe(default(Thickness));
+            surface.Editor.ReadLocalValue(Control.PaddingProperty)
+                .ShouldBe(DependencyProperty.UnsetValue);
         });
     }
 }

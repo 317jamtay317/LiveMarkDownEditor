@@ -535,12 +535,24 @@ and tested.
   - **A Heading is sized, never weighted.** The Heading a Set Heading Level produces is styled by the
     same seam the Projector uses, so it is distinguished by size alone — a bold weight would make
     Capture read the Heading's text as inline-bold and emit `# **text**` (INV-018).
+  - **It reaches every paragraph a Heading can live in.** Markdown puts a Heading in two places: at
+    the top level (`# Heading`) and inside a List Item (`- # Heading`). Set Heading Level relevels
+    the caret's paragraph in either, at any nesting depth, leaving the surrounding List and its other
+    Items untouched — a List Item is where a user writes a titled point, and the Heading Level Picker
+    being dead there is the same action being unavailable for no reason the user can see. A **Table
+    cell's** paragraph is not such a place (a GFM table cell holds inline content only), nor is a
+    **Block Quote's** or a **Definition Description's**, whose paragraphs sit in a Section; a **Code
+    Block** is a paragraph, but its text is code, and relevelling one would turn its first line into
+    prose. A Heading inside a List Item is not a Section Heading: the Outline lists and Folding folds
+    the document's top-level blocks, so a Heading buried in a list is neither listed nor foldable.
 - **Enforced by:** The `HeadingFormatting` helper, which **relevels the caret's existing paragraph in
   place** — setting or clearing its `HeadingRole` and restyling it — rather than re-creating it from
   text, so inline formatting cannot be flattened by a change of level. `HeadingFormatting.ApplyHeading`
   is the one place a Heading's styling lives, applied by the Projector and by Set Heading Level alike
   (mirroring `ListFormatting.ApplyList`), and `HeadingFormatting.SetLevel` ignoring a level outside
-  the Paragraph-or-1–6 range.
+  the Paragraph-or-1–6 range. `HeadingFormatting.ParagraphAt` accepts a top-level paragraph or a List
+  Item's own; the Projector and Capture already carried a Heading through a List Item, so both
+  directions of the Round-Trip were in place before the action reached it.
 - **Tested by:** `MarkdownRichEditorHeadingTests.*_INV027`, in particular
   `SetHeadingLevel_PreservesInlineFormatting_INV027`,
   `SetHeadingLevel_ToTheSameLevel_LeavesItAHeading_INV027`, and
@@ -2065,6 +2077,70 @@ and tested.
   `MarkdownRichEditor.OnPreviewKeyDown` alongside the Task List's Enter (INV-023) and the Table's
   (INV-077), and moving blocks through the same rules `QuoteFormatting` already applies (INV-028).
 - **Tested by:** `MarkdownRichEditorQuoteTests.*_INV078`.
+
+### INV-079 — A Pointer Selection selects exactly what the pointer passed over
+- **Statement:** Dragging the pointer across the Visual Document selects exactly the characters the
+  pointer travelled over — no more. Two rules bound it:
+  - **It selects by character, never by word.** A drag that stops half-way through a word selects
+    half a word. WPF's `RichTextBox` turns **Auto Word Selection** on by default (its `TextBox`
+    sibling leaves it off), which rounds both ends of a drag out to whole words and, in a block that
+    wraps, runs the selection on past the pointer to the end of the block. The editing surface turns
+    it off.
+  - **The surface's inset is part of the text layout, not padding around it.** The space between the
+    editing surface's edge and its text — the **Content Inset**, in Page View the Page's Print
+    Margins and the whole-Page filler beneath them (INV-061) — rides on the Visual Document's own
+    page padding, never on the control's `Padding`. WPF does not account for a `RichTextBox`'s
+    `Padding` when a drag extends a selection on a surface whose own scrolling is off, which is
+    exactly the Page View surface: the moving end lands `Padding.Top` pixels *below* the pointer, so
+    an inch of Page Margin dragged the selection a full inch down the page and, on a short document,
+    on to its last line.
+- **Why:** A selection is the user pointing at text. An editor that selects something other than what
+  was pointed at cannot be used to edit precisely — every Formatting Action, Copy, and typed
+  replacement lands on the wrong text, and the user cannot see why.
+- **Enforced by:** `MarkdownRichEditor` setting `AutoWordSelection` to false in its constructor (in
+  the control rather than its ResourceDictionary: it is selection behaviour, not look, and no Style is
+  in play before the control is in a window), and its `ContentInset` dependency property, which
+  applies the inset to `Document.PagePadding` and re-applies it after each projection (a projection
+  mints a fresh Visual Document). `PageView` sets the Print Margins through `ContentInset` and zeroes
+  the surface's own `Padding` while Page View is on, so the Margins are exactly what the Page Setup
+  asked for.
+- **Tested by:** `MarkdownRichEditorSelectionTests.*_INV079` (Auto Word Selection is off; a partial
+  word stays a partial word; the inset reaches the document and survives a re-projection) and
+  `PageViewTests.*_INV079` (entering Page View puts the Margins on the document and leaves the
+  control's `Padding` at zero; exiting restores it). A real drag is a pointer gesture the headless STA
+  tests cannot make — it was observed in the running app.
+
+### INV-080 — A new Markdown Document is saved where the user is browsing
+- **Statement:** Saving a Tab that has no Watched File yet opens the save prompt in the **Save
+  Folder** — the folder the open Folder Workspace is showing. Four rules bound it:
+  - **Nothing selected means the root.** With a Folder Workspace open and no row highlighted in the
+    Folder Panel, the Save Folder is the open root.
+  - **A Selected Folder is that folder.** Highlighting a Folder in the Folder Tree makes it the Save
+    Folder, so a new document lands in the subfolder the user is looking at.
+  - **A Selected File is the folder holding it.** A new document lands *beside* the document being
+    read, not inside it. A File at the root therefore names the root.
+  - **It offers, it never redirects.** The Save Folder is only where the prompt opens; the user is
+    free to save anywhere from there. A Tab that already has a Watched File is saved where that file
+    lives and is never prompted at all, and with no Folder Workspace open no folder is offered.
+- **Why:** A Folder Workspace turns the editor into a knowledge base, and every document a user makes
+  while browsing one belongs in it. Opening the prompt at whatever folder Windows last used makes the
+  user navigate back to where they already were, and quietly scatters a vault across the disk.
+- **Enforced by:** `FolderWorkspace.SaveFolderFor` — the pure rule, which resolves a Selected Folder
+  Entry to a folder path against the root and falls back to the root for an entry the Folder Tree no
+  longer holds (the live refresh rebuilds the tree, INV-044); `FolderWorkspaceViewModel.SelectedEntry`
+  and its derived `SaveFolder`, with the `FolderPanel` Control republishing its highlighted row through
+  its `SelectedEntry` dependency property (a `TreeView`'s own `SelectedItem` is read-only, so it cannot
+  carry the binding) and the Workspace binding it `OneWayToSource`; and
+  `WorkspaceViewModel.TrySaveAsync` passing it to `IFilePicker.PickSave`, which the `Win32FilePicker`
+  applies as the dialog's `InitialDirectory` when that folder still exists. Selecting a row remains
+  browsing — it opens and edits nothing (INV-043).
+- **Tested by:** `FolderWorkspaceTests.SaveFolderFor_*_INV080` (the pure rule for nothing selected, a
+  Folder, a nested Folder, a File, and a root-level File), `FolderWorkspaceViewModelTests.*_INV080`
+  (no folder open offers none; the root, a subfolder, and a File's folder; a selection the tree has
+  lost falls back to the root; a new root clears the selection),
+  `FolderPanelTests.*_INV080` (a highlighted Folder and File are republished, and highlighting
+  activates nothing), and `WorkspaceViewModelTests.Save_ANewDocument_*_INV080` (the picker is offered
+  the open folder, the selected subfolder, or nothing at all).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

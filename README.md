@@ -23,7 +23,8 @@ Markdown and updates live when it changes underneath you, even from another pers
 The editing surface is the document. A heading looks like a heading, bold looks bold, and the raw
 Markdown is never in your way — but it is exactly what gets written to disk.
 
-- **Headings** at all six levels, and back to a plain paragraph (`Ctrl+1`–`Ctrl+6`, `Ctrl+0`).
+- **Headings** at all six levels, and back to a plain paragraph (`Ctrl+1`–`Ctrl+6`, `Ctrl+0`) —
+  inside a list item too, so a bullet can carry a title.
 - **Bold**, *italic*, ~~strikethrough~~, and inline `code` — plus fenced **code blocks**.
 - **Syntax highlighting** inside a code block, driven by the language on its fence.
 - **Lists** — bulleted, numbered, and **task lists** with checkboxes you tick right in the document.
@@ -145,6 +146,12 @@ Open a folder and browse its Markdown files as a tree; double-click a file to op
 **updates live** as files are added, renamed, or removed on disk — by you or any tool. Only Markdown
 files show and folders with none are hidden, so a repository or vault stays tidy. Your open folder
 reopens the next time you launch.
+
+**New documents save into the folder you are browsing.** With a folder open, saving a new document
+opens the save dialog there rather than wherever Windows was last — and if you have a subfolder
+selected in the tree, it opens in that subfolder. Click a file instead and it opens beside that file.
+Nothing is redirected: it is only where the dialog starts, and a document that already has a file is
+saved where it lives.
 
 ![The folder workspace](docs/images/folder-workspace.png)
 

@@ -37,6 +37,19 @@ public sealed class FolderPanel : TreeView
         typeof(FolderPanel),
         new PropertyMetadata(null));
 
+    /// <summary>Identifies the <see cref="SelectedEntry"/> dependency property.</summary>
+    /// <remarks>
+    /// A <see cref="TreeView"/>'s own <see cref="TreeView.SelectedItem"/> is read-only, and a read-only
+    /// dependency property cannot carry a binding — so the panel republishes its selection through this
+    /// writable one, which the Workspace binds <c>OneWayToSource</c> the way it binds a
+    /// <c>SizeObserver</c>'s observed width.
+    /// </remarks>
+    public static readonly DependencyProperty SelectedEntryProperty = DependencyProperty.Register(
+        nameof(SelectedEntry),
+        typeof(FolderEntry),
+        typeof(FolderPanel),
+        new PropertyMetadata(null));
+
     /// <summary>The Folder Workspace whose Folder Tree this panel lists. Its entries are the tree's roots.</summary>
     public FolderWorkspace? Workspace
     {
@@ -49,6 +62,17 @@ public sealed class FolderPanel : TreeView
     {
         get => (ICommand?)GetValue(ActivateCommandProperty);
         set => SetValue(ActivateCommandProperty, value);
+    }
+
+    /// <summary>
+    /// The Selected Folder Entry: the row the user has highlighted, or <see langword="null"/> when none
+    /// is. Selecting is browsing — it opens nothing (INV-043) — but it names the folder a new Markdown
+    /// Document is saved into (INV-080).
+    /// </summary>
+    public FolderEntry? SelectedEntry
+    {
+        get => (FolderEntry?)GetValue(SelectedEntryProperty);
+        set => SetValue(SelectedEntryProperty, value);
     }
 
     /// <summary>Activates the double-clicked entry when it is a File; a Folder is left to its native Expand/Collapse.</summary>
@@ -92,6 +116,14 @@ public sealed class FolderPanel : TreeView
             Activate(file);
             e.Handled = true;
         }
+    }
+
+    /// <summary>Republishes the highlighted row as the <see cref="SelectedEntry"/>.</summary>
+    /// <param name="e">The selection change.</param>
+    protected override void OnSelectedItemChanged(RoutedPropertyChangedEventArgs<object> e)
+    {
+        base.OnSelectedItemChanged(e);
+        SelectedEntry = SelectedItem as FolderEntry;
     }
 
     private static void OnWorkspaceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

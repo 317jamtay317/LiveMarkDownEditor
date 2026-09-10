@@ -1433,8 +1433,11 @@
                                 </Button>
                             </Grid>
                             <Grid>
+                                <!-- The highlighted row flows back to the Folder Workspace, which is
+                                     what names the folder a new document saves into (INV-080). -->
                                 <controls:FolderPanel Workspace="{Binding Folder.Folder}"
                                                       ActivateCommand="{Binding Folder.ActivateEntryCommand}"
+                                                      SelectedEntry="{Binding Folder.SelectedEntry, Mode=OneWayToSource}"
                                                       AutomationProperties.AutomationId="FolderTree"
                                                       Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14">

@@ -77,6 +77,60 @@ public sealed class FolderPanelTests
         });
     }
 
+    [Fact]
+    public void Selecting_AFolder_ReportsItAsTheSelectedEntry_INV080()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/deep.md");
+            var row = Row(panel, "Nested");
+
+            row.IsSelected = true;
+
+            panel.SelectedEntry?.RelativePath.ShouldBe("Nested");
+        });
+    }
+
+    [Fact]
+    public void Selecting_AFile_ReportsItAsTheSelectedEntry_INV080()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/deep.md");
+            var row = Row(panel, "Nested", "deep.md");
+
+            row.IsSelected = true;
+
+            panel.SelectedEntry?.RelativePath.ShouldBe("Nested/deep.md");
+        });
+    }
+
+    [Fact]
+    public void Selecting_AnEntry_ActivatesNothing_INV043()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out var activated, "Nested/deep.md");
+            var row = Row(panel, "Nested", "deep.md");
+
+            row.IsSelected = true;
+
+            // Selecting a row is browsing; only a double-click or Enter opens a File (INV-043).
+            activated.ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
+    public void SelectedEntry_BeforeAnythingIsSelected_IsNothing_INV080()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/deep.md");
+
+            panel.SelectedEntry.ShouldBeNull();
+        });
+    }
+
     private static FolderPanel BuildPanel(out List<FolderEntry> activated, params string[] relativePaths)
     {
         var recorded = new List<FolderEntry>();

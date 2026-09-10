@@ -154,6 +154,137 @@ public sealed class MarkdownRichEditorHeadingTests
         });
     }
 
+    [Fact]
+    public void SetHeadingLevel_InsideAListItem_RelevelsTheItemsParagraph_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- Introduction" };
+            VisualDocumentText.PlaceCaretIn(editor, "Introduction");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: 2, target: editor);
+
+            editor.Markdown.ShouldBe("- ## Introduction");
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideAListItem_IsAvailable_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- Introduction" };
+            VisualDocumentText.PlaceCaretIn(editor, "Introduction");
+
+            // The Heading Level Picker is greyed out unless the command reports it can run, so a
+            // Formatting Action that works is not enough on its own.
+            MarkdownEditingCommands.SetHeadingLevel.CanExecute(parameter: 2, target: editor)
+                .ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideANestedListItem_RelevelsTheItemsParagraph_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- Outer\n  - Inner" };
+            VisualDocumentText.PlaceCaretIn(editor, "Inner");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: 3, target: editor);
+
+            editor.Markdown.ShouldBe("- Outer\n  - ### Inner");
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideAListItem_LeavesTheOtherItemsAlone_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- First\n- Second" };
+            VisualDocumentText.PlaceCaretIn(editor, "Second");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: 2, target: editor);
+
+            editor.Markdown.ShouldBe("- First\n- ## Second");
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_ToParagraph_InsideAListItem_ClearsTheHeading_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- ## Introduction" };
+            VisualDocumentText.PlaceCaretIn(editor, "Introduction");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(
+                parameter: MarkdownEditingCommands.ParagraphHeadingLevel,
+                target: editor);
+
+            editor.Markdown.ShouldBe("- Introduction");
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideAListItem_PreservesInlineFormatting_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- Meet **Bob** now" };
+            VisualDocumentText.PlaceCaretIn(editor, "Meet ");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: 2, target: editor);
+
+            editor.Markdown.ShouldBe("- ## Meet **Bob** now");
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideAListItem_CapturesMarkdownThatRoundTrips_INV018()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "- Introduction" };
+            VisualDocumentText.PlaceCaretIn(editor, "Introduction");
+
+            MarkdownEditingCommands.SetHeadingLevel.Execute(parameter: 2, target: editor);
+
+            var captured = editor.Markdown;
+            var reloaded = new MarkdownRichEditor { Markdown = captured };
+            reloaded.Markdown.ShouldBe(captured);
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideATableCell_IsRefused_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "| Head |\n| --- |\n| Cell |" };
+            VisualDocumentText.PlaceCaretIn(editor, "Cell");
+
+            // A GFM table cell holds inline content only, so there is no Heading for it to become.
+            MarkdownEditingCommands.SetHeadingLevel.CanExecute(parameter: 2, target: editor)
+                .ShouldBeFalse();
+        });
+    }
+
+    [Fact]
+    public void SetHeadingLevel_InsideACodeBlock_IsRefused_INV027()
+    {
+        StaThread.Run(() =>
+        {
+            var editor = new MarkdownRichEditor { Markdown = "```\ncode line\n```" };
+            VisualDocumentText.PlaceCaretIn(editor, "code line");
+
+            // A Code Block's text is code; relevelling one would turn its first line into prose.
+            MarkdownEditingCommands.SetHeadingLevel.CanExecute(parameter: 2, target: editor)
+                .ShouldBeFalse();
+        });
+    }
+
     [Theory]
     [InlineData(Key.D0, 0)]
     [InlineData(Key.D1, 1)]

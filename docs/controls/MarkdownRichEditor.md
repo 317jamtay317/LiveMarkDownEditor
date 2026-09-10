@@ -37,6 +37,7 @@ two directions echoing each other.
 | `MatchCount` | `int` | `0` | **Read-only.** The number of Matches for the current `FindQuery`. |
 | `MatchSummary` | `string` | `""` | **Read-only.** The Find Bar's summary: empty with no query, `"No results"`, or `"{ordinal} of {count}"`. |
 | `SyntaxHighlighter` | `ISyntaxHighlighter?` | `null` | The tokenizer each Code Block's Syntax Highlighting is colored by (INV-064). Left unbound, Code Blocks show their code plain. |
+| `ContentInset` | `Thickness` | `0` | The Content Inset: the space between the surface's edge and its text. Applied to the Visual Document's own page padding, not to `Padding` — see **Pointer Selection** below (INV-079). Set by [PageView](PageView.md) to the Page's Print Margins. |
 
 ## Formatting Actions (Toggle Code, Lists &amp; Tables)
 
@@ -217,6 +218,23 @@ handling text-changed directly.
   `FontWeight` / `FontStyle`) round-trip to `**` / `*`.
 - **Re-entrancy guard:** an internal flag plus a "last captured" comparison stop a Capture-driven
   update to `Markdown` from re-Projecting (which would reset the caret).
+- **Pointer Selection:** a drag selects exactly the characters the pointer travelled over (INV-079).
+  Two WPF defaults had to be dealt with to get that:
+  - `RichTextBox.AutoWordSelection` defaults to **true** (unlike `TextBox`), which rounds both ends of
+    a drag out to whole words and, in a block that wraps, runs the selection on past the pointer to
+    the block's end. The constructor turns it off. It is set there rather than in the control's
+    ResourceDictionary because it is selection behaviour rather than look, and because no Style is in
+    play before the control is in a window — a unit test constructing the control directly would not
+    see a Style setter.
+  - WPF does not account for a `RichTextBox`'s `Padding` when a drag *extends* a selection on a
+    surface whose own scrolling is off — the moving end lands `Padding.Top` pixels below the pointer.
+    The mouse-*down* is unaffected, and so is `GetPositionFromPoint`, which is what made this look
+    like a runaway selection rather than an offset one. Page View is exactly that surface (its
+    scrolling is disabled so the canvas scrolls the Sheet), and its Print Margins were an inch of
+    padding — so a drag inside a short document jumped to its last line. The inset therefore rides on
+    `ContentInset`, which the control applies to `Document.PagePadding`: it looks the same and *is*
+    part of the text layout. It is re-applied after every projection, because a projection mints a
+    fresh Visual Document.
 - **Live external updates:** when the bound Editor Session replaces `Markdown` (e.g. the Watched
   File changed on disk), the Visual Document is re-Projected to match.
 - **Page View:** by default the Visual Document is laid out on a Document Sheet of whole 8.5 × 11 Pages

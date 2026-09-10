@@ -38,8 +38,14 @@ editor, inside an outer `ScrollViewer` (the canvas). On enter it:
 - **stops the editor scrolling itself** (`VerticalScrollBarVisibility = Disabled`) so it grows to its
   content's full height and the whole Sheet moves as one piece when the canvas scrolls;
 - **fixes the editor to the Sheet** — `Width` at the Page Setup's oriented page width, its Print
-  Margins as the page `Padding`, a 1px edge — and its Grid column to `Auto`, so `[gutter | Sheet]`
-  hugs its content. Changing the `Setup` while in Page View re-lays the Sheet out (INV-061);
+  Margins as the editor's `ContentInset`, a 1px edge — and its Grid column to `Auto`, so
+  `[gutter | Sheet]` hugs its content. Changing the `Setup` while in Page View re-lays the Sheet out
+  (INV-061). The Margins ride on the `ContentInset` (which reaches the Visual Document's own page
+  padding) rather than on the editor's `Padding`, because WPF does not account for a `RichTextBox`'s
+  padding when a drag extends a selection on a surface whose own scrolling is off — which is exactly
+  this surface, so an inch of Page Margin dragged the selection an inch down the page (INV-079). The
+  editor's own `Padding` is zeroed while Page View is on, so the Margins are exactly what the Page
+  Setup asked for rather than the Margins plus the ordinary reading gutter;
 - **snaps the Sheet to whole Pages**: the filler `DocumentSheet.TrailingSpaceFor` asks for — at the
   Page Setup's oriented page height — is added to the Sheet's bottom page margin, so a short document
   still shows a full Page and the Sheet gains its next Page the moment the content outgrows the last.
