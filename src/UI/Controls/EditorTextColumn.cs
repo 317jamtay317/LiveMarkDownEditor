@@ -12,9 +12,11 @@ namespace UI.Controls;
 /// Both shades already start on the column: a block's first character sits one block-padding inside
 /// its left edge, so subtracting that padding lands exactly on the column start. The right edge has
 /// no such landmark, and taking the control's full width instead overhangs the column by whatever
-/// padding the surface carries. That is barely visible in the ordinary view (11px), and glaring in
-/// Page View, where the control's padding is the Page's Margins — a one-inch margin left the shade
-/// running to the paper's edge on the right while sitting an inch clear of it on the left.
+/// inset the surface carries. That is barely visible in the ordinary view (11px), and glaring in
+/// Page View, where the inset is the Page's Margins — a one-inch margin left the shade running to the
+/// paper's edge on the right while sitting an inch clear of it on the left. Both insets count: the
+/// surface's own padding, and the Visual Document's page padding, which is where Page View puts the
+/// Margins (INV-079).
 /// <para>
 /// The column is derived from the hosting <see cref="ScrollViewer"/>'s viewport rather than from the
 /// control's width, because the viewport is already net of both the control's padding and the
@@ -38,9 +40,11 @@ internal static class EditorTextColumn
     /// be checked without a rendered control.
     /// </summary>
     /// <param name="actualWidth">The surface's rendered width.</param>
-    /// <param name="padding">The surface's padding. In Page View this is the Page's Margins.</param>
+    /// <param name="padding">The surface's own padding — its reading gutter, zeroed in Page View.</param>
     /// <param name="pagePadding">
-    /// The document's page padding, which insets the text within the viewport. <c>Auto</c> (NaN) counts as none.
+    /// The document's page padding, which insets the text within the viewport — in Page View the Page's
+    /// Margins, which ride there rather than on the surface's padding (INV-079). <c>Auto</c> (NaN)
+    /// counts as none.
     /// </param>
     /// <param name="viewportWidth">
     /// The hosting scroll viewport's width — already net of the padding and of any vertical

@@ -2078,6 +2078,38 @@ and tested.
   (INV-077), and moving blocks through the same rules `QuoteFormatting` already applies (INV-028).
 - **Tested by:** `MarkdownRichEditorQuoteTests.*_INV078`.
 
+### INV-079 — A Pointer Selection selects exactly what the pointer passed over
+- **Statement:** Dragging the pointer across the Visual Document selects exactly the characters the
+  pointer travelled over — no more. Two rules bound it:
+  - **It selects by character, never by word.** A drag that stops half-way through a word selects
+    half a word. WPF's `RichTextBox` turns **Auto Word Selection** on by default (its `TextBox`
+    sibling leaves it off), which rounds both ends of a drag out to whole words and, in a block that
+    wraps, runs the selection on past the pointer to the end of the block. The editing surface turns
+    it off.
+  - **The surface's inset is part of the text layout, not padding around it.** The space between the
+    editing surface's edge and its text — the **Content Inset**, in Page View the Page's Print
+    Margins and the whole-Page filler beneath them (INV-061) — rides on the Visual Document's own
+    page padding, never on the control's `Padding`. WPF does not account for a `RichTextBox`'s
+    `Padding` when a drag extends a selection on a surface whose own scrolling is off, which is
+    exactly the Page View surface: the moving end lands `Padding.Top` pixels *below* the pointer, so
+    an inch of Page Margin dragged the selection a full inch down the page and, on a short document,
+    on to its last line.
+- **Why:** A selection is the user pointing at text. An editor that selects something other than what
+  was pointed at cannot be used to edit precisely — every Formatting Action, Copy, and typed
+  replacement lands on the wrong text, and the user cannot see why.
+- **Enforced by:** `MarkdownRichEditor` setting `AutoWordSelection` to false in its constructor (in
+  the control rather than its ResourceDictionary: it is selection behaviour, not look, and no Style is
+  in play before the control is in a window), and its `ContentInset` dependency property, which
+  applies the inset to `Document.PagePadding` and re-applies it after each projection (a projection
+  mints a fresh Visual Document). `PageView` sets the Print Margins through `ContentInset` and zeroes
+  the surface's own `Padding` while Page View is on, so the Margins are exactly what the Page Setup
+  asked for.
+- **Tested by:** `MarkdownRichEditorSelectionTests.*_INV079` (Auto Word Selection is off; a partial
+  word stays a partial word; the inset reaches the document and survives a re-projection) and
+  `PageViewTests.*_INV079` (entering Page View puts the Margins on the document and leaves the
+  control's `Padding` at zero; exiting restores it). A real drag is a pointer gesture the headless STA
+  tests cannot make — it was observed in the running app.
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

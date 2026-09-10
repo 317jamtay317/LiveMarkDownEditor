@@ -59,6 +59,18 @@ public sealed partial class MarkdownRichEditor : RichTextBox
         typeof(MarkdownRichEditor),
         new PropertyMetadata(defaultValue: null, OnBaseDirectoryChanged));
 
+    /// <summary>
+    /// Identifies the <see cref="ContentInset"/> dependency property. It rides on the Visual
+    /// Document's own page padding rather than on the control's <see cref="Control.Padding"/>,
+    /// because a padded surface whose own scrolling is off mis-places a Pointer Selection's moving
+    /// end by the padding (INV-079).
+    /// </summary>
+    public static readonly DependencyProperty ContentInsetProperty = DependencyProperty.Register(
+        nameof(ContentInset),
+        typeof(Thickness),
+        typeof(MarkdownRichEditor),
+        new PropertyMetadata(default(Thickness), OnContentInsetChanged));
+
     private readonly MarkdownToFlowDocumentProjector _projector = new();
     private readonly FlowDocumentToMarkdownCapturer _capturer = new();
 
@@ -68,6 +80,14 @@ public sealed partial class MarkdownRichEditor : RichTextBox
     /// <summary>Initialises the editor and wires the Section-folding routed commands.</summary>
     public MarkdownRichEditor()
     {
+        // A Pointer Selection selects exactly the characters the pointer passed over (INV-079). WPF's
+        // RichTextBox turns Auto Word Selection on by default — its TextBox sibling does not — which
+        // rounds a drag out to whole words and, in a wrapped block, runs it on to the block's end.
+        // It is set here rather than in the control's ResourceDictionary because it is selection
+        // behaviour rather than look, and because a Style is not in play before the control is in a
+        // window.
+        AutoWordSelection = false;
+
         CommandBindings.Add(new CommandBinding(
             MarkdownEditingCommands.Print, (_, _) => PrintVisualDocument()));
         CommandBindings.Add(new CommandBinding(
@@ -251,6 +271,36 @@ public sealed partial class MarkdownRichEditor : RichTextBox
     /// </summary>
     internal Action<Rect>? RevealRectOverride { get; set; }
 
+    /// <summary>
+    /// The Content Inset: the space between the editing surface's edge and its text — in Page View the
+    /// Page's Print Margins and the whole-Page filler beneath them (INV-061).
+    /// </summary>
+    /// <remarks>
+    /// The inset is applied to the Visual Document's page padding, not to the control's
+    /// <see cref="Control.Padding"/>. They look the same, but only the document's is part of the text
+    /// layout: WPF places a Pointer Selection's moving end <em>Padding.Top</em> pixels below the
+    /// pointer on a padded surface whose own scrolling is off, which is exactly the Page View surface —
+    /// so an inch of Page Margin dragged the selection a full inch down the page and, on a short
+    /// document, on to its last line (INV-079).
+    /// </remarks>
+    public Thickness ContentInset
+    {
+        get => (Thickness)GetValue(ContentInsetProperty);
+        set => SetValue(ContentInsetProperty, value);
+    }
+
+    private static void OnContentInsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+        ((MarkdownRichEditor)d).ApplyContentInset();
+
+    // The inset lives on the document, and a projection mints a new one, so it is re-applied there too.
+    private void ApplyContentInset()
+    {
+        if (Document is { } document)
+        {
+            document.PagePadding = ContentInset;
+        }
+    }
+
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownRichEditor)d;
@@ -288,6 +338,7 @@ public sealed partial class MarkdownRichEditor : RichTextBox
             // Fold state references the outgoing document's blocks; a fresh projection clears it.
             _foldedBodies.Clear();
             Document = _projector.Project(markdown, BaseDirectory);
+            ApplyContentInset();
 
             // Color each Code Block by its Highlighting Language. Inside the guard, so the Runs it
             // rebuilds raise no Capture — the coloring is view-only (INV-064).

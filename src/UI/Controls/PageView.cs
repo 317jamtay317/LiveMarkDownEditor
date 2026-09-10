@@ -202,6 +202,11 @@ public static class PageView
         // A fixed-width page — the width the Page Setup's orientation gives the US Letter Page — with
         // its Print Margins and a visible edge (INV-061)...
         editor.Width = SetupFor(surface).PageWidth;
+
+        // ...and nothing but those Margins between the paper's edge and the text: the surface's
+        // ordinary reading gutter would otherwise stack on top of them, making every Page Margin wider
+        // than the Page Setup asked for. The Margins themselves ride on the Content Inset (INV-079).
+        editor.Padding = new Thickness(0d);
         editor.VerticalAlignment = VerticalAlignment.Top;
         editor.BorderThickness = new Thickness(1d);
         editor.SetResourceReference(Control.BorderBrushProperty, "BorderBrush");
@@ -255,6 +260,7 @@ public static class PageView
         editor.ClearValue(FrameworkElement.WidthProperty);
         editor.ClearValue(FrameworkElement.VerticalAlignmentProperty);
         editor.ClearValue(Control.PaddingProperty);
+        editor.ClearValue(MarkdownRichEditor.ContentInsetProperty);
         editor.ClearValue(Control.BorderThicknessProperty);
         editor.ClearValue(Control.BorderBrushProperty);
         editor.ClearValue(Control.BackgroundProperty);
@@ -336,7 +342,7 @@ public static class PageView
             _trailingSpace = 0d;
             if (_surface is { } surface && _editor is { } editor)
             {
-                editor.Padding = SetupFor(surface).Margins.ToThickness();
+                editor.ContentInset = SetupFor(surface).Margins.ToThickness();
             }
         }
 
@@ -385,7 +391,7 @@ public static class PageView
 
             _trailingSpace = trailingSpace;
             var margins = setup.Margins.ToThickness();
-            editor.Padding = new Thickness(margins.Left, margins.Top, margins.Right, margins.Bottom + trailingSpace);
+            editor.ContentInset = new Thickness(margins.Left, margins.Top, margins.Right, margins.Bottom + trailingSpace);
         }
 
         // Forgets the whole-Page filler; the caller clears the page margins it rode on with the rest of
