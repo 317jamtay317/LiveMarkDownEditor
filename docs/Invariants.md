@@ -535,12 +535,24 @@ and tested.
   - **A Heading is sized, never weighted.** The Heading a Set Heading Level produces is styled by the
     same seam the Projector uses, so it is distinguished by size alone — a bold weight would make
     Capture read the Heading's text as inline-bold and emit `# **text**` (INV-018).
+  - **It reaches every paragraph a Heading can live in.** Markdown puts a Heading in two places: at
+    the top level (`# Heading`) and inside a List Item (`- # Heading`). Set Heading Level relevels
+    the caret's paragraph in either, at any nesting depth, leaving the surrounding List and its other
+    Items untouched — a List Item is where a user writes a titled point, and the Heading Level Picker
+    being dead there is the same action being unavailable for no reason the user can see. A **Table
+    cell's** paragraph is not such a place (a GFM table cell holds inline content only), nor is a
+    **Block Quote's** or a **Definition Description's**, whose paragraphs sit in a Section; a **Code
+    Block** is a paragraph, but its text is code, and relevelling one would turn its first line into
+    prose. A Heading inside a List Item is not a Section Heading: the Outline lists and Folding folds
+    the document's top-level blocks, so a Heading buried in a list is neither listed nor foldable.
 - **Enforced by:** The `HeadingFormatting` helper, which **relevels the caret's existing paragraph in
   place** — setting or clearing its `HeadingRole` and restyling it — rather than re-creating it from
   text, so inline formatting cannot be flattened by a change of level. `HeadingFormatting.ApplyHeading`
   is the one place a Heading's styling lives, applied by the Projector and by Set Heading Level alike
   (mirroring `ListFormatting.ApplyList`), and `HeadingFormatting.SetLevel` ignoring a level outside
-  the Paragraph-or-1–6 range.
+  the Paragraph-or-1–6 range. `HeadingFormatting.ParagraphAt` accepts a top-level paragraph or a List
+  Item's own; the Projector and Capture already carried a Heading through a List Item, so both
+  directions of the Round-Trip were in place before the action reached it.
 - **Tested by:** `MarkdownRichEditorHeadingTests.*_INV027`, in particular
   `SetHeadingLevel_PreservesInlineFormatting_INV027`,
   `SetHeadingLevel_ToTheSameLevel_LeavesItAHeading_INV027`, and

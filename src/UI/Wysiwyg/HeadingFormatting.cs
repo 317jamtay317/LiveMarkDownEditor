@@ -43,7 +43,8 @@ internal static class HeadingFormatting
     /// The Set Heading Level Formatting Action: makes the block at the editor's caret a Heading of
     /// <paramref name="level"/>, or — given <see cref="ParagraphLevel"/> — a plain paragraph again.
     /// It sets rather than toggles, so choosing a Heading's current level leaves it unchanged, and a
-    /// level outside the supported range is ignored rather than written (INV-027).
+    /// level outside the supported range is ignored rather than written (INV-027). The block may be a
+    /// top-level paragraph or a List Item's own paragraph — both are places Markdown puts a Heading.
     /// </summary>
     /// <param name="editor">The editor whose caret's block is being relevelled.</param>
     /// <param name="level">The Heading Level to set, or <see cref="ParagraphLevel"/> for Paragraph.</param>
@@ -81,8 +82,8 @@ internal static class HeadingFormatting
 
     /// <summary>
     /// Whether Set Heading Level can run: the caret sits in a paragraph that can carry a Heading
-    /// Level. A Heading is a top-level block, so a paragraph nested in a List Item or a Table cell
-    /// is not one.
+    /// Level — a top-level paragraph, or a List Item's own paragraph (INV-027). A Table cell's
+    /// paragraph is not one, because a GFM table cell holds inline content only.
     /// </summary>
     /// <param name="editor">The editor whose caret is queried.</param>
     internal static bool CanSetLevel(RichTextBox editor) => ParagraphAt(editor) is not null;
@@ -103,15 +104,25 @@ internal static class HeadingFormatting
         paragraph.Margin = BodySpacing;
     }
 
-    // The top-level prose paragraph holding the caret, or null when the caret is not in one. Only a
-    // top-level paragraph can be a Heading: a List Item's or a Table cell's paragraph cannot. A Code
-    // Block is a top-level paragraph too, but its text is code — relevelling one into a Heading would
-    // turn its first line into prose.
-    private static Paragraph? ParagraphAt(RichTextBox editor) =>
-        VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start)
+    // The prose paragraph holding the caret that can carry a Heading Level, or null when the caret is
+    // not in one. Two paragraphs qualify, because Markdown puts a Heading in exactly two places: a
+    // top-level one (`# Heading`) and a List Item's own (`- # Heading`). A Table cell's paragraph does
+    // not — a GFM table cell holds inline content only — and neither does a Block Quote's or a
+    // Definition Description's, whose paragraphs sit in a Section. A Code Block is a paragraph too,
+    // but its text is code: relevelling one would turn its first line into prose.
+    private static Paragraph? ParagraphAt(RichTextBox editor)
+    {
+        if (VisualDocumentTraversal.AncestorOf<Paragraph>(editor.Selection.Start)
+            is { Parent: ListItem } inListItem)
+        {
+            return inListItem.Tag is CodeBlockRole ? null : inListItem;
+        }
+
+        return VisualDocumentTraversal.TopLevelBlockOf(editor.Selection.Start)
             is Paragraph { Tag: not CodeBlockRole } paragraph
             ? paragraph
             : null;
+    }
 
     private static double HeadingFontSize(int level) => level switch
     {
