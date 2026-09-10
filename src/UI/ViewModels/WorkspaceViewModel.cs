@@ -469,7 +469,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
     private async Task<bool> TrySaveAsync(EditorSessionViewModel session)
     {
-        var path = session.FilePath ?? _filePicker.PickSave(suggestedFileName: "Untitled.md");
+        // A Tab that has no Watched File yet is saved wherever the user is browsing: the open Folder
+        // Workspace's Save Folder (INV-080). One that already has a file is saved where it lives.
+        var path = session.FilePath
+                   ?? _filePicker.PickSave(suggestedFileName: "Untitled.md", folder: Folder.SaveFolder);
         if (path is null)
         {
             return false;

@@ -12,8 +12,13 @@ public interface IFilePicker
 
     /// <summary>Prompts the user to choose a destination path to save a Markdown file.</summary>
     /// <param name="suggestedFileName">A suggested file name, or <see langword="null"/> for none.</param>
+    /// <param name="folder">
+    /// The Save Folder the prompt opens in — the folder the open Folder Workspace offers (INV-080) —
+    /// or <see langword="null"/> to leave the location to the platform. A folder that no longer exists
+    /// is ignored the same way.
+    /// </param>
     /// <returns>The chosen file path, or <see langword="null"/> if the user cancelled.</returns>
-    string? PickSave(string? suggestedFileName);
+    string? PickSave(string? suggestedFileName, string? folder);
 
     /// <summary>
     /// Prompts the user to choose a destination path and an Export Shape for an Export as HTML. The

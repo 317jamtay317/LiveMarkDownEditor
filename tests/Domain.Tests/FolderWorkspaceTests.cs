@@ -219,4 +219,50 @@ public sealed class FolderWorkspaceTests
 
         Check(workspace.Entries);
     }
+
+    [Fact]
+    public void SaveFolderFor_NothingSelected_IsTheRoot_INV080()
+    {
+        var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
+
+        workspace.SaveFolderFor(selected: null).ShouldBe(Path.GetFullPath(Root));
+    }
+
+    [Fact]
+    public void SaveFolderFor_ASelectedFolder_IsThatFolder_INV080()
+    {
+        var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
+        var folder = workspace.Entries[0];
+
+        workspace.SaveFolderFor(folder).ShouldBe(Path.GetFullPath(@"C:\vault\sub"));
+    }
+
+    [Fact]
+    public void SaveFolderFor_ASelectedNestedFolder_IsThatFolder_INV080()
+    {
+        var workspace = FolderWorkspace.From(Root, ["a/b/note.md"]);
+        var nested = workspace.Entries[0].Children[0];
+
+        workspace.SaveFolderFor(nested).ShouldBe(Path.GetFullPath(@"C:\vault\a\b"));
+    }
+
+    [Fact]
+    public void SaveFolderFor_ASelectedFile_IsTheFolderHoldingIt_INV080()
+    {
+        var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
+        var file = workspace.Entries[0].Children[0];
+
+        // Selecting a File names the folder it sits in: a new document lands beside the one the user
+        // was looking at, not inside it.
+        workspace.SaveFolderFor(file).ShouldBe(Path.GetFullPath(@"C:\vault\sub"));
+    }
+
+    [Fact]
+    public void SaveFolderFor_ASelectedRootLevelFile_IsTheRoot_INV080()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+        var file = workspace.Entries[0];
+
+        workspace.SaveFolderFor(file).ShouldBe(Path.GetFullPath(Root));
+    }
 }

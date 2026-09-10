@@ -41,6 +41,14 @@ through its `ActivateCommand`:
     row belongs to its parent row, not to the `TreeView`, so asking the panel for the container of a
     nested click returns the top-level ancestor row instead — which, being a **Folder**, activates
     nothing. That was the cause of Files inside a Folder refusing to open (INV-043).
+- **Highlighting** — `OnSelectedItemChanged` republishes the highlighted row as the **Selected Folder
+  Entry** through the `SelectedEntry` dependency property. Highlighting is browsing, not activating: it
+  opens nothing and edits nothing (INV-043). What it is for is naming the **Save Folder** — the folder
+  a new Markdown Document is offered to be saved into (INV-080).
+  - `SelectedEntry` is a writable dependency property rather than a read-only one because a read-only
+    dependency property cannot carry a binding at all, and the Workspace reads this one
+    `OneWayToSource` — the same shape a `SizeObserver`'s observed width takes. The `TreeView`'s own
+    `SelectedItem` cannot be used directly for the same reason: it is read-only.
 
 ## Properties
 
@@ -48,10 +56,12 @@ through its `ActivateCommand`:
 | --- | --- | --- |
 | `Workspace` | `FolderWorkspace?` | The Folder Workspace whose Folder Tree this panel lists; its `Entries` are the tree's roots. |
 | `ActivateCommand` | `ICommand?` | Run when a File is activated (double-click or Enter), with the File's `FolderEntry` as its parameter. |
+| `SelectedEntry` | `FolderEntry?` | The highlighted row, republished for the Workspace to bind `OneWayToSource`. `null` until a row is highlighted. |
 
 ## Usage
 
 ```xml
 <controls:FolderPanel Workspace="{Binding Folder.Folder}"
-                      ActivateCommand="{Binding Folder.ActivateEntryCommand}" />
+                      ActivateCommand="{Binding Folder.ActivateEntryCommand}"
+                      SelectedEntry="{Binding Folder.SelectedEntry, Mode=OneWayToSource}" />
 ```

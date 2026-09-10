@@ -22,6 +22,7 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     private readonly IUiDispatcher _dispatcher;
 
     private FolderWorkspace? _folder;
+    private FolderEntry? _selectedEntry;
     private bool _isFolderPanelVisible;
 
     /// <summary>Creates the Folder Workspace shell.</summary>
@@ -66,12 +67,37 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
             if (Set(ref _folder, value))
             {
                 Raise(nameof(HasFolder));
+                Raise(nameof(SaveFolder));
             }
         }
     }
 
     /// <summary>Whether a Folder Workspace is open (a Folder Tree to browse).</summary>
     public bool HasFolder => Folder is not null;
+
+    /// <summary>
+    /// The Selected Folder Entry: the row the user has highlighted in the Folder Panel, pushed here by
+    /// the panel. Selecting is browsing — it opens and edits nothing (INV-043) — and it is what names
+    /// the <see cref="SaveFolder"/> (INV-080). Session-only, like the rest of the panel's state.
+    /// </summary>
+    public FolderEntry? SelectedEntry
+    {
+        get => _selectedEntry;
+        set
+        {
+            if (Set(ref _selectedEntry, value))
+            {
+                Raise(nameof(SaveFolder));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Save Folder: the folder a new Markdown Document is offered to be saved into — the Selected
+    /// Folder Entry's folder, or the open root when nothing is selected (INV-080).
+    /// <see langword="null"/> when no Folder Workspace is open, which offers no folder at all.
+    /// </summary>
+    public string? SaveFolder => Folder?.SaveFolderFor(SelectedEntry);
 
     /// <summary>Whether the Folder Panel is shown. Presentation-only — toggling it edits nothing (INV-043).</summary>
     public bool IsFolderPanelVisible
@@ -209,6 +235,9 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     private async Task LoadRootAsync(string rootPath)
     {
         var files = await _reader.EnumerateMarkdownFilesAsync(rootPath).ConfigureAwait(true);
+
+        // A different root is a different tree, so nothing in the old one stays selected.
+        SelectedEntry = null;
         Folder = FolderWorkspace.From(rootPath, files);
         _watcher.StopWatching();
         _watcher.Watch(rootPath);

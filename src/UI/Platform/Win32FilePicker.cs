@@ -1,3 +1,4 @@
+using System.IO;
 using Domain;
 using Microsoft.Win32;
 using UI.Core;
@@ -38,7 +39,7 @@ public sealed class Win32FilePicker : IFilePicker
     }
 
     /// <inheritdoc />
-    public string? PickSave(string? suggestedFileName)
+    public string? PickSave(string? suggestedFileName, string? folder)
     {
         var dialog = new SaveFileDialog
         {
@@ -48,6 +49,13 @@ public sealed class Win32FilePicker : IFilePicker
             AddExtension = true,
             Title = "Save Markdown file",
         };
+
+        // A folder that has gone since it was offered would make the dialog fall back to its own last
+        // location anyway; checking first keeps that fallback explicit rather than incidental.
+        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+        {
+            dialog.InitialDirectory = folder;
+        }
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
     }

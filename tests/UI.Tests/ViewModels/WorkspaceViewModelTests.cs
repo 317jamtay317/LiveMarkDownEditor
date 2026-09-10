@@ -18,6 +18,7 @@ public sealed class WorkspaceViewModelTests
 {
     private const string Path = @"C:\docs\note.md";
     private const string OtherPath = @"C:\docs\other.md";
+    private const string Vault = @"C:\vault";
 
     private readonly FakeDocumentStore _store = new();
     private readonly StubFilePicker _picker = new();
@@ -275,6 +276,70 @@ public sealed class WorkspaceViewModelTests
         _store.SavedText(OtherPath).ShouldBe("# Brand new");
         workspace.ActiveSession.FilePath.ShouldBe(OtherPath);
         workspace.ActiveSession.HasUnsavedEdits.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Save_ANewDocument_WithNoFolderWorkspaceOpen_OffersNoFolder_INV080()
+    {
+        _picker.SaveResult = OtherPath;
+        var workspace = CreateWorkspace();
+        workspace.ActiveSession!.Markdown = "# Brand new";
+
+        await workspace.SaveActiveAsync();
+
+        // With no Folder Workspace open there is no "here" to default to; the dialog opens where the
+        // platform would put it.
+        _picker.SaveFolder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Save_ANewDocument_WithAFolderWorkspaceOpen_OffersTheOpenFolder_INV080()
+    {
+        _folderPicker.FolderResult = Vault;
+        _folderReader.Result = ["sub/note.md"];
+        var workspace = CreateWorkspace();
+        await workspace.Folder.OpenFolderAsync();
+        _picker.SaveResult = System.IO.Path.Combine(Vault, "new.md");
+        workspace.ActiveSession!.Markdown = "# Brand new";
+
+        await workspace.SaveActiveAsync();
+
+        _picker.SaveFolder.ShouldBe(System.IO.Path.GetFullPath(Vault));
+    }
+
+    [Fact]
+    public async Task Save_ANewDocument_WithASubFolderSelected_OffersThatSubFolder_INV080()
+    {
+        _folderPicker.FolderResult = Vault;
+        _folderReader.Result = ["sub/note.md"];
+        var workspace = CreateWorkspace();
+        await workspace.Folder.OpenFolderAsync();
+        workspace.Folder.SelectedEntry = workspace.Folder.Folder!.Entries[0];
+        _picker.SaveResult = System.IO.Path.Combine(Vault, "sub", "new.md");
+        workspace.ActiveSession!.Markdown = "# Brand new";
+
+        await workspace.SaveActiveAsync();
+
+        _picker.SaveFolder.ShouldBe(System.IO.Path.GetFullPath(System.IO.Path.Combine(Vault, "sub")));
+    }
+
+    [Fact]
+    public async Task Save_ADocumentThatAlreadyHasAPath_DoesNotPrompt_INV080()
+    {
+        _folderPicker.FolderResult = Vault;
+        _folderReader.Result = ["sub/note.md"];
+        _store.Seed(Path, "old");
+        _picker.OpenResult = Path;
+        var workspace = CreateWorkspace();
+        await workspace.Folder.OpenFolderAsync();
+        await workspace.OpenAsync();
+        workspace.ActiveSession!.Markdown = "# Changed";
+
+        await workspace.SaveActiveAsync();
+
+        // A Watched File is saved where it already lives; the open folder never redirects it.
+        _store.SavedText(Path).ShouldBe("# Changed");
+        _picker.SaveFolder.ShouldBeNull();
     }
 
     [Fact]

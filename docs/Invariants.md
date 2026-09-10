@@ -2110,6 +2110,38 @@ and tested.
   control's `Padding` at zero; exiting restores it). A real drag is a pointer gesture the headless STA
   tests cannot make — it was observed in the running app.
 
+### INV-080 — A new Markdown Document is saved where the user is browsing
+- **Statement:** Saving a Tab that has no Watched File yet opens the save prompt in the **Save
+  Folder** — the folder the open Folder Workspace is showing. Four rules bound it:
+  - **Nothing selected means the root.** With a Folder Workspace open and no row highlighted in the
+    Folder Panel, the Save Folder is the open root.
+  - **A Selected Folder is that folder.** Highlighting a Folder in the Folder Tree makes it the Save
+    Folder, so a new document lands in the subfolder the user is looking at.
+  - **A Selected File is the folder holding it.** A new document lands *beside* the document being
+    read, not inside it. A File at the root therefore names the root.
+  - **It offers, it never redirects.** The Save Folder is only where the prompt opens; the user is
+    free to save anywhere from there. A Tab that already has a Watched File is saved where that file
+    lives and is never prompted at all, and with no Folder Workspace open no folder is offered.
+- **Why:** A Folder Workspace turns the editor into a knowledge base, and every document a user makes
+  while browsing one belongs in it. Opening the prompt at whatever folder Windows last used makes the
+  user navigate back to where they already were, and quietly scatters a vault across the disk.
+- **Enforced by:** `FolderWorkspace.SaveFolderFor` — the pure rule, which resolves a Selected Folder
+  Entry to a folder path against the root and falls back to the root for an entry the Folder Tree no
+  longer holds (the live refresh rebuilds the tree, INV-044); `FolderWorkspaceViewModel.SelectedEntry`
+  and its derived `SaveFolder`, with the `FolderPanel` Control republishing its highlighted row through
+  its `SelectedEntry` dependency property (a `TreeView`'s own `SelectedItem` is read-only, so it cannot
+  carry the binding) and the Workspace binding it `OneWayToSource`; and
+  `WorkspaceViewModel.TrySaveAsync` passing it to `IFilePicker.PickSave`, which the `Win32FilePicker`
+  applies as the dialog's `InitialDirectory` when that folder still exists. Selecting a row remains
+  browsing — it opens and edits nothing (INV-043).
+- **Tested by:** `FolderWorkspaceTests.SaveFolderFor_*_INV080` (the pure rule for nothing selected, a
+  Folder, a nested Folder, a File, and a root-level File), `FolderWorkspaceViewModelTests.*_INV080`
+  (no folder open offers none; the root, a subfolder, and a File's folder; a selection the tree has
+  lost falls back to the root; a new root clears the selection),
+  `FolderPanelTests.*_INV080` (a highlighted Folder and File are republished, and highlighting
+  activates nothing), and `WorkspaceViewModelTests.Save_ANewDocument_*_INV080` (the picker is offered
+  the open folder, the selected subfolder, or nothing at all).
+
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.
 Every invariant MUST have at least one corresponding test before it is considered done.

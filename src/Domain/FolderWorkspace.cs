@@ -90,6 +90,46 @@ public sealed class FolderWorkspace
         return Path.GetFullPath(Path.Combine(RootPath, relative));
     }
 
+    /// <summary>
+    /// The Save Folder for a new Markdown Document: the folder the Folder Workspace offers to save
+    /// into, given the Selected Folder Entry (INV-080). A Selected Folder is that folder itself; a
+    /// Selected File is the folder holding it, so a new document lands beside the one being read
+    /// rather than inside it. Nothing selected — and an entry that is no longer in the Folder Tree,
+    /// which the live refresh can leave behind (INV-044) — both name the root.
+    /// </summary>
+    /// <param name="selected">The Selected Folder Entry, or <see langword="null"/> when none is.</param>
+    /// <returns>The canonical absolute path of the folder to save into.</returns>
+    public string SaveFolderFor(FolderEntry? selected)
+    {
+        var relative = selected is not null && Contains(Entries, selected)
+            ? FolderPathOf(selected)
+            : string.Empty;
+
+        return Path.GetFullPath(Path.Combine(RootPath, relative.Replace('/', Path.DirectorySeparatorChar)));
+    }
+
+    // A Folder names itself; a File names the folder it sits in — everything before its last '/', or
+    // the root when it has none.
+    private static string FolderPathOf(FolderEntry entry)
+    {
+        if (entry.Kind == FolderEntryKind.Folder)
+        {
+            return entry.RelativePath;
+        }
+
+        var slash = entry.RelativePath.LastIndexOf('/');
+        return slash < 0 ? string.Empty : entry.RelativePath[..slash];
+    }
+
+    // Whether this Folder Tree still holds the given entry. The tree is rebuilt on every refresh, so a
+    // remembered entry is matched by what identifies it — its kind and its relative path — rather than
+    // by reference.
+    private static bool Contains(IReadOnlyList<FolderEntry> entries, FolderEntry sought) =>
+        entries.Any(entry =>
+            (entry.Kind == sought.Kind
+             && string.Equals(entry.RelativePath, sought.RelativePath, StringComparison.Ordinal))
+            || Contains(entry.Children, sought));
+
     private static string DisplayName(string rootPath)
     {
         var trimmed = rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

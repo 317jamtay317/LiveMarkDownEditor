@@ -147,6 +147,12 @@ Open a folder and browse its Markdown files as a tree; double-click a file to op
 files show and folders with none are hidden, so a repository or vault stays tidy. Your open folder
 reopens the next time you launch.
 
+**New documents save into the folder you are browsing.** With a folder open, saving a new document
+opens the save dialog there rather than wherever Windows was last — and if you have a subfolder
+selected in the tree, it opens in that subfolder. Click a file instead and it opens beside that file.
+Nothing is redirected: it is only where the dialog starts, and a document that already has a file is
+saved where it lives.
+
 ![The folder workspace](docs/images/folder-workspace.png)
 
 ---

@@ -1,3 +1,4 @@
+using System.IO;
 using Domain;
 using Shouldly;
 using UI.Tests.TestDoubles;
@@ -250,5 +251,110 @@ public sealed class FolderWorkspaceViewModelTests
         await folder.RestoreAsync(null);
 
         folder.Folder.ShouldBeNull();
+    }
+
+    [Fact]
+    public void SaveFolder_WithNoFolderWorkspaceOpen_IsNothing_INV080()
+    {
+        var folder = Create();
+
+        folder.SaveFolder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SaveFolder_WithNothingSelected_IsTheOpenRoot_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(Root));
+    }
+
+    [Fact]
+    public async Task SaveFolder_WithAFolderSelected_IsThatSubFolder_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+
+        folder.SelectedEntry = folder.Folder!.Entries[0];
+
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(@"C:\vault\sub"));
+    }
+
+    [Fact]
+    public async Task SaveFolder_WithAFileSelected_IsTheFolderHoldingIt_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+
+        folder.SelectedEntry = FirstFile(folder.Folder!);
+
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(@"C:\vault\sub"));
+    }
+
+    [Fact]
+    public async Task SelectingAnEntry_ChangesNoDocument_INV043()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+
+        folder.SelectedEntry = FirstFile(folder.Folder!);
+
+        // Selecting is browsing, not activating: only a double-click or Enter opens a File.
+        _opened.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveFolder_AfterTheSelectedEntryIsCleared_IsTheOpenRootAgain_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+        folder.SelectedEntry = folder.Folder!.Entries[0];
+
+        folder.SelectedEntry = null;
+
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(Root));
+    }
+
+    [Fact]
+    public async Task SaveFolder_WhenTheSelectedEntryHasGoneFromTheTree_IsTheOpenRoot_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+        folder.SelectedEntry = folder.Folder!.Entries[0];
+
+        // The subfolder is gone from disk, so the live refresh rebuilds a tree without it (INV-044).
+        _reader.Result = ["top.md"];
+        await folder.RefreshAsync();
+
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(Root));
+    }
+
+    [Fact]
+    public async Task SelectedEntry_IsClearedWhenADifferentRootIsOpened_INV080()
+    {
+        _reader.Result = ["sub/note.md"];
+        _picker.FolderResult = Root;
+        var folder = Create();
+        await folder.OpenFolderAsync();
+        folder.SelectedEntry = folder.Folder!.Entries[0];
+
+        _picker.FolderResult = @"C:\other";
+        await folder.OpenFolderAsync();
+
+        folder.SelectedEntry.ShouldBeNull();
+        folder.SaveFolder.ShouldBe(Path.GetFullPath(@"C:\other"));
     }
 }
