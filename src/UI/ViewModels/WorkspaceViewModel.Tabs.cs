@@ -152,6 +152,50 @@ public sealed partial class WorkspaceViewModel
     /// </summary>
     public Task CloseAllButPinnedAsync() => CloseTabsAsync([.. _unpinnedTabs]);
 
+    /// <summary>
+    /// Closes the Tab holding the Watched File at <paramref name="path"/>, if one does, through Close
+    /// Tab, so unsaved edits are asked about (INV-010). Delete File closes a File's Tab this way before
+    /// deleting it (INV-081).
+    /// </summary>
+    /// <param name="path">The absolute path of the Watched File whose Tab should close.</param>
+    /// <returns>
+    /// <see langword="true"/> when no Tab holds the file any longer, including when none did.
+    /// <see langword="false"/> when the user chose to keep the Tab.
+    /// </returns>
+    public async Task<bool> CloseFileAsync(string path)
+    {
+        if (TabHolding(path) is not { } tab)
+        {
+            return true;
+        }
+
+        await CloseSessionAsync(tab).ConfigureAwait(true);
+        return !_pinnedTabs.Contains(tab) && !_unpinnedTabs.Contains(tab);
+    }
+
+    /// <summary>
+    /// Follows a File that Rename File has moved from <paramref name="path"/> to
+    /// <paramref name="newPath"/> (INV-082). The Tab holding it, if one does, stays open and now holds
+    /// the file at its new path, keeping its text and unsaved edits without asking or saving anything.
+    /// The path is renamed in the Recent Files in the same place, and the Workspace State is persisted
+    /// with the new path.
+    /// </summary>
+    /// <param name="path">The absolute path the file had.</param>
+    /// <param name="newPath">The absolute path the file has now.</param>
+    public async Task FollowRenamedFileAsync(string path, string newPath)
+    {
+        TabHolding(path)?.FollowRename(newPath);
+        RenameRecent(path, newPath);
+        await PersistStateAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>The Tab holding the Watched File at <paramref name="path"/>, compared case-insensitively, or none.</summary>
+    /// <param name="path">The absolute path of a Watched File.</param>
+    private EditorSessionViewModel? TabHolding(string path) =>
+        Sessions.FirstOrDefault(session =>
+            session.FilePath is not null &&
+            string.Equals(session.FilePath, path, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Adds a newly opened Editor Session as a Tab at the end of the ordinary row.</summary>
     /// <param name="session">The Editor Session to give a Tab.</param>
     private void AddTab(EditorSessionViewModel session)

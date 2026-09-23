@@ -11,15 +11,22 @@ namespace UI.ViewModels;
 /// Tree in the Folder Panel. It is navigation chrome — opening a folder, toggling the panel, and
 /// browsing never change any Markdown Document (INV-043); activating a File routes it to the
 /// <see cref="OpenFile"/> callback that opens it in a Tab. The tree tracks the disk live (INV-044), and
-/// the open root is persisted and Restored across runs (INV-045). It is composed as a child of the
-/// <see cref="WorkspaceViewModel"/>, alongside the Appearance and Export ViewModels.
+/// the open root is persisted and Restored across runs (INV-045). Its two actions that are not
+/// browsing are Delete File, which removes a File from disk only once the user confirms (INV-081),
+/// and Rename File, which gives a File a New Name only once the user commits one (INV-082). It is
+/// composed as a child of the <see cref="WorkspaceViewModel"/>, alongside the Appearance and Export
+/// ViewModels.
 /// </summary>
-public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
+public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDisposable
 {
     private readonly IFolderPicker _picker;
     private readonly IMarkdownFolderReader _reader;
     private readonly IFolderWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IDeleteFilePrompt _deletePrompt;
+    private readonly IFileDeleter _deleter;
+    private readonly IFileRenamer _renamer;
+    private readonly IRenameFileNotice _renameNotice;
 
     private FolderWorkspace? _folder;
     private FolderEntry? _selectedEntry;
@@ -30,22 +37,36 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     /// <param name="reader">Enumerates the Markdown Documents beneath a folder (INV-042).</param>
     /// <param name="watcher">Watches the open folder for structural change, driving live refresh (INV-044).</param>
     /// <param name="dispatcher">Marshals the watcher's background notification onto the UI thread.</param>
+    /// <param name="deletePrompt">Asks whether the user is sure before Delete File (INV-081).</param>
+    /// <param name="deleter">Deletes a File from disk by sending it to the Recycle Bin (INV-081).</param>
+    /// <param name="renamer">Gives a File its New Name on disk, never overwriting (INV-082).</param>
+    /// <param name="renameNotice">Tells the user why a Rename File renamed nothing (INV-082).</param>
     public FolderWorkspaceViewModel(
         IFolderPicker picker,
         IMarkdownFolderReader reader,
         IFolderWatcher watcher,
-        IUiDispatcher dispatcher)
+        IUiDispatcher dispatcher,
+        IDeleteFilePrompt deletePrompt,
+        IFileDeleter deleter,
+        IFileRenamer renamer,
+        IRenameFileNotice renameNotice)
     {
         _picker = picker ?? throw new ArgumentNullException(nameof(picker));
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _deletePrompt = deletePrompt ?? throw new ArgumentNullException(nameof(deletePrompt));
+        _deleter = deleter ?? throw new ArgumentNullException(nameof(deleter));
+        _renamer = renamer ?? throw new ArgumentNullException(nameof(renamer));
+        _renameNotice = renameNotice ?? throw new ArgumentNullException(nameof(renameNotice));
 
         _watcher.Changed += OnWatcherChanged;
 
         OpenFolderCommand = new AsyncRelayCommand(OpenFolderAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => Folder is not null);
         ActivateEntryCommand = new AsyncRelayCommand<FolderEntry>(ActivateAsync);
+        DeleteEntryCommand = new AsyncRelayCommand<FolderEntry>(DeleteAsync, CanDelete);
+        RenameEntryCommand = new AsyncRelayCommand<RenameFileRequest>(RenameAsync, CanRename);
         ToggleFolderPanelCommand = new RelayCommand(ToggleFolderPanel);
     }
 
@@ -76,9 +97,10 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     public bool HasFolder => Folder is not null;
 
     /// <summary>
-    /// The Selected Folder Entry: the row the user has highlighted in the Folder Panel, pushed here by
-    /// the panel. Selecting is browsing — it opens and edits nothing (INV-043) — and it is what names
-    /// the <see cref="SaveFolder"/> (INV-080). Session-only, like the rest of the panel's state.
+    /// The Selected Folder Entry: the highlighted row of the Folder Panel — pushed here by the panel
+    /// when the user clicks a row, and set here to Follow the Active Session as Tabs change (INV-083).
+    /// Selecting is browsing — it opens and edits nothing (INV-043) — and it is what names the
+    /// <see cref="SaveFolder"/> (INV-080). Session-only, like the rest of the panel's state.
     /// </summary>
     public FolderEntry? SelectedEntry
     {
@@ -236,9 +258,11 @@ public sealed class FolderWorkspaceViewModel : ObservableObject, IDisposable
     {
         var files = await _reader.EnumerateMarkdownFilesAsync(rootPath).ConfigureAwait(true);
 
-        // A different root is a different tree, so nothing in the old one stays selected.
+        // A different root is a different tree, so nothing in the old one stays selected — but the new
+        // one highlights the Active Session's File when it holds it (INV-083).
         SelectedEntry = null;
         Folder = FolderWorkspace.From(rootPath, files);
+        FollowActiveFile();
         _watcher.StopWatching();
         _watcher.Watch(rootPath);
         IsFolderPanelVisible = true;

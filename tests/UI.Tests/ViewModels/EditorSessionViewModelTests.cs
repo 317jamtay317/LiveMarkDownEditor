@@ -17,6 +17,7 @@ namespace UI.Tests.ViewModels;
 public sealed class EditorSessionViewModelTests
 {
     private const string Path = @"C:\docs\note.md";
+    private const string RenamedPath = @"C:\docs\ideas.md";
 
     private readonly FakeDocumentStore _store = new();
     private readonly FakeDocumentWatcher _watcher = new();
@@ -287,6 +288,79 @@ public sealed class EditorSessionViewModelTests
 
         session.HasConflict.ShouldBeTrue();
         session.Markdown.ShouldBe("# My unsaved edit");
+    }
+
+    [Fact]
+    public async Task FollowRename_HoldsTheWatchedFileAtItsNewPath_INV082()
+    {
+        var session = await LoadedSessionAsync("# Note");
+
+        session.FollowRename(RenamedPath);
+
+        session.FilePath.ShouldBe(RenamedPath);
+        session.Name.ShouldBe("ideas.md");
+        session.TabTip.ShouldBe(RenamedPath);
+    }
+
+    [Fact]
+    public async Task FollowRename_KeepsTheTextAndTheUnsavedEdits_INV082()
+    {
+        var session = await LoadedSessionAsync("# Note");
+        session.Markdown = "# Edited";
+
+        session.FollowRename(RenamedPath);
+
+        session.Markdown.ShouldBe("# Edited");
+        session.HasUnsavedEdits.ShouldBeTrue();
+        session.Title.ShouldBe("ideas.md *");
+    }
+
+    [Fact]
+    public async Task FollowRename_WatchesTheNewPath_INV082()
+    {
+        var session = await LoadedSessionAsync("# Note");
+
+        session.FollowRename(RenamedPath);
+
+        _watcher.WatchedPath.ShouldBe(RenamedPath);
+    }
+
+    [Fact]
+    public async Task FollowRename_LoadsAndSavesNothing_INV082()
+    {
+        var session = await LoadedSessionAsync("# Note");
+        session.Markdown = "# Edited";
+
+        session.FollowRename(RenamedPath);
+
+        // The file was moved, not rewritten: the unsaved edits are still only in the session.
+        _store.SavedText(RenamedPath).ShouldBeNull();
+        _store.SavedText(Path).ShouldBe("# Note");
+    }
+
+    [Fact]
+    public async Task FollowRename_KeepsAConflictAwaitingResolution_INV082()
+    {
+        var session = await LoadedSessionAsync("# Original");
+        session.Markdown = "# My unsaved edit";
+        _store.Seed(Path, "# Changed on disk");
+        _watcher.RaiseChanged(Path);
+        await Task.Yield();
+
+        session.FollowRename(RenamedPath);
+
+        session.HasConflict.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task FollowRename_ToANullOrBlankPath_Throws_INV082(string? path)
+    {
+        var session = await LoadedSessionAsync("# Note");
+
+        Should.Throw<ArgumentException>(() => session.FollowRename(path!));
     }
 
     [Fact]

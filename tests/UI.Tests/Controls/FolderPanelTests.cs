@@ -1,26 +1,22 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Threading;
 using Domain;
 using Shouldly;
 using UI.Controls;
 using UI.Tests.Wysiwyg;
 using Xunit;
+using static UI.Tests.Controls.FolderPanelHarness;
 
 namespace UI.Tests.Controls;
 
 /// <summary>
 /// Tests for <see cref="FolderPanel"/>: double-clicking a File in the Folder Tree activates it at any
 /// depth — a File nested under a Folder opens exactly as one at the root does — while a Folder is left
-/// to its native Expand/Collapse (INV-043).
+/// to its native Expand/Collapse (INV-043). Delete File is reached from a File, by the Delete key or the
+/// context menu, and never from a Folder (INV-081). A rebuild keeps the user's place (INV-044). Rename
+/// File has its own tests in <see cref="FolderPanelRenameTests"/>.
 /// </summary>
 public sealed class FolderPanelTests
 {
-    private const string Root = @"C:\notes";
-
     [Fact]
     public void DoubleClicking_AFileAtTheRoot_ActivatesThatFile_INV043()
     {
@@ -131,110 +127,206 @@ public sealed class FolderPanelTests
         });
     }
 
-    private static FolderPanel BuildPanel(out List<FolderEntry> activated, params string[] relativePaths)
+    [Fact]
+    public void PressingDelete_OnASelectedFile_DeletesThatFile_INV081()
     {
-        var recorded = new List<FolderEntry>();
-        activated = recorded;
-
-        var panel = new FolderPanel
+        StaThread.Run(() =>
         {
-            // The real look comes from FolderPanel.xaml; this stands in for it so the tree nests and
-            // each row has an inner visual for the click to land on, as a real double-click does.
-            ItemTemplate = RowTemplate(),
-            ActivateCommand = new RecordingCommand(recorded),
-            Workspace = FolderWorkspace.From(Root, relativePaths),
-        };
+            var panel = BuildDeletablePanel(out var deleted, "top.md", "Nested/deep.md");
+            Row(panel, "Nested", "deep.md").IsSelected = true;
 
-        // A control built in code never enters a window here, so nudge it through initialization to
-        // pick up its theme style — without a Template there is no row to click.
-        panel.BeginInit();
-        panel.EndInit();
+            PressKey(panel, Key.Delete);
 
-        Layout(panel);
-        return panel;
+            deleted.Select(entry => entry.RelativePath).ShouldBe(["Nested/deep.md"]);
+        });
     }
 
-    private static HierarchicalDataTemplate RowTemplate()
+    [Fact]
+    public void PressingDelete_OnASelectedFolder_DeletesNothing_INV081()
     {
-        var text = new FrameworkElementFactory(typeof(TextBlock));
-        text.SetBinding(TextBlock.TextProperty, new Binding(nameof(FolderEntry.Name)));
-
-        return new HierarchicalDataTemplate(typeof(FolderEntry))
+        StaThread.Run(() =>
         {
-            ItemsSource = new Binding(nameof(FolderEntry.Children)),
-            VisualTree = text,
-        };
+            var panel = BuildDeletablePanel(out var deleted, "Nested/deep.md");
+            Row(panel, "Nested").IsSelected = true;
+
+            PressKey(panel, Key.Delete);
+
+            deleted.ShouldBeEmpty();
+        });
     }
 
-    private static TreeViewItem Row(FolderPanel panel, params string[] names)
+    [Fact]
+    public void PressingDelete_WithNothingSelected_DeletesNothing_INV081()
     {
-        ItemsControl parent = panel;
-        TreeViewItem? row = null;
-
-        foreach (var name in names)
+        StaThread.Run(() =>
         {
-            var entry = parent.Items.OfType<FolderEntry>().Single(item => item.Name == name);
-            row = (TreeViewItem?)parent.ItemContainerGenerator.ContainerFromItem(entry)
-                  ?? throw new InvalidOperationException($"No row was generated for '{name}'.");
+            var panel = BuildDeletablePanel(out var deleted, "top.md");
 
-            // Children are realized only under an Expanded row, exactly as the user reaches them.
-            row.IsExpanded = true;
+            PressKey(panel, Key.Delete);
+
+            deleted.ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
+    public void OpeningTheContextMenu_OnAFile_OffersItAndSelectsThatFile_INV081()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildDeletablePanel(out var deleted, "top.md", "Nested/deep.md");
+            var row = Row(panel, "Nested", "deep.md");
+
+            var offered = panel.PrepareContextMenuAt(HeaderTextOf(row));
+
+            // The row right-clicked becomes the Selected Folder Entry, so the menu's Delete acts on
+            // exactly the File the user pointed at, and the highlight shows which one that is.
+            offered.ShouldBeTrue();
+            panel.SelectedEntry?.RelativePath.ShouldBe("Nested/deep.md");
+            deleted.ShouldBeEmpty(); // opening the menu is not deleting
+        });
+    }
+
+    [Fact]
+    public void OpeningTheContextMenu_OnAFolder_OffersNothing_INV081()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildDeletablePanel(out _, "Nested/deep.md");
+            var row = Row(panel, "Nested");
+
+            panel.PrepareContextMenuAt(HeaderTextOf(row)).ShouldBeFalse();
+            panel.SelectedEntry.ShouldBeNull();
+        });
+    }
+
+    [Fact]
+    public void Rebuilding_TheTree_KeepsAnExpandedFolderExpanded_INV044()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/a.md", "Nested/b.md", "top.md");
+            Row(panel, "Nested"); // the user Expands it
+
+            // A file inside it is deleted; the Folder Tree is rebuilt with brand-new rows.
+            Rebuild(panel, "Nested/a.md", "top.md");
+
+            ExistingRow(panel, "Nested").IsExpanded.ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void Rebuilding_TheTree_KeepsANestedExpandedFolderExpanded_INV044()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Outer/Inner/a.md", "Outer/Inner/b.md");
+            Row(panel, "Outer", "Inner");
+
+            Rebuild(panel, "Outer/Inner/a.md");
+
+            ExistingRow(panel, "Outer").IsExpanded.ShouldBeTrue();
+            ExistingRow(panel, "Outer", "Inner").IsExpanded.ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void Rebuilding_TheTree_KeepsACollapsedFolderCollapsed_INV044()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/a.md", "Nested/b.md");
+            Row(panel, "Nested").IsExpanded = false; // Expanded, then Collapsed again
+
+            Rebuild(panel, "Nested/a.md");
+
+            ExistingRow(panel, "Nested").IsExpanded.ShouldBeFalse();
+        });
+    }
+
+    [Fact]
+    public void OpeningADifferentRoot_StartsWithEveryFolderCollapsed_INV044()
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, "Nested/a.md");
+            Row(panel, "Nested");
+
+            panel.Workspace = FolderWorkspace.From(@"C:\elsewhere", ["Nested/a.md"]);
             Layout(panel);
-            parent = row;
-        }
 
-        return row ?? throw new ArgumentException("At least one name is required.", nameof(names));
+            ExistingRow(panel, "Nested").IsExpanded.ShouldBeFalse();
+        });
     }
 
-    private static DependencyObject HeaderTextOf(TreeViewItem row) =>
-        HeaderTextOrNull(row) ?? throw new InvalidOperationException("The row has no header text.");
-
-    private static TextBlock? HeaderTextOrNull(DependencyObject element)
+    [Fact]
+    public void Rebuilding_TheTree_KeepsTheSameRowForAnEntryThatDidNotChange_INV044()
     {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(element); index++)
+        StaThread.Run(() =>
         {
-            var child = VisualTreeHelper.GetChild(element, index);
+            var panel = BuildPanel(out _, "Nested/a.md", "Nested/b.md", "top.md");
+            var before = Row(panel, "top.md");
 
-            // A nested row is another entry's header, not this one's.
-            if (child is TreeViewItem)
-            {
-                continue;
-            }
+            Rebuild(panel, "Nested/a.md", "top.md");
 
-            if (child is TextBlock text)
-            {
-                return text;
-            }
-
-            if (HeaderTextOrNull(child) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
+            // Only what changed on disk is re-created; everything else stays exactly as the user left it.
+            ExistingRow(panel, "top.md").ShouldBeSameAs(before);
+        });
     }
 
-    private static void Layout(FrameworkElement element)
+    [Fact]
+    public void Rebuilding_TheTree_KeepsTheHighlightedRowHighlighted_INV044()
     {
-        element.Measure(new Size(300, 600));
-        element.Arrange(new Rect(0, 0, 300, 600));
-        element.UpdateLayout();
-
-        // Container generation is queued at Background priority; drain the queue so the rows exist.
-        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
-    }
-
-    private sealed class RecordingCommand(List<FolderEntry> activated) : ICommand
-    {
-        public event EventHandler? CanExecuteChanged
+        StaThread.Run(() =>
         {
-            add { }
-            remove { }
-        }
+            var panel = BuildPanel(out _, "Nested/a.md", "Nested/b.md");
+            Row(panel, "Nested", "b.md").IsSelected = true;
 
-        public bool CanExecute(object? parameter) => true;
+            Rebuild(panel, "Nested/b.md", "Nested/c.md");
 
-        public void Execute(object? parameter) => activated.Add((FolderEntry)parameter!);
+            ExistingRow(panel, "Nested", "b.md").IsSelected.ShouldBeTrue();
+            panel.SelectedEntry?.RelativePath.ShouldBe("Nested/b.md");
+        });
+    }
+
+    [Fact]
+    public void Rebuilding_TheTree_KeepsThePanelScrolledWhereItWas_INV044()
+    {
+        StaThread.Run(() =>
+        {
+            var paths = Enumerable.Range(1, 30)
+                .SelectMany(i => new[] { $"A/a{i:00}.md", $"B/b{i:00}.md", $"C/c{i:00}.md" })
+                .ToArray();
+            var panel = BuildPanel(out _, paths);
+            Row(panel, "A");
+            Row(panel, "B");
+            Row(panel, "C");
+            var viewer = ScrollViewerOf(panel);
+            viewer.ScrollToVerticalOffset(viewer.ScrollableHeight / 2);
+            Layout(panel);
+            var offset = viewer.VerticalOffset;
+            offset.ShouldBeGreaterThan(0);
+
+            Rebuild(panel, [.. paths, "C/c99.md"]);
+
+            viewer.VerticalOffset.ShouldBe(offset);
+        });
+    }
+
+    [Theory]
+    [InlineData(new[] { "a.md", "c.md" }, new[] { "a.md", "b.md", "c.md" })]
+    [InlineData(new[] { "a.md", "b.md", "c.md" }, new[] { "a.md", "c.md" })]
+    [InlineData(new[] { "Sub/x.md", "top.md" }, new[] { "New/y.md", "Sub/x.md", "top.md" })]
+    [InlineData(new[] { "Sub/x.md", "top.md" }, new[] { "top.md" })]
+    [InlineData(new[] { "Sub/old.md", "b.md" }, new[] { "Sub/new.md", "a.md" })]
+    public void Rebuilding_TheTree_ListsExactlyTheNewFolderTree_INV044(string[] before, string[] after)
+    {
+        StaThread.Run(() =>
+        {
+            var panel = BuildPanel(out _, before);
+
+            Rebuild(panel, after);
+
+            Listed(panel.Items).ShouldBe(Listed(FolderWorkspace.From(Root, after).Entries));
+        });
     }
 }

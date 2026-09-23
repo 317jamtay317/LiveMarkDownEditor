@@ -900,6 +900,9 @@ and tested.
   activates its existing Tab rather than duplicating it (INV-009), and opening it is not an edit.
   Activating a **Folder** does nothing but its own Expand/Collapse. **Depth does not matter:** a File
   nested any number of Folders down the Folder Tree activates exactly as one at the root does.
+- **Note (INV-081, INV-082):** Delete File and Rename File are not browsing. They are the two Folder
+  Panel actions that change the filesystem: Delete File only after the user confirms, and Rename File
+  only when the user commits a New Name. This invariant governs everything else the panel does.
 - **Enforced by:** `FolderWorkspaceViewModel` — its `OpenFolderCommand`, `ToggleFolderPanelCommand`,
   and `IsFolderPanelVisible` drive only presentation state, and its `ActivateEntryCommand` resolves a
   File to its absolute path and routes it to `WorkspaceViewModel.OpenPathAsync` (the same
@@ -917,12 +920,29 @@ and tested.
   the Folder-Workspace counterpart of INV-007's live reload, but view-only: the tree follows the disk,
   nothing is edited. A burst of filesystem events (an editor or tool often emits several for one
   change) is debounced into a single rebuild.
+- **The user's place survives a rebuild.** Rebuilding the Folder Tree, whether from the live refresh
+  or after a Delete File (INV-081) or a Rename File (INV-082), changes only the Folder Panel Rows whose
+  entries were added or removed. Every other row stays exactly as the user left it: an Expanded Folder stays Expanded and a
+  Collapsed one Collapsed, at any depth; the highlighted row stays highlighted while it still exists;
+  and the panel stays scrolled where it was. The user never has to navigate back to their place.
+  Expansion is view state for the open root only: opening a different root starts with every Folder
+  Collapsed.
 - **Enforced by:** `FolderWorkspaceViewModel` subscribing to `IFolderWatcher.Changed`, marshalling to
   the UI thread through `IUiDispatcher`, and re-running its reader-and-rebuild (its `RefreshCommand`);
   the `FileSystemFolderWatcher` adapter — a recursive `FileSystemWatcher` with a debounce, mirroring
-  `FileSystemDocumentWatcher`.
+  `FileSystemDocumentWatcher`. The user's place is kept by the `FolderPanel` Control, which lists its
+  own `FolderPanelRow`s rather than the Folder Entries themselves. `FolderPanelRow.Sync` applies each
+  rebuild of the same root to those rows as a change: a row whose entry has gone is removed, a new
+  entry gets a new row in its place, and every other row is kept and updated in place, so WPF never
+  re-creates, collapses, deselects, or scrolls it. Each row's `IsExpanded` is bound two ways to its
+  WPF row, because WPF's virtualization clears a plain `IsExpanded` on every row it prepares. A
+  different root builds fresh rows.
 - **Tested by:** `FolderWorkspaceViewModelTests.*_INV044` (a `Changed` from a fake watcher re-reads the
-  folder and the Folder Tree reflects the new file set, changing no document).
+  folder and the Folder Tree reflects the new file set, changing no document) and
+  `FolderPanelTests.*_INV044`, run against a virtualized panel as the real one is (a rebuild keeps an
+  Expanded Folder, a nested Expanded Folder, and a Collapsed Folder as they were; keeps the very same
+  row for an unchanged entry, the highlighted row highlighted, and the scroll offset; lists exactly the
+  new Folder Tree after additions, removals, and renames; a different root starts Collapsed).
 
 ### INV-045 — The open Folder Workspace is restored across runs
 - **Statement:** The open Folder Workspace's root path is persisted in the Workspace State and reopened
@@ -2122,6 +2142,9 @@ and tested.
   - **It offers, it never redirects.** The Save Folder is only where the prompt opens; the user is
     free to save anywhere from there. A Tab that already has a Watched File is saved where that file
     lives and is never prompted at all, and with no Folder Workspace open no folder is offered.
+- **Note (INV-083):** The Selected Folder Entry follows the Active Session, so switching to an unsaved
+  Tab leaves nothing selected and the Save Folder falls back to the root. Highlighting a Folder after
+  that still names it: the highlight changes only when the Active Session does.
 - **Why:** A Folder Workspace turns the editor into a knowledge base, and every document a user makes
   while browsing one belongs in it. Opening the prompt at whatever folder Windows last used makes the
   user navigate back to where they already were, and quietly scatters a vault across the disk.
@@ -2141,6 +2164,156 @@ and tested.
   `FolderPanelTests.*_INV080` (a highlighted Folder and File are republished, and highlighting
   activates nothing), and `WorkspaceViewModelTests.Save_ANewDocument_*_INV080` (the picker is offered
   the open folder, the selected subfolder, or nothing at all).
+
+### INV-081 — Delete File removes a File only when the user confirms, and never silently discards unsaved edits
+- **Statement:** Delete File removes a File's Markdown Document from disk. It is one of the two Folder
+  Panel actions that change the filesystem, with Rename File (INV-082); everything else the panel does
+  is browsing (INV-043). Five rules bound it:
+  - **Only a File.** Delete File applies to a File that the Folder Tree holds. A Folder cannot be
+    deleted from the Folder Panel, and neither can an entry the live refresh has already dropped
+    (INV-044).
+  - **Only when the user confirms.** The user is always asked whether they are sure, and the question
+    names the File. Answering No deletes nothing and changes nothing: not the Folder Tree, not any Tab,
+    and not the Recent Files.
+  - **Recoverable.** The file goes to the Recycle Bin rather than being erased, so a mistaken delete
+    can be undone from Windows. Where Windows cannot recycle it (a file on a network share, say),
+    Windows itself warns before erasing it for good, and declining keeps the file.
+  - **An open File's Tab closes first, through Close Tab.** If the File is open in a Tab, that Tab is
+    closed the same way Close Tab closes it, so its unsaved edits are asked about (INV-010). Save writes
+    them before the file is recycled, so the recycled copy holds them. Discard drops them. Cancel keeps
+    the Tab and cancels the delete, and the file stays on disk.
+  - **The Folder Tree and the Recent Files let it go.** Once the file is deleted, the Folder Tree is
+    refreshed so the File no longer appears, and its path leaves the Recent Files. A File that had
+    already gone from disk counts as deleted.
+- **Why:** Tidying a knowledge base means removing notes as well as adding them, and the Folder Panel
+  is where the user is already looking at them. Deleting is the one thing there that cannot be undone
+  from inside the editor, so it is gated twice: by the question, and by the Recycle Bin.
+- **Enforced by:** `FolderWorkspace.CanDelete`, the pure rule (a File that the tree still holds);
+  `FolderWorkspaceViewModel.DeleteAsync` and its `DeleteEntryCommand`, which ask the
+  `IDeleteFilePrompt`, close the Tab through the `CloseFile` callback (wired to
+  `WorkspaceViewModel.CloseFileAsync`, which goes through `CloseSessionAsync`), delete through the
+  `IFileDeleter` port, refresh the Folder Tree, and then report `FileDeleted` (wired to drop the path
+  from the Recent Files); the `RecycleBinFileDeleter` adapter; and the `FolderPanel` Control, which
+  raises its `DeleteCommand` from a File row's context menu or the Delete key, and never from a Folder.
+- **Tested by:** `FolderWorkspaceTests.CanDelete_*_INV081` (a File in the tree, a nested File, a
+  Folder, an entry the tree no longer holds, nothing); `RecentFilesTests.Remove_*_INV081`;
+  `FolderWorkspaceViewModelDeleteFileTests.*_INV081` (the question names the File; No changes
+  nothing; Yes deletes the canonical path and refreshes the tree; the Tab closes before the delete and
+  a cancelled close cancels it; a Folder is never asked about; a File already gone counts as deleted;
+  a declined permanent delete keeps the file); `WorkspaceViewModelDeleteFileTests.*_INV081` (an open
+  File's Tab closes; unsaved edits are asked about, Save writes them before the file is recycled, and
+  Cancel keeps both Tab and file; the path leaves the Recent Files; other Tabs are left alone);
+  `FolderPanelTests.*_INV081` (the Delete key and the context menu reach a File, never a Folder, and
+  the context menu selects the File it opens on); and `RecycleBinFileDeleterTests.*_INV081` (the file
+  leaves its folder; a missing file is reported).
+
+### INV-082 — Rename File gives a File a valid New Name in its own folder, never overwrites, and an open Tab follows it
+- **Statement:** Rename File gives a File's Markdown Document a New Name on disk, in the folder it
+  already sits in. It is the other Folder Panel action that changes the filesystem, with Delete File
+  (INV-081); everything else the panel does is browsing (INV-043). Six rules bound it:
+  - **Only a File.** Rename File applies to a File that the Folder Tree holds. A Folder cannot be
+    renamed from the Folder Panel, and neither can an entry the live refresh has already dropped
+    (INV-044).
+  - **Only when the user commits.** The name is edited in place on the File's row. Enter, or moving
+    away from the row, commits the New Name. Escape changes nothing, and neither does a New Name that
+    is exactly the File's current name.
+  - **The New Name is tidied, and stays a Markdown Document in the same folder.** Spaces before and
+    after it, and dots after it, are dropped, as Windows would drop them. A New Name without a Markdown
+    extension keeps the File's own, so `Ideas` renames `note.md` to `Ideas.md` and `v1.2` renames it
+    to `v1.2.md`. A renamed File therefore never leaves the Folder Tree by becoming something that is
+    not Markdown.
+  - **A New Name that cannot be used is refused, and never overwrites.** It is refused when it is
+    blank; when it holds a character Windows forbids in a file name (`\ / : * ? " < > |`, or a control
+    character), which also keeps the File in its own folder; when it is a name Windows reserves for a
+    device (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, with or without an extension);
+    when another entry in the same folder already has it, compared without regard to capitals; and
+    when another Tab already holds the file of that name, which would open one file in two Tabs
+    (INV-009). Changing only the capitals of the File's own name is allowed. A refusal tells the user
+    why and changes nothing: not the file, not the Folder Tree, not any Tab, and not the Recent Files.
+    A name the disk itself will not accept (a file the Folder Tree does not show already has it, say)
+    is refused the same way, since the file is never overwritten.
+  - **An open File's Tab follows it.** If the File is open in a Tab, that same Tab now holds the file
+    at its new path, and shows its New Name. Its text, its unsaved edits, and any Conflict are kept
+    exactly as they were: nothing is asked, loaded, or saved. Watching follows the file to its new path
+    (INV-007), and the rename itself is not an External Change.
+  - **The Folder Tree and the Recent Files follow it.** Once the file is renamed, the Folder Tree is
+    refreshed so the File appears under its New Name, still highlighted, and its path in the Recent
+    Files is replaced by the new one, in the same place. A File that has already gone from disk is not
+    renamed: the user is told, and the Folder Tree is refreshed so it no longer appears.
+- **Why:** A knowledge base grows by renaming notes as well as adding them, and the Folder Panel is
+  where the user is already looking at them. F2 is where every Windows file tree puts it. Renaming a
+  document must not cost the user their open Tab or their unsaved work, and a typo in the New Name must
+  never destroy another file.
+- **Enforced by:** `FolderWorkspace.CanRename` and `FolderWorkspace.Rename`, the pure rules: a File the
+  tree still holds, and the tidied New Name, its new relative path, or its `RenameRefusal`, returned as
+  a `FileRename`; `RecentFiles.Rename`; `FolderWorkspaceViewModel.RenameAsync` and its
+  `RenameEntryCommand`, which apply the rule, refuse a New Name another Tab holds through the
+  `IsFileOpen` callback, rename through the `IFileRenamer` port, explain a refusal through the
+  `IRenameFileNotice` port, report `FileRenamed` (wired to `WorkspaceViewModel.FollowRenamedFileAsync`,
+  which points the Tab at the new path through `EditorSessionViewModel.FollowRename` and renames the
+  path in the Recent Files), and refresh the Folder Tree; the `FileSystemFileRenamer` adapter, which
+  moves the file without overwriting; and the `FolderPanel` Control, which starts editing a File row's
+  name in place from F2 or the File's context menu (never a Folder's), commits it on Enter or on focus
+  leaving the edit box, cancels it on Escape, raises its `RenameCommand` with a `RenameFileRequest`,
+  and highlights the renamed row once the rebuilt Folder Tree holds it.
+- **Tested by:** `FolderWorkspaceTests.CanRename_*_INV082` and `FolderWorkspaceTests.Rename_*_INV082`
+  (a File in the tree, a nested File, a Folder, a dropped entry; the New Name is tidied and keeps a
+  Markdown extension; each refusal; a change of capitals is allowed; an identical name is unchanged);
+  `RecentFilesTests.Rename_*_INV082`; `FileSystemFileRenamerTests.*_INV082` (the file moves; a change of
+  capitals works; a taken name is never overwritten; a missing file is reported);
+  `EditorSessionViewModelTests.FollowRename_*_INV082`; `FolderWorkspaceViewModelRenameFileTests.*_INV082`
+  (the canonical paths are renamed and the tree refreshed; each refusal is explained and changes
+  nothing; an unchanged name does nothing; a Folder is never renamed; a disk failure is explained; a
+  File already gone is explained and drops out of the tree); `WorkspaceViewModelRenameFileTests.*_INV082`
+  (an open File's Tab follows with its unsaved edits, asking nothing and saving nothing; the Recent Files
+  follow; a New Name another Tab holds is refused); and `FolderPanelRenameTests.*_INV082` (F2 and the context
+  menu start editing a File, never a Folder; Enter commits the typed New Name, Escape and an unchanged
+  name commit nothing, focus leaving the edit box commits; Enter and Delete while editing neither open
+  nor delete the File; the renamed row is highlighted after the rebuild).
+
+### INV-083 — The Folder Panel follows the Active Session
+- **Statement:** While a Folder Workspace is open, the Selected Folder Entry is the **File holding the
+  Active Session's Watched File** — so the Folder Tree shows where the document being edited lives,
+  without the user going to find it. Five rules bound it:
+  - **Changing the Active Session changes the highlight.** Selecting a Tab follows it, and so does
+    every other way a Tab becomes the Active Session: opening a document, activating a File in the
+    Folder Panel itself, and Restoring the last run's Tabs.
+  - **Only a File the Folder Tree holds.** The Watched File is followed only when it resolves to a
+    File of the open Folder Tree, compared as absolute paths without regard to capitals (as INV-009
+    compares them). A document outside the open root has no row to highlight.
+  - **Anything else leaves nothing selected.** An Active Session with no Watched File (an unsaved
+    Tab), a Watched File the Folder Tree does not hold, and an empty Workspace with no Active Session
+    at all, each leave **no** Selected Folder Entry — so the panel never highlights a row that is not
+    the document on screen. The Save Folder then falls back to the open root (INV-080), and
+    highlighting a Folder by hand afterwards still names it.
+  - **Opening a Folder Workspace follows it too.** A newly opened or Restored root highlights the
+    Active Session's File when the new tree holds it, so opening the folder a document lives in shows
+    it at once (INV-045). A different root is otherwise a fresh tree with nothing selected.
+  - **Following is browsing.** It highlights and reveals only — every Folder above the File is
+    Expanded and the row scrolled into view — and it activates nothing: no Tab opens, no Markdown
+    Document, Editor Session, or file on disk changes (INV-043).
+- **Why:** A Folder Workspace turns the editor into a knowledge base, and the panel is the map of it.
+  A map that does not say where you are makes the user hunt down the document they already have open
+  every time they come back to it — and the hunt is worst exactly where it matters, deep in a tree of
+  folders. Following the Tabs is also what every editor with a file tree does, so it is what a user
+  arrives expecting.
+- **Enforced by:** `FolderWorkspace.FileFor` — the pure rule resolving an absolute path to the File the
+  Folder Tree holds for it, or none; `FolderWorkspaceViewModel.FollowActiveSession`, which sets the
+  `SelectedEntry` from it and remembers the path so a root opened later follows it as well; the
+  `WorkspaceViewModel`'s `ActiveSession` setter pushing the new Tab's `FilePath` through it; and the
+  `FolderPanel` Control, whose `SelectedEntry` is bound `TwoWay` so the Workspace can drive it, and
+  which reveals the pushed entry's row — Expanding every Folder above it and bringing it into view —
+  without running its `ActivateCommand`.
+- **Tested by:** `FolderWorkspaceTests.FileFor_*_INV083` (a File at the root, a nested File, a
+  different capitalisation, a path outside the root, a path the tree does not hold, a Folder's own
+  path, and null); `FolderWorkspaceViewModelFollowActiveSessionTests.*_INV083` (the File is selected;
+  a path outside the root and no path at all select nothing; following opens no document; a root
+  opened or Restored afterwards follows the remembered path);
+  `WorkspaceViewModelFollowActiveSessionTests.*_INV083` (changing the Active Session follows it,
+  opening a document follows it, an unsaved Tab clears the highlight, and an emptied Workspace clears
+  it); and `FolderPanelFollowTests.*_INV083` (a pushed entry highlights its row, a nested one Expands
+  the Folders above it and is brought into view, an entry the tree does not hold highlights nothing,
+  and following activates nothing).
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

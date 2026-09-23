@@ -27,7 +27,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     private readonly ICustomMarginsPrompt _customMarginsPrompt;
 
     private EditorSessionViewModel? _activeSession;
-    private Domain.RecentFiles _recent = Domain.RecentFiles.Empty;
     private bool _isRestoring;
 
     /// <summary>Creates a Workspace with a single empty Editor Session (INV-008).</summary>
@@ -86,9 +85,16 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         SideDock = sideDock ?? throw new ArgumentNullException(nameof(sideDock));
 
         // The Folder Workspace opens a File in a Tab through the same dedupe-and-load path the picker
-        // uses (INV-009/043), and persists alongside the open Tabs and Recent Files (INV-045).
+        // uses (INV-009/043), and persists alongside the open Tabs and Recent Files (INV-045). Delete
+        // File closes the File's Tab through Close Tab first, then drops it from the Recent Files (INV-081).
+        // Rename File refuses a New Name another Tab holds, then the File's Tab and its Recent Files
+        // entry follow it to the new path (INV-082).
         Folder.OpenFile = OpenPathAsync;
         Folder.PersistState = PersistStateAsync;
+        Folder.CloseFile = CloseFileAsync;
+        Folder.FileDeleted = ForgetRecentAsync;
+        Folder.IsFileOpen = path => TabHolding(path) is not null;
+        Folder.FileRenamed = FollowRenamedFileAsync;
 
         NewCommand = new RelayCommand(New);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
@@ -128,6 +134,10 @@ public sealed partial class WorkspaceViewModel : ObservableObject
                 // Which of the two tab rows shows a selection follows the Active Session (INV-071).
                 Raise(nameof(SelectedPinnedTab));
                 Raise(nameof(SelectedUnpinnedTab));
+
+                // So does the Folder Panel's highlight, which shows where the document being edited
+                // lives (INV-083).
+                Folder.FollowActiveSession(value?.FilePath);
             }
         }
     }
@@ -163,12 +173,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// visibility toggle.
     /// </summary>
     public SideDockViewModel SideDock { get; }
-
-    /// <summary>
-    /// The Recent Files — recently opened or saved Watched File paths, newest first — shown in the
-    /// Open Recent menu and mirrored to the Windows Jump List. Persisted across runs (INV-037).
-    /// </summary>
-    public IReadOnlyList<string> RecentFiles => _recent.Paths;
 
     /// <summary>
     /// The Link Prompt the editing surface asks for a Link's or Image's text and URL (INV-030).
@@ -379,32 +383,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         });
     }
 
-    /// <summary>
-    /// Opens a Recent File. A path that no longer exists is dropped from the Recent Files rather than
-    /// opened, so the list keeps only files that are still there.
-    /// </summary>
-    /// <param name="path">The Recent File's path.</param>
-    public async Task OpenRecentAsync(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        try
-        {
-            await OpenPathAsync(path).ConfigureAwait(true);
-        }
-        catch (IOException)
-        {
-            // A Recent File that has gone drops off the list rather than opening.
-            _recent = Domain.RecentFiles.From(_recent.Paths.Where(
-                existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)));
-            Raise(nameof(RecentFiles));
-            await PersistStateAsync().ConfigureAwait(true);
-        }
-    }
-
     private async Task FollowMarkdownLinkAsync(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -420,12 +398,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         {
             // A Link to a Markdown file that isn't there opens nothing.
         }
-    }
-
-    private void RememberRecent(string path)
-    {
-        _recent = _recent.Add(path);
-        Raise(nameof(RecentFiles));
     }
 
     /// <summary>Saves the Active Session, prompting for a path when it has no Watched File yet.</summary>
