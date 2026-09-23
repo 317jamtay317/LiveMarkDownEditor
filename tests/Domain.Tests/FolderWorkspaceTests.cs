@@ -265,4 +265,131 @@ public sealed class FolderWorkspaceTests
 
         workspace.SaveFolderFor(file).ShouldBe(Path.GetFullPath(Root));
     }
+
+    [Fact]
+    public void CanDelete_AFileInTheTree_IsTrue_INV081()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        workspace.CanDelete(workspace.Entries[0]).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void CanDelete_AFileNestedInAFolder_IsTrue_INV081()
+    {
+        var workspace = FolderWorkspace.From(Root, ["a/b/deep.md"]);
+        var file = workspace.Entries[0].Children[0].Children[0];
+
+        workspace.CanDelete(file).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void CanDelete_AFolder_IsFalse_INV081()
+    {
+        var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
+
+        // A Folder may hold files the Folder Tree does not show (anything that is not Markdown), so
+        // the panel never offers to delete one.
+        workspace.CanDelete(workspace.Entries[0]).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void CanDelete_AFileTheTreeNoLongerHolds_IsFalse_INV081()
+    {
+        var before = FolderWorkspace.From(Root, ["gone.md", "kept.md"]);
+        var gone = before.Entries[0];
+        var after = FolderWorkspace.From(Root, ["kept.md"]);
+
+        after.CanDelete(gone).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void CanDelete_Nothing_IsFalse_INV081()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        workspace.CanDelete(null).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void FileFor_AWatchedFileAtTheRoot_IsThatFile_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md", "other.md"]);
+
+        var file = workspace.FileFor(@"C:\vault\top.md");
+
+        file.ShouldNotBeNull();
+        file!.RelativePath.ShouldBe("top.md");
+    }
+
+    [Fact]
+    public void FileFor_AWatchedFileNestedInFolders_IsThatFile_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["a/b/deep.md", "a/shallow.md"]);
+
+        var file = workspace.FileFor(@"C:\vault\a\b\deep.md");
+
+        file.ShouldNotBeNull();
+        file!.RelativePath.ShouldBe("a/b/deep.md");
+    }
+
+    [Theory]
+    [InlineData(@"c:\VAULT\A\DEEP.MD")]
+    [InlineData(@"C:\vault\a\..\a\deep.md")]
+    public void FileFor_MatchesTheWatchedFile_AsINV009Compares_INV083(string path)
+    {
+        // The same file reached by a different capitalisation or a different spelling of the same path
+        // is the same file — exactly the comparison that keeps one file in one Tab (INV-009).
+        var workspace = FolderWorkspace.From(Root, ["a/deep.md"]);
+
+        workspace.FileFor(path)?.RelativePath.ShouldBe("a/deep.md");
+    }
+
+    [Fact]
+    public void FileFor_AWatchedFileOutsideTheRoot_IsNothing_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        workspace.FileFor(@"C:\elsewhere\top.md").ShouldBeNull();
+    }
+
+    [Fact]
+    public void FileFor_AWatchedFileTheTreeDoesNotHold_IsNothing_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        // Beneath the root, but no File of the Folder Tree — it was never enumerated, or the live
+        // refresh has dropped it (INV-044).
+        workspace.FileFor(@"C:\vault\gone.md").ShouldBeNull();
+        workspace.FileFor(@"C:\vault\sub\buried.md").ShouldBeNull();
+    }
+
+    [Fact]
+    public void FileFor_AFoldersOwnPath_IsNothing_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
+
+        // Only a File is followed: a Folder is not a document, so nothing is editing it.
+        workspace.FileFor(@"C:\vault\sub").ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void FileFor_NoWatchedFile_IsNothing_INV083(string? path)
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        // An unsaved Tab has no Watched File, so there is no File to follow.
+        workspace.FileFor(path).ShouldBeNull();
+    }
+
+    [Fact]
+    public void FileFor_TheRootItself_IsNothing_INV083()
+    {
+        var workspace = FolderWorkspace.From(Root, ["top.md"]);
+
+        workspace.FileFor(Root).ShouldBeNull();
+    }
 }

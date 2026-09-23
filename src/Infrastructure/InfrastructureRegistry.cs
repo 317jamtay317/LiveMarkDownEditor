@@ -14,7 +14,8 @@ public static class InfrastructureRegistry
     {
         /// <summary>
         /// Registers the Infrastructure layer: the Markdig-backed Markdown renderer, the MigraDoc PDF
-        /// exporter, the Folder Workspace reader and watcher, and other outward-facing adapters.
+        /// exporter, the Folder Workspace reader and watcher, the Recycle Bin file deleter, the file
+        /// renamer, and other outward-facing adapters.
         /// </summary>
         public void AddInfrastructure()
         {
@@ -32,6 +33,12 @@ public static class InfrastructureRegistry
             services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
             services.AddSingleton<IPdfExportStore, FilePdfExportStore>();
             services.AddSingleton<IMarkdownFolderReader, FileSystemMarkdownFolderReader>();
+
+            // Delete File sends a File to the Recycle Bin rather than erasing it (INV-081).
+            services.AddSingleton<IFileDeleter, RecycleBinFileDeleter>();
+
+            // Rename File gives a File its New Name without ever overwriting another file (INV-082).
+            services.AddSingleton<IFileRenamer, FileSystemFileRenamer>();
             services.AddSingleton<IWorkspaceStateStore>(_ => new JsonWorkspaceStateStore(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

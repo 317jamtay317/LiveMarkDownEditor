@@ -19,7 +19,7 @@ public sealed class SideDockViewModelTests
     private readonly List<string> _opened = [];
 
     private FolderWorkspaceViewModel CreateFolder() =>
-        new(_folderPicker, _folderReader, _folderWatcher, _dispatcher)
+        new(_folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
         {
             OpenFile = path =>
             {

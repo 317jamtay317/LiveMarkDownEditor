@@ -147,11 +147,29 @@ Open a folder and browse its Markdown files as a tree; double-click a file to op
 files show and folders with none are hidden, so a repository or vault stays tidy. Your open folder
 reopens the next time you launch.
 
+**The tree follows your tabs.** Switch tabs and the file that tab is editing is highlighted in the
+tree — the folders above it open and it scrolls into view — so you can always see where the document
+you are reading lives. A tab holding a file from outside the open folder, or one you have not saved
+yet, leaves nothing highlighted.
+
 **New documents save into the folder you are browsing.** With a folder open, saving a new document
 opens the save dialog there rather than wherever Windows was last — and if you have a subfolder
 selected in the tree, it opens in that subfolder. Click a file instead and it opens beside that file.
+(Pick the folder after you have made the new document: changing tabs moves the highlight.)
 Nothing is redirected: it is only where the dialog starts, and a document that already has a file is
 saved where it lives.
+
+**Delete files from the tree.** Right-click a file and choose **Delete file**, or select it and press
+**Delete**. You are always asked whether you are sure first, and the file goes to the Recycle Bin, so
+a mistake can be undone. If the file is open in a tab, that tab closes too, and any unsaved changes
+in it are asked about first. Folders cannot be deleted from the tree.
+
+**Rename files in the tree.** Select a file and press **F2**, or right-click it and choose **Rename
+file**, then type the new name right there in the tree. Press **Enter** (or click away) to rename it, or
+**Escape** to leave it as it was. You can leave off the `.md`, since the file keeps its extension. A
+name that can't be used, such as one another file in the folder already has, is explained and nothing
+changes, so a typo never overwrites another file. If the file is open in a tab, the tab stays open
+under the new name, unsaved changes and all. Folders cannot be renamed from the tree.
 
 ![The folder workspace](docs/images/folder-workspace.png)
 

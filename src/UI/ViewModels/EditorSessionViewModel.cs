@@ -228,6 +228,22 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Follows the Watched File to <paramref name="path"/>, where Rename File has just moved it
+    /// (INV-082). The session now holds and watches the file at its new path, so its Tab shows the New
+    /// Name. Its text, its unsaved edits, and any Conflict are kept exactly as they were: the file was
+    /// moved, not changed, so nothing is loaded or saved.
+    /// </summary>
+    /// <param name="path">The absolute path the Watched File has now.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is null or blank.</exception>
+    public void FollowRename(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        FilePath = path;
+        _watcher.Watch(path);
+    }
+
+    /// <summary>
     /// Handles an External Change to the Watched File: reloads live when the session is clean
     /// (INV-007), or raises a Conflict when there are unsaved edits (INV-006). An External Change
     /// that changes no content — the session's own save, or another writer restyling the file — is

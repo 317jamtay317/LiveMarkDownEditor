@@ -24,7 +24,7 @@ public sealed class FolderWorkspaceViewModelTests
 
     private FolderWorkspaceViewModel Create()
     {
-        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher)
+        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
         {
             OpenFile = path =>
             {
@@ -140,7 +140,7 @@ public sealed class FolderWorkspaceViewModelTests
     {
         _picker.FolderResult = Root;
         _reader.Result = ["note.md"];
-        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher)
+        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
         {
             OpenFile = _ => Task.FromException(new System.IO.IOException("gone")),
         };
@@ -200,7 +200,7 @@ public sealed class FolderWorkspaceViewModelTests
         var persisted = 0;
         _picker.FolderResult = Root;
         _reader.Result = ["a.md"];
-        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher)
+        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
         {
             OpenFile = _ => Task.CompletedTask,
             PersistState = () => { persisted++; return Task.CompletedTask; },
@@ -216,7 +216,7 @@ public sealed class FolderWorkspaceViewModelTests
     {
         var persisted = 0;
         _reader.Result = ["a.md"];
-        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher)
+        var folder = new FolderWorkspaceViewModel(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
         {
             OpenFile = _ => Task.CompletedTask,
             PersistState = () => { persisted++; return Task.CompletedTask; },

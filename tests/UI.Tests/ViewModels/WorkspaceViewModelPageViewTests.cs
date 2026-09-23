@@ -35,7 +35,7 @@ public sealed class WorkspaceViewModelPageViewTests
             _watchers.Add(watcher);
             return new EditorSessionViewModel(_store, watcher, _dispatcher, _roundTrip);
         };
-        var folder = new FolderWorkspaceViewModel(_folderPicker, _folderReader, _folderWatcher, _dispatcher);
+        var folder = new FolderWorkspaceViewModel(_folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice());
         return new WorkspaceViewModel(
             factory,
             _picker,

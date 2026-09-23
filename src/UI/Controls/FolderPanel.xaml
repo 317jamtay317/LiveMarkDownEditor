@@ -1,7 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:UI.Controls"
-                    xmlns:domain="clr-namespace:Domain;assembly=Domain">
+                    xmlns:controls="clr-namespace:UI.Controls">
 
     <!-- Default style for the Folder Panel. Authored as the control's ResourceDictionary alongside the
          FolderPanel class, per the project's Control conventions. Colors are DynamicResource lookups
@@ -103,19 +102,42 @@
         </Setter>
     </Style>
 
-    <!-- One Folder Entry: its folder / Markdown-file glyph and its name. A Folder's Children are the
-         nested entries; a File has none, so its row shows no chevron. The icon switches on the entry's
-         kind, the same DataTrigger-on-Kind technique the Difference Overlay uses for a Difference Line. -->
-    <HierarchicalDataTemplate x:Key="FolderTreeTemplate" DataType="{x:Type domain:FolderEntry}"
+    <!-- One Folder Panel Row: its folder / Markdown-file glyph and its name. A Folder's Children are the
+         nested rows; a File has none, so its row shows no chevron. The icon switches on the row's kind,
+         the same DataTrigger-on-Kind technique the Difference Overlay uses for a Difference Line. The
+         rows are the panel's own, kept across rebuilds of the Folder Tree (INV-044).
+
+         While a File's name is being edited for Rename File (INV-082), the name gives way to the name
+         editor, which types into the row's NewName. The panel focuses it and handles Enter, Escape and
+         focus leaving it; the editor is only the look. -->
+    <HierarchicalDataTemplate x:Key="FolderTreeTemplate" DataType="{x:Type controls:FolderPanelRow}"
                               ItemsSource="{Binding Children}">
         <StackPanel Orientation="Horizontal">
             <Path x:Name="NodeIcon" Style="{StaticResource FolderTreeIcon}"
                   Data="{StaticResource Icon.Folder}" />
-            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="NameText" Text="{Binding Name}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <!-- The negative margin lets the editor's border and padding overlap the row's own padding,
+                 so the row keeps its height and the rows below do not jump while a name is edited. -->
+            <TextBox x:Name="NameEditor" Visibility="Collapsed" MinWidth="140" Padding="3,1"
+                     Margin="-4,-3,0,-3"
+                     VerticalAlignment="Center" VerticalContentAlignment="Center"
+                     Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}"
+                     Background="{DynamicResource EditorBackgroundBrush}"
+                     Foreground="{DynamicResource TextBrush}"
+                     CaretBrush="{DynamicResource TextBrush}"
+                     SelectionBrush="{DynamicResource AccentBrush}"
+                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                     AutomationProperties.AutomationId="FileNameEditor"
+                     AutomationProperties.Name="New name" />
         </StackPanel>
         <HierarchicalDataTemplate.Triggers>
             <DataTrigger Binding="{Binding Kind}" Value="File">
                 <Setter TargetName="NodeIcon" Property="Data" Value="{StaticResource Icon.MarkdownFile}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                <Setter TargetName="NameText" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="NameEditor" Property="Visibility" Value="Visible" />
             </DataTrigger>
         </HierarchicalDataTemplate.Triggers>
     </HierarchicalDataTemplate>
@@ -131,6 +153,31 @@
         <Setter Property="VirtualizingStackPanel.VirtualizationMode" Value="Recycling" />
         <Setter Property="ItemContainerStyle" Value="{StaticResource FolderTreeItem}" />
         <Setter Property="ItemTemplate" Value="{StaticResource FolderTreeTemplate}" />
+
+        <!-- The File context menu, holding Rename File (INV-082) and Delete File (INV-081). It belongs to
+             the panel rather than to each row. Before it opens, the panel selects the right-clicked row
+             when that row is a File, and stops the menu over a Folder or empty space. So each entry acts
+             on the Selected Folder Entry, exactly as F2 and the Delete key do.
+
+             A ContextMenu is its own visual tree, so it reaches the panel through PlacementTarget: the
+             Rename entry routes the panel's own EditFileName command to it, and the Delete entry binds
+             its DeleteCommand. Its styles are DynamicResource because a Setter's value is built as this
+             dictionary loads, before the Controls.xaml dictionary that defines them can be seen from
+             here. -->
+        <Setter Property="ContextMenu">
+            <Setter.Value>
+                <ContextMenu Style="{DynamicResource TabContextMenu}">
+                    <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="Rename file"
+                              AutomationProperties.Name="Rename file"
+                              Command="{x:Static controls:FolderPanel.EditFileName}"
+                              CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="Delete file"
+                              AutomationProperties.Name="Delete file"
+                              Command="{Binding PlacementTarget.DeleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              CommandParameter="{Binding PlacementTarget.SelectedEntry, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                </ContextMenu>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

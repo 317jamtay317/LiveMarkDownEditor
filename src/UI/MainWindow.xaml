@@ -1434,10 +1434,16 @@
                             </Grid>
                             <Grid>
                                 <!-- The highlighted row flows back to the Folder Workspace, which is
-                                     what names the folder a new document saves into (INV-080). -->
+                                     what names the folder a new document saves into (INV-080), and the
+                                     Folder Workspace pushes the File the Active Session is editing back
+                                     the other way, which the panel reveals (INV-083). A File's context
+                                     menu and the Delete key reach Delete File (INV-081), and its
+                                     context menu and F2 reach Rename File (INV-082). -->
                                 <controls:FolderPanel Workspace="{Binding Folder.Folder}"
                                                       ActivateCommand="{Binding Folder.ActivateEntryCommand}"
-                                                      SelectedEntry="{Binding Folder.SelectedEntry, Mode=OneWayToSource}"
+                                                      DeleteCommand="{Binding Folder.DeleteEntryCommand}"
+                                                      RenameCommand="{Binding Folder.RenameEntryCommand}"
+                                                      SelectedEntry="{Binding Folder.SelectedEntry, Mode=TwoWay}"
                                                       AutomationProperties.AutomationId="FolderTree"
                                                       Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14">
