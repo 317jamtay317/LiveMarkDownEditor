@@ -109,7 +109,11 @@
 
          While a File's name is being edited for Rename File (INV-082), the name gives way to the name
          editor, which types into the row's NewName. The panel focuses it and handles Enter, Escape and
-         focus leaving it; the editor is only the look. -->
+         focus leaving it; the editor is only the look. New File's and New Folder's own row (INV-085,
+         INV-086) is that editor from the start, typing the Entry Name, with the glyph of what it makes.
+
+         An Ignored row (INV-084) draws its name in the Ignored color, as VS Code's Explorer does - but
+         not while it is highlighted, where the highlight's own text color keeps it readable. -->
     <HierarchicalDataTemplate x:Key="FolderTreeTemplate" DataType="{x:Type controls:FolderPanelRow}"
                               ItemsSource="{Binding Children}">
         <StackPanel Orientation="Horizontal">
@@ -139,8 +143,35 @@
                 <Setter TargetName="NameText" Property="Visibility" Value="Collapsed" />
                 <Setter TargetName="NameEditor" Property="Visibility" Value="Visible" />
             </DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsNewEntry}" Value="True" />
+                    <Condition Binding="{Binding Kind}" Value="Folder" />
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="NameEditor" Property="AutomationProperties.AutomationId" Value="FolderNameEditor" />
+                <Setter TargetName="NameEditor" Property="AutomationProperties.Name" Value="New folder name" />
+            </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsNewEntry}" Value="True" />
+                    <Condition Binding="{Binding Kind}" Value="File" />
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="NameEditor" Property="AutomationProperties.AutomationId" Value="FileNameEditor" />
+                <Setter TargetName="NameEditor" Property="AutomationProperties.Name" Value="New file name" />
+            </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsIgnored}" Value="True" />
+                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}"
+                               Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource IgnoredTextBrush}" />
+            </MultiDataTrigger>
         </HierarchicalDataTemplate.Triggers>
     </HierarchicalDataTemplate>
+
+    <!-- Shows the file actions on the context menu only while a File is selected (INV-081, INV-082). -->
+    <BooleanToVisibilityConverter x:Key="FolderPanelFileActionVisibility" />
 
     <Style TargetType="{x:Type controls:FolderPanel}" BasedOn="{StaticResource {x:Type TreeView}}">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -154,25 +185,37 @@
         <Setter Property="ItemContainerStyle" Value="{StaticResource FolderTreeItem}" />
         <Setter Property="ItemTemplate" Value="{StaticResource FolderTreeTemplate}" />
 
-        <!-- The File context menu, holding Rename File (INV-082) and Delete File (INV-081). It belongs to
-             the panel rather than to each row. Before it opens, the panel selects the right-clicked row
-             when that row is a File, and stops the menu over a Folder or empty space. So each entry acts
-             on the Selected Folder Entry, exactly as F2 and the Delete key do.
+        <!-- The panel's context menu, holding New File and New Folder (INV-085, INV-086) and, over a File, Rename File (INV-082)
+             and Delete File (INV-081). It belongs to the panel rather than to each row. Before it opens,
+             the panel selects the right-clicked row, or selects nothing over empty space, so each entry
+             acts on the Selected Folder Entry, exactly as F2 and the Delete key do - and New Folder goes
+             in the Save Folder it names. The file actions show only while a File is selected.
 
              A ContextMenu is its own visual tree, so it reaches the panel through PlacementTarget: the
-             Rename entry routes the panel's own EditFileName command to it, and the Delete entry binds
-             its DeleteCommand. Its styles are DynamicResource because a Setter's value is built as this
+             New Folder and Rename entries route the panel's own CreateFolder and EditFileName commands
+             to it, and the Delete entry binds its DeleteCommand. Its styles are DynamicResource because a Setter's value is built as this
              dictionary loads, before the Controls.xaml dictionary that defines them can be seen from
              here. -->
         <Setter Property="ContextMenu">
             <Setter.Value>
                 <ContextMenu Style="{DynamicResource TabContextMenu}">
+                    <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="New file"
+                              AutomationProperties.Name="New file"
+                              Command="{x:Static controls:FolderPanel.CreateFile}"
+                              CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="New folder"
+                              AutomationProperties.Name="New folder"
+                              Command="{x:Static controls:FolderPanel.CreateFolder}"
+                              CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    <Separator Visibility="{Binding PlacementTarget.IsFileSelected, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource FolderPanelFileActionVisibility}}" />
                     <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="Rename file"
                               AutomationProperties.Name="Rename file"
+                              Visibility="{Binding PlacementTarget.IsFileSelected, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource FolderPanelFileActionVisibility}}"
                               Command="{x:Static controls:FolderPanel.EditFileName}"
                               CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     <MenuItem Style="{DynamicResource CommandMenuEntry}" Header="Delete file"
                               AutomationProperties.Name="Delete file"
+                              Visibility="{Binding PlacementTarget.IsFileSelected, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource FolderPanelFileActionVisibility}}"
                               Command="{Binding PlacementTarget.DeleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                               CommandParameter="{Binding PlacementTarget.SelectedEntry, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                 </ContextMenu>

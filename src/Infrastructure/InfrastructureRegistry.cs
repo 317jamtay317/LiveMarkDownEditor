@@ -32,7 +32,11 @@ public static class InfrastructureRegistry
             services.AddSingleton<IDocumentStore, FileDocumentStore>();
             services.AddSingleton<IHtmlExportStore, FileHtmlExportStore>();
             services.AddSingleton<IPdfExportStore, FilePdfExportStore>();
-            services.AddSingleton<IMarkdownFolderReader, FileSystemMarkdownFolderReader>();
+            // The Folder Listing names what Git ignores, so the Folder Tree can dim it (INV-084).
+            services.AddSingleton<IMarkdownFolderReader>(_ => new FileSystemMarkdownFolderReader(new GitIgnoreChecker()));
+
+            // New File and New Folder make an empty entry without ever overwriting what is there (INV-085, INV-086).
+            services.AddSingleton<IEntryCreator, FileSystemEntryCreator>();
 
             // Delete File sends a File to the Recycle Bin rather than erasing it (INV-081).
             services.AddSingleton<IFileDeleter, RecycleBinFileDeleter>();

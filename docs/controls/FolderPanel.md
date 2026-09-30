@@ -1,8 +1,9 @@
 # FolderPanel
 
 The **Folder Panel**: the presentation-only panel along the left edge of the Workspace that presents an
-open **Folder Workspace**'s **Folder Tree** — its Markdown Documents as a browsable tree of **Folder
-Entries**. It is workspace-wide: unlike the [Navigation Panel](OutlinePanel.md) it presents no *document*, so
+open **Folder Workspace**'s **Folder Tree** — every folder and its Markdown Documents as a browsable tree
+of **Folder Entries**, laid out as VS Code's Explorer lays out a folder (INV-042), with what Git ignores
+dimmed (INV-084). It is workspace-wide: unlike the [Navigation Panel](OutlinePanel.md) it presents no *document*, so
 it stays visible even when every Tab is closed — though it does Follow the Active Session, highlighting
 the File being edited (INV-083). It is hidden until the user opens
 a Folder Workspace (`FolderWorkspaceViewModel.IsFolderPanelVisible`). It is presented as a tab of the
@@ -15,10 +16,11 @@ than each taking its own (INV-046).
 Authored as a custom Control (a `TreeView` subclass plus a ResourceDictionary for its look), per the
 project's Control exception to the zero-code-behind rule — the same pattern as the
 [OutlinePanel](OutlinePanel.md). The panel is **view-only**: it reads the Folder Tree and raises
-activation, deletion and renaming, and never itself mutates any document or the filesystem (INV-043).
-Delete File and Rename File are the two actions that change the disk, and the panel only raises them
-as commands. The Folder Workspace asks the user to confirm and does the deleting (INV-081), and it
-checks the New Name and does the renaming (INV-082).
+activation, deletion, renaming and folder creation, and never itself mutates any document or the
+filesystem (INV-043). Delete File, Rename File, New File and New Folder are the four actions that change the
+disk, and the panel only raises them as commands. The Folder Workspace asks the user to confirm and
+does the deleting (INV-081), checks the New Name and does the renaming (INV-082), and checks the Folder
+Name and creates the folder (INV-085).
 
 ## How it works
 
@@ -31,9 +33,16 @@ through its `ActivateCommand`:
   top-level rows. A single `HierarchicalDataTemplate` renders each row: its `Children` are the nested
   rows, and the node glyph (a folder or a Markdown file) is switched by a `DataTrigger` on the row's
   `Kind` — the same technique the Difference Overlay uses for a Difference Line. A **File** row has no
-  children, so it shows no Expand/Collapse chevron. A row's `ToString()` is its name, which is what UI
-  Automation and screen readers announce. The commands and `SelectedEntry` still carry Folder
-  Entries, never rows.
+  children, so it shows no Expand/Collapse chevron — and neither does an empty Folder, which the tree
+  shows like any other (INV-042). A row's `ToString()` is its name, which is what UI Automation and
+  screen readers announce. The commands and `SelectedEntry` still carry Folder Entries, never rows.
+- **Dimming what Git ignores (INV-084)** — a row's `IsIgnored` mirrors its entry's, and a
+  `MultiDataTrigger` in the template draws an Ignored row's name in `IgnoredTextBrush` — VS Code's
+  `gitDecoration.ignoredResourceForeground`, `#8C8C8C` on the dark theme and `#8E8E90` on the light —
+  unless the row is highlighted, where the highlight's own text color keeps it readable. Only the name
+  is dimmed, not the glyph, as in VS Code. `FolderPanelRow.Sync` raises `IsIgnored` when a rebuild
+  changes it, so editing a `.gitignore` dims or undims the same row. Dimming is only a look: an Ignored
+  row browses, opens and is acted on like any other.
 - **Keeping the user's place (INV-044)** — the Folder Tree is rebuilt whenever the disk changes and
   after a Delete File. Swapping in a whole new tree would make WPF re-create every row: every Folder
   would come back Collapsed, the highlight would vanish, and the virtualized list would lose its scroll
@@ -88,14 +97,15 @@ through its `ActivateCommand`:
   and only when it is a **File**:
   - **The Delete key.** `OnKeyDown` runs `DeleteCommand` with the selected File, the same way Enter
     runs `ActivateCommand`. Neither key does anything on a Folder.
-  - **The File context menu.** The panel's default style gives it one `ContextMenu`, holding
-    **Delete file**. The menu belongs to the panel, not to each row. Before it opens,
-    `OnContextMenuOpening` finds the right-clicked row by the same visual-tree walk a double-click
-    uses. Over a File, it selects that row first, so the entry acts on exactly the File the user
-    pointed at and the highlight shows which one. Over a Folder or empty space, it marks the request
-    handled, so no menu shows at all. The entry binds `PlacementTarget.DeleteCommand` with
-    `PlacementTarget.SelectedEntry` as its parameter: a `ContextMenu` is its own visual tree, so it
-    can reach the panel only through `PlacementTarget`.
+  - **The context menu.** The panel's default style gives it one `ContextMenu`, holding **New
+    folder** and, over a File, **Rename file** and **Delete file**. The menu belongs to the panel, not
+    to each row. Before it opens, `OnContextMenuOpening` finds the right-clicked row by the same
+    visual-tree walk a double-click uses, and selects it, so each entry acts on exactly the entry the
+    user pointed at and the highlight shows which one. Over empty space it selects nothing, so New
+    Folder goes in the root. The file entries (and the separator above them) are shown only while
+    `IsFileSelected` is true, so a Folder offers New File and New Folder alone. The Delete entry binds
+    `PlacementTarget.DeleteCommand` with `PlacementTarget.SelectedEntry` as its parameter: a
+    `ContextMenu` is its own visual tree, so it can reach the panel only through `PlacementTarget`.
   - The panel only raises the command. Asking whether the user is sure, closing the File's Tab, and
     sending the file to the Recycle Bin are the Folder Workspace's job
     (`FolderWorkspaceViewModel.DeleteEntryCommand`).
@@ -129,6 +139,41 @@ through its `ActivateCommand`:
   - The panel only raises the command. Tidying and checking the New Name, explaining a refusal,
     renaming the file, and moving the File's Tab and Recent Files entry to the new path are the Folder
     Workspace's job (`FolderWorkspaceViewModel.RenameEntryCommand`).
+- **Creating files and folders** — New File (INV-086) and New Folder (INV-085) name a new entry in
+  place, in the **Save Folder**: inside a Selected Folder, beside a Selected File, or at the root when
+  nothing is selected — VS Code's Explorer **New File** and **New Folder**. The logic lives in the
+  `FolderPanel.NewEntry.cs` partial.
+  - **Starting.** The panel's own routed commands, `FolderPanel.CreateFile` and
+    `FolderPanel.CreateFolder`, are bound in the panel's constructor. The Folder header's **New file**
+    and **New folder** buttons route them to the panel by `CommandTarget`, and the context menu's
+    entries route them through `PlacementTarget`. Each can run only with a Folder Workspace shown, its
+    `NewFileCommand` or `NewFolderCommand` bound, and no name already being edited. Because the header
+    buttons sit outside the panel, where WPF asks a routed command again only after input, the panel
+    calls `CommandManager.InvalidateRequerySuggested` when its `Workspace` changes and when an edit
+    starts or ends — otherwise a Folder Workspace Restored at startup leaves the buttons greyed out.
+  - **From New Document.** Ctrl+N with a Folder Entry selected (INV-087) sets the Folder Workspace's
+    `NewFileRequest`, which the panel binds two ways as its `NewFileRequest` property. When a request
+    arrives the panel hands the property back as `null` and, once layout has run (the panel may just
+    have been shown), starts New File as `CreateFile` does.
+  - **Editing.** Starting asks the Folder Tree's rule (`FolderWorkspace.SaveFolderEntryFor`) for the
+    Save Folder, Expands it, and inserts a **New Entry row** (`FolderPanelRow.ForNewEntry`,
+    `IsNewEntry`, with the kind being made) where VS Code puts it: at the top of the Save Folder for a
+    Folder, and at the top of its files, below its Folders, for a File. The row is already
+    `IsRenaming` with an empty `NewName` — the same in-place name editor Rename File uses, labelled
+    "New file name" or "New folder name" for screen readers. Once layout has shown it, the panel brings
+    it into view and focuses it.
+  - **A rebuild while typing.** `FolderPanelRow.Sync` syncs a level's rows around a New Entry row,
+    never moving it, so a live refresh (INV-044) never takes away the name being typed.
+  - **Committing and cancelling.** Enter, Escape and focus leaving the editor behave as they do for
+    Rename File. Ending the edit always removes the New Entry row. Escape, and an Entry Name that is
+    blank once tidied, create nothing and say nothing, as in VS Code. Anything else runs
+    `NewFileCommand` or `NewFolderCommand` with a `NewEntryRequest`: the Selected Folder Entry the
+    action began with, and the Entry Name exactly as typed. A new Folder is highlighted by the first
+    rebuild afterwards, as a renamed File is; a new File opens in a Tab, whose Following highlights it
+    (INV-083), and the Workspace moves keyboard focus into the editor.
+  - The panel only raises the commands. Checking the Entry Name, explaining a refusal, creating the
+    entry and opening a new File are the Folder Workspace's job
+    (`FolderWorkspaceViewModel.NewFileCommand` and `NewFolderCommand`).
 
 ## Properties
 
@@ -137,6 +182,10 @@ through its `ActivateCommand`:
 | `Workspace` | `FolderWorkspace?` | The Folder Workspace whose Folder Tree this panel lists; its `Entries` are the tree's roots. Setting a rebuild of the same root updates the rows in place, keeping the user's place (INV-044). |
 | `ActivateCommand` | `ICommand?` | Run when a File is activated (double-click or Enter), with the File's `FolderEntry` as its parameter. |
 | `DeleteCommand` | `ICommand?` | Run for Delete File (the Delete key, or **Delete file** on a File's context menu), with the File's `FolderEntry` as its parameter. Never run for a Folder (INV-081). |
+| `NewFileCommand` | `ICommand?` | Run when an Entry Name is committed for New File, with a `NewEntryRequest` naming the Selected Folder Entry New File began with and the Entry Name as typed. Never run for Escape or a blank name (INV-086). |
+| `NewFolderCommand` | `ICommand?` | Run when an Entry Name is committed for New Folder, with a `NewEntryRequest` naming the Selected Folder Entry New Folder began with and the Entry Name as typed. Never run for Escape or a blank name (INV-085). |
+| `NewFileRequest` | `object?` | A request from New Document to start New File (INV-087). Bound two ways by default: the panel takes each new request, hands the property back as `null`, and opens New File's name editor. |
+| `IsFileSelected` | `bool` (read-only) | Whether the Selected Folder Entry is a File, so the context menu offers Rename file and Delete file (INV-081, INV-082). |
 | `RenameCommand` | `ICommand?` | Run when a New Name is committed for Rename File (Enter, or focus leaving the name editor), with a `RenameFileRequest` naming the File and the New Name as typed. Never run for a Folder, for Escape, or for an unchanged name (INV-082). |
 | `SelectedEntry` | `FolderEntry?` | The highlighted row, republished for the Workspace, which binds it `TwoWay`. Set from outside it is the File to Follow: the panel reveals and highlights that File's row, or highlights none when `null` (INV-083). |
 
@@ -144,14 +193,26 @@ through its `ActivateCommand`:
 
 | Command | Gesture | Description |
 | --- | --- | --- |
+| `FolderPanel.CreateFile` | — | Opens New File's name editor at the top of the Save Folder's files. Raised by the Folder header's **New file** button and the context menu's **New file**; Ctrl+N reaches it through `NewFileRequest` (INV-086, INV-087). |
+| `FolderPanel.CreateFolder` | — | Opens New Folder's name editor at the top of the Save Folder. Raised by the Folder header's **New folder** button and the context menu's **New folder** (INV-085). |
 | `FolderPanel.EditFileName` | F2 | Edits the selected File's name in place: the start of Rename File. Also raised by **Rename file** on a File's context menu. Unavailable on a Folder (INV-082). |
 
 ## Usage
 
 ```xml
-<controls:FolderPanel Workspace="{Binding Folder.Folder}"
+<controls:FolderPanel x:Name="FolderTree"
+                      Workspace="{Binding Folder.Folder}"
                       ActivateCommand="{Binding Folder.ActivateEntryCommand}"
                       DeleteCommand="{Binding Folder.DeleteEntryCommand}"
                       RenameCommand="{Binding Folder.RenameEntryCommand}"
+                      NewFileCommand="{Binding Folder.NewFileCommand}"
+                      NewFolderCommand="{Binding Folder.NewFolderCommand}"
+                      NewFileRequest="{Binding Folder.NewFileRequest, Mode=TwoWay}"
                       SelectedEntry="{Binding Folder.SelectedEntry, Mode=TwoWay}" />
+
+<!-- New file / New folder buttons outside the panel route the panel's own commands to it. -->
+<Button Command="{x:Static controls:FolderPanel.CreateFile}"
+        CommandTarget="{Binding ElementName=FolderTree}" />
+<Button Command="{x:Static controls:FolderPanel.CreateFolder}"
+        CommandTarget="{Binding ElementName=FolderTree}" />
 ```

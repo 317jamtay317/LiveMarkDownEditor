@@ -16,6 +16,7 @@ public sealed partial class FolderPanel
     private static void OnSelectedEntryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var panel = (FolderPanel)d;
+        panel.IsFileSelected = e.NewValue is FolderEntry { Kind: FolderEntryKind.File };
 
         // The push that only echoes the row the user just highlighted asks for no reveal at all.
         if (panel.ShowsAsSelected(e.NewValue as FolderEntry))

@@ -143,7 +143,7 @@ public sealed class WorkspaceViewModelRenameFileTests
             return session;
         };
         var folder = new FolderWorkspaceViewModel(
-            _folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), _renamer, _notice);
+            _folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), _renamer, _notice, new FakeEntryCreator(), new StubNewEntryNotice());
         return new WorkspaceViewModel(
             factory,
             _picker,

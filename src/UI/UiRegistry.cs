@@ -28,6 +28,7 @@ public static class UiRegistry
             services.AddSingleton<IUnsavedEditsPrompt, MessageBoxUnsavedEditsPrompt>();
             services.AddSingleton<IDeleteFilePrompt, MessageBoxDeleteFilePrompt>();
             services.AddSingleton<IRenameFileNotice, MessageBoxRenameFileNotice>();
+            services.AddSingleton<INewEntryNotice, MessageBoxNewEntryNotice>();
             services.AddSingleton<ILinkPrompt, WindowLinkPrompt>();
             services.AddSingleton<IDiagramBuilder, WindowDiagramBuilder>();
             services.AddSingleton<IDocumentPrinter, PrintDialogDocumentPrinter>();

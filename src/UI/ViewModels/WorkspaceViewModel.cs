@@ -90,13 +90,15 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         // Rename File refuses a New Name another Tab holds, then the File's Tab and its Recent Files
         // entry follow it to the new path (INV-082).
         Folder.OpenFile = OpenPathAsync;
+        Folder.FocusEditor = RequestEditorFocus;
         Folder.PersistState = PersistStateAsync;
         Folder.CloseFile = CloseFileAsync;
         Folder.FileDeleted = ForgetRecentAsync;
         Folder.IsFileOpen = path => TabHolding(path) is not null;
         Folder.FileRenamed = FollowRenamedFileAsync;
 
-        NewCommand = new RelayCommand(New);
+        NewCommand = new AsyncRelayCommand(NewDocumentAsync);
+        SaveAsCommand = new AsyncRelayCommand(SaveAsActiveAsync, () => ActiveSession is not null);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         SaveCommand = new AsyncRelayCommand(SaveActiveAsync, CanSaveActive);
         CloseSessionCommand = new AsyncRelayCommand<EditorSessionViewModel>(CloseSessionAsync);
@@ -224,7 +226,11 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// </summary>
     public ISyntaxHighlighter SyntaxHighlighter { get; }
 
-    /// <summary>Opens a new, empty Editor Session in a new Tab and activates it.</summary>
+    /// <summary>
+    /// New Document (Ctrl+N): starts a new Markdown Document that has its file from the start — New File
+    /// in place with a Folder Entry selected, otherwise through the save prompt (INV-087). See
+    /// <see cref="NewDocumentAsync"/>.
+    /// </summary>
     public ICommand NewCommand { get; }
 
     /// <summary>Prompts for a Markdown file and opens it in a Tab (activating an existing one if already open).</summary>
@@ -438,23 +444,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);
-
-    private async Task<bool> TrySaveAsync(EditorSessionViewModel session)
-    {
-        // A Tab that has no Watched File yet is saved wherever the user is browsing: the open Folder
-        // Workspace's Save Folder (INV-080). One that already has a file is saved where it lives.
-        var path = session.FilePath
-                   ?? _filePicker.PickSave(suggestedFileName: "Untitled.md", folder: Folder.SaveFolder);
-        if (path is null)
-        {
-            return false;
-        }
-
-        await session.SaveAsync(path).ConfigureAwait(true);
-        RememberRecent(path);
-        await PersistStateAsync().ConfigureAwait(true);
-        return true;
-    }
 
     private void RemoveSession(EditorSessionViewModel session)
     {

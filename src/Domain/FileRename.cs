@@ -7,7 +7,7 @@ namespace Domain;
 /// </summary>
 public sealed record FileRename
 {
-    private FileRename(FolderEntry file, string newName, FolderEntry? renamed, RenameRefusal? refusal)
+    private FileRename(FolderEntry file, string newName, FolderEntry? renamed, NameRefusal? refusal)
     {
         File = file;
         NewName = newName;
@@ -31,7 +31,7 @@ public sealed record FileRename
     public FolderEntry? Renamed { get; }
 
     /// <summary>Why the New Name cannot be used, or <see langword="null"/> when it can.</summary>
-    public RenameRefusal? Refusal { get; }
+    public NameRefusal? Refusal { get; }
 
     /// <summary>
     /// Whether the New Name is exactly the File's current name, so there is nothing to rename. A change
@@ -45,6 +45,6 @@ public sealed record FileRename
         new(file, renamed.Name, renamed, refusal: null);
 
     /// <summary>A New Name that cannot be used, for the given reason.</summary>
-    internal static FileRename Refused(FolderEntry file, string newName, RenameRefusal refusal) =>
+    internal static FileRename Refused(FolderEntry file, string newName, NameRefusal refusal) =>
         new(file, newName, renamed: null, refusal);
 }

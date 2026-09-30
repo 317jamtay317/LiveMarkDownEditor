@@ -16,9 +16,11 @@ namespace UI.Controls;
 /// that <see cref="FolderEntry"/>, which the Workspace routes to its open-in-a-Tab path (INV-043). A
 /// File's context menu, or the Delete key on a selected File, raises the <see cref="DeleteCommand"/> for
 /// Delete File (INV-081). F2, or the context menu, edits a File's name in place for Rename File, and
-/// committing it raises the <see cref="RenameCommand"/> (INV-082). The panel itself only reads the tree:
-/// it never mutates any document or the disk, and leaves the confirming, the checking, the deleting and
-/// the renaming to the commands.
+/// committing it raises the <see cref="RenameCommand"/> (INV-082). <see cref="CreateFolder"/> names a
+/// new Folder in place at the top of the Save Folder, and committing it raises the
+/// <see cref="NewFolderCommand"/> (INV-085). An Ignored row's name is dimmed by the panel's template
+/// (INV-084). The panel itself only reads the tree: it never mutates any document or the disk, and leaves
+/// the confirming, the checking, the deleting, the renaming and the creating to the commands.
 /// </summary>
 /// <remarks>
 /// Authored as a custom Control (a <see cref="TreeView"/> subclass plus a ResourceDictionary for its
@@ -63,14 +65,30 @@ public sealed partial class FolderPanel : TreeView
         typeof(FolderPanel),
         new PropertyMetadata(null, OnSelectedEntryChanged));
 
+    private static readonly DependencyPropertyKey IsFileSelectedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsFileSelected),
+        typeof(bool),
+        typeof(FolderPanel),
+        new PropertyMetadata(false));
+
+    /// <summary>Identifies the read-only <see cref="IsFileSelected"/> dependency property.</summary>
+    public static readonly DependencyProperty IsFileSelectedProperty = IsFileSelectedPropertyKey.DependencyProperty;
+
     // The panel's own rows for the open root. The Folder Tree is rebuilt whenever the disk changes;
     // each rebuild is applied to these rows as a change rather than replacing them, which is what keeps
     // the user's place (INV-044).
     private ObservableCollection<FolderPanelRow> _rows = [];
 
-    /// <summary>Creates the Folder Panel, ready to edit a File's name in place with F2 (INV-082).</summary>
-    public FolderPanel() =>
+    /// <summary>
+    /// Creates the Folder Panel, ready to edit a File's name in place with F2 (INV-082) and to name a
+    /// new Folder (INV-085).
+    /// </summary>
+    public FolderPanel()
+    {
         CommandBindings.Add(new CommandBinding(EditFileName, OnEditFileName, OnCanEditFileName));
+        CommandBindings.Add(new CommandBinding(CreateFolder, OnCreateFolder, OnCanCreateFolder));
+        CommandBindings.Add(new CommandBinding(CreateFile, OnCreateFile, OnCanCreateFile));
+    }
 
     /// <summary>The Folder Workspace whose Folder Tree this panel lists. Its entries are the tree's roots.</summary>
     public FolderWorkspace? Workspace
@@ -106,6 +124,16 @@ public sealed partial class FolderPanel : TreeView
     {
         get => (FolderEntry?)GetValue(SelectedEntryProperty);
         set => SetValue(SelectedEntryProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the Selected Folder Entry is a File — so the context menu offers the file actions, Rename
+    /// File and Delete File, which a Folder does not have (INV-081, INV-082).
+    /// </summary>
+    public bool IsFileSelected
+    {
+        get => (bool)GetValue(IsFileSelectedProperty);
+        private set => SetValue(IsFileSelectedPropertyKey, value);
     }
 
     /// <summary>Activates the double-clicked entry when it is a File; a Folder is left to its native Expand/Collapse.</summary>
@@ -173,8 +201,8 @@ public sealed partial class FolderPanel : TreeView
         }
     }
 
-    /// <summary>Shows the File context menu only over a File, whose row it selects first.</summary>
-    /// <param name="e">The context-menu request; handled (so no menu shows) when it is not over a File.</param>
+    /// <summary>Shows the panel's context menu, having selected the row it opens on, if any.</summary>
+    /// <param name="e">The context-menu request; handled (so no menu shows) while a name is being edited.</param>
     protected override void OnContextMenuOpening(ContextMenuEventArgs e)
     {
         base.OnContextMenuOpening(e);
@@ -186,22 +214,31 @@ public sealed partial class FolderPanel : TreeView
     }
 
     /// <summary>
-    /// Readies the File context menu for the row containing <paramref name="source"/>. Over a File, it
-    /// selects that row, so the menu's Delete acts on exactly the File the user pointed at and the
-    /// highlight shows which one that is (INV-081). Over a Folder or empty space, there is no menu.
+    /// Readies the context menu for the row containing <paramref name="source"/>, selecting that row so
+    /// each entry acts on exactly what the user pointed at and the highlight shows which one that is.
+    /// Over a File, the menu offers Rename File and Delete File as well as New Folder (INV-081, INV-082);
+    /// over a Folder, only New Folder, inside it. Over empty space, nothing is left selected, so New
+    /// Folder goes in the root, as it does in VS Code (INV-085).
     /// </summary>
     /// <param name="source">The visual the right-click landed on (the request's <c>OriginalSource</c>).</param>
     /// <returns><see langword="true"/> when the menu should show; otherwise <see langword="false"/>.</returns>
     internal bool PrepareContextMenuAt(DependencyObject? source)
     {
         // While a name is being edited, the right-click belongs to the name editor's own menu.
-        if (_renaming is not null
-            || ResolveRow(source) is not { DataContext: FolderPanelRow { Kind: FolderEntryKind.File } } row)
+        if (_renaming is not null || Workspace is null)
         {
             return false;
         }
 
-        row.IsSelected = true;
+        if (ResolveRow(source) is { DataContext: FolderPanelRow } row)
+        {
+            row.IsSelected = true;
+        }
+        else
+        {
+            Deselect();
+        }
+
         return true;
     }
 
@@ -232,6 +269,11 @@ public sealed partial class FolderPanel : TreeView
         var previous = e.OldValue as FolderWorkspace;
         var next = e.NewValue as FolderWorkspace;
 
+        // New Folder's availability turns on the Workspace, and its header button sits outside the
+        // panel, where WPF re-asks a routed command only after input. A Folder Workspace Restored at
+        // startup arrives with none, so the panel asks for it (INV-085).
+        CommandManager.InvalidateRequerySuggested();
+
         if (next is null)
         {
             panel.ForgetRename();
@@ -250,7 +292,7 @@ public sealed partial class FolderPanel : TreeView
             // The highlighted row survives, but its entry is the rebuilt one now. A File just renamed
             // has a new row, which takes the highlight (INV-082).
             panel.SelectedEntry = (panel.SelectedItem as FolderPanelRow)?.Entry;
-            panel.HighlightRenamedFile();
+            panel.HighlightCommittedEntry();
             return;
         }
 

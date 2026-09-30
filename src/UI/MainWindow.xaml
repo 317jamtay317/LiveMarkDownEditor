@@ -18,6 +18,7 @@
         <KeyBinding Modifiers="Ctrl" Key="N" Command="{Binding NewCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="O" Command="{Binding OpenCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
+        <KeyBinding Modifiers="Ctrl+Shift" Key="S" Command="{Binding SaveAsCommand}" />
         <KeyBinding Modifiers="Ctrl" Key="W" Command="{Binding CloseSessionCommand}"
                     CommandParameter="{Binding ActiveSession}" />
         <KeyBinding Modifiers="Ctrl" Key="P" Command="controls:MarkdownEditingCommands.Print"
@@ -161,7 +162,7 @@
                         AutomationProperties.Name="New document">
                     <Button.ToolTip>
                         <controls:CommandTip Heading="New document"
-                                             Detail="Start a new, empty document in a new tab." Gesture="Ctrl+N" />
+                                             Detail="Create a new document: named in place in the selected folder, or saved where you choose when nothing is selected." Gesture="Ctrl+N" />
                     </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.New}" />
                 </Button>
@@ -216,7 +217,7 @@
                         AutomationProperties.Name="Save">
                     <Button.ToolTip>
                         <controls:CommandTip Heading="Save"
-                                             Detail="Save this document to its file." Gesture="Ctrl+S" />
+                                             Detail="Save this document to its file. Ctrl+Shift+S saves it somewhere else (Save As)." Gesture="Ctrl+S" />
                     </Button.ToolTip>
                     <Path Style="{StaticResource CommandIcon}" Data="{StaticResource Icon.Save}" />
                 </Button>
@@ -1171,7 +1172,7 @@
                         Command="{Binding NewCommand}">
                     <Button.ToolTip>
                         <controls:CommandTip Heading="New document"
-                                             Detail="Start a new, empty document in a new tab." Gesture="Ctrl+N" />
+                                             Detail="Create a new document: named in place in the selected folder, or saved where you choose when nothing is selected." Gesture="Ctrl+N" />
                     </Button.ToolTip>
                 </Button>
 
@@ -1419,18 +1420,50 @@
                                 <TextBlock Text="{Binding Folder.Folder.Name, TargetNullValue='FOLDER'}"
                                            Margin="14,10,10,6" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
                                            Foreground="{DynamicResource MutedTextBrush}" FontSize="11" FontWeight="SemiBold" />
-                                <Button HorizontalAlignment="Right" Margin="0,2,8,0" Style="{StaticResource IconButton}"
-                                        Command="{Binding Folder.RefreshCommand}"
-                                        Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        AutomationProperties.Name="Refresh the folder">
-                                    <Button.ToolTip>
-                                        <controls:CommandTip Heading="Refresh"
-                                                             Detail="Rescan the open folder for added, removed, or renamed files." />
-                                    </Button.ToolTip>
-                                    <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
-                                          Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
-                                          StrokeLineJoin="Round" Data="{StaticResource Icon.Refresh}" />
-                                </Button>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,8,0"
+                                            Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <!-- New File in the Save Folder, as VS Code's Explorer header offers it
+                                         (INV-086). It is the Folder Panel's own command, routed to it. -->
+                                    <Button Style="{StaticResource IconButton}" Margin="0,0,2,0"
+                                            Command="{x:Static controls:FolderPanel.CreateFile}"
+                                            CommandTarget="{Binding ElementName=FolderTree}"
+                                            AutomationProperties.Name="New file">
+                                        <Button.ToolTip>
+                                            <controls:CommandTip Heading="New file"
+                                                                 Detail="Create a document inside the selected folder, beside the selected file, or at the top of the open folder." Gesture="Ctrl+N" />
+                                        </Button.ToolTip>
+                                        <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
+                                              Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
+                                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Data="{StaticResource Icon.NewFile}" />
+                                    </Button>
+                                    <!-- New Folder in the Save Folder, as VS Code's Explorer header offers it
+                                         (INV-085). It is the Folder Panel's own command, routed to it. -->
+                                    <Button Style="{StaticResource IconButton}" Margin="0,0,2,0"
+                                            Command="{x:Static controls:FolderPanel.CreateFolder}"
+                                            CommandTarget="{Binding ElementName=FolderTree}"
+                                            AutomationProperties.Name="New folder">
+                                        <Button.ToolTip>
+                                            <controls:CommandTip Heading="New folder"
+                                                                 Detail="Create a folder inside the selected folder, beside the selected file, or at the top of the open folder." />
+                                        </Button.ToolTip>
+                                        <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
+                                              Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
+                                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Data="{StaticResource Icon.NewFolder}" />
+                                    </Button>
+                                    <Button Style="{StaticResource IconButton}"
+                                            Command="{Binding Folder.RefreshCommand}"
+                                            AutomationProperties.Name="Refresh the folder">
+                                        <Button.ToolTip>
+                                            <controls:CommandTip Heading="Refresh"
+                                                                 Detail="Rescan the open folder for added, removed, or renamed files and folders." />
+                                        </Button.ToolTip>
+                                        <Path Width="14" Height="14" Stretch="Uniform" Fill="{x:Null}"
+                                              Stroke="{DynamicResource MutedTextBrush}" StrokeThickness="2"
+                                              StrokeLineJoin="Round" Data="{StaticResource Icon.Refresh}" />
+                                    </Button>
+                                </StackPanel>
                             </Grid>
                             <Grid>
                                 <!-- The highlighted row flows back to the Folder Workspace, which is
@@ -1438,11 +1471,18 @@
                                      Folder Workspace pushes the File the Active Session is editing back
                                      the other way, which the panel reveals (INV-083). A File's context
                                      menu and the Delete key reach Delete File (INV-081), and its
-                                     context menu and F2 reach Rename File (INV-082). -->
-                                <controls:FolderPanel Workspace="{Binding Folder.Folder}"
+                                     context menu and F2 reach Rename File (INV-082). The header's New
+                                     file and New folder buttons and the context menu reach New File and New
+                                     Folder, and Ctrl+N with a row selected reaches New File through
+                                     NewFileRequest (INV-085, INV-086, INV-087). -->
+                                <controls:FolderPanel x:Name="FolderTree"
+                                                      Workspace="{Binding Folder.Folder}"
                                                       ActivateCommand="{Binding Folder.ActivateEntryCommand}"
                                                       DeleteCommand="{Binding Folder.DeleteEntryCommand}"
                                                       RenameCommand="{Binding Folder.RenameEntryCommand}"
+                                                      NewFolderCommand="{Binding Folder.NewFolderCommand}"
+                                                      NewFileCommand="{Binding Folder.NewFileCommand}"
+                                                      NewFileRequest="{Binding Folder.NewFileRequest, Mode=TwoWay}"
                                                       SelectedEntry="{Binding Folder.SelectedEntry, Mode=TwoWay}"
                                                       AutomationProperties.AutomationId="FolderTree"
                                                       Visibility="{Binding Folder.HasFolder, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -1581,6 +1621,7 @@
                                                         Visibility="{Binding IsPageViewEnabled, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                         <controls:MarkdownRichEditor x:Name="Editor" Grid.Column="1"
+                                                     controls:FocusOnRequest.Request="{Binding EditorFocusRequest}"
                                                      Markdown="{Binding ActiveSession.Markdown, UpdateSourceTrigger=PropertyChanged}"
                                                      ChangedRegions="{Binding ActiveSession.ChangeHighlight}"
                                                      BaseDirectory="{Binding ActiveSession.BaseDirectory}"

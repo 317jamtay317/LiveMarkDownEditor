@@ -187,15 +187,18 @@ public sealed class FolderPanelTests
     }
 
     [Fact]
-    public void OpeningTheContextMenu_OnAFolder_OffersNothing_INV081()
+    public void OpeningTheContextMenu_OnAFolder_OffersNoDelete_INV081()
     {
         StaThread.Run(() =>
         {
-            var panel = BuildDeletablePanel(out _, "Nested/deep.md");
+            var panel = BuildDeletablePanel(out var deleted, "Nested/deep.md");
             var row = Row(panel, "Nested");
 
-            panel.PrepareContextMenuAt(HeaderTextOf(row)).ShouldBeFalse();
-            panel.SelectedEntry.ShouldBeNull();
+            // The menu opens for New Folder (INV-085), but the file actions are not offered on a Folder.
+            panel.PrepareContextMenuAt(HeaderTextOf(row)).ShouldBeTrue();
+
+            panel.IsFileSelected.ShouldBeFalse();
+            deleted.ShouldBeEmpty();
         });
     }
 

@@ -6,12 +6,13 @@ namespace Domain;
 /// <summary>
 /// A Folder Workspace: a root folder opened to browse its Markdown Documents as a Folder Tree, turning
 /// the editor into a lightweight knowledge base. It is a pure, deterministic projection of the root and
-/// the set of file paths beneath it — only Markdown files appear, Markdown-empty folders are pruned, and
-/// folders sort before files (each A–Z, case-insensitively) — so the same inputs always yield the same
-/// tree (INV-042). It is distinct from the <c>Workspace</c> (the open Editor Sessions shown as Tabs):
-/// a Folder Workspace is a folder on disk being browsed.
+/// its Folder Listing, laid out as VS Code's Explorer lays out a folder — every folder but an Excluded
+/// Folder appears, empty or not, only Markdown files appear, and folders sort before files (each A–Z,
+/// case-insensitively) — so the same inputs always yield the same tree (INV-042). What Git ignores is
+/// marked Ignored rather than left out (INV-084). It is distinct from the <c>Workspace</c> (the open
+/// Editor Sessions shown as Tabs): a Folder Workspace is a folder on disk being browsed.
 /// </summary>
-public sealed class FolderWorkspace
+public sealed partial class FolderWorkspace
 {
     private FolderWorkspace(string rootPath, string name, IReadOnlyList<FolderEntry> entries)
     {
@@ -31,49 +32,64 @@ public sealed class FolderWorkspace
 
     /// <summary>
     /// Builds a Folder Workspace from the root path and the root-relative, <c>/</c>-separated paths of
-    /// the files beneath it. Non-Markdown files are dropped (INV-042), so any folder they alone would
-    /// have created never appears — pruning is inherent. The result is deterministic regardless of the
-    /// order the paths arrive in.
+    /// the files beneath it, with no folder listed on its own and nothing Ignored. Every folder a file
+    /// sits in appears; only the Markdown files themselves do (INV-042).
     /// </summary>
     /// <param name="rootPath">The absolute path of the opened root folder.</param>
-    /// <param name="relativeMarkdownPaths">
+    /// <param name="relativeFilePaths">
     /// The files beneath the root, each a root-relative <c>/</c>-separated path. Null or blank entries
-    /// are skipped; non-Markdown entries are ignored.
+    /// are skipped.
     /// </param>
-    /// <returns>The Folder Workspace presenting the pruned, ordered Folder Tree.</returns>
+    /// <returns>The Folder Workspace presenting the ordered Folder Tree.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="rootPath"/> is null or blank.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="relativeMarkdownPaths"/> is null.</exception>
-    public static FolderWorkspace From(string rootPath, IEnumerable<string> relativeMarkdownPaths)
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="relativeFilePaths"/> is null.</exception>
+    public static FolderWorkspace From(string rootPath, IEnumerable<string> relativeFilePaths)
+    {
+        ArgumentNullException.ThrowIfNull(relativeFilePaths);
+        return From(rootPath, new FolderListing([], relativeFilePaths));
+    }
+
+    /// <summary>
+    /// Builds a Folder Workspace from the root path and its Folder Listing. Every listed folder appears,
+    /// empty or not, as does every folder a listed file sits in; an Excluded Folder never does, nor
+    /// anything beneath it; and only Markdown files appear (INV-042). Every listed Ignored path, and
+    /// everything beneath an Ignored Folder, is marked Ignored (INV-084). The result is deterministic
+    /// regardless of the order the paths arrive in.
+    /// </summary>
+    /// <param name="rootPath">The absolute path of the opened root folder.</param>
+    /// <param name="listing">The folders and files beneath the root, and which of them Git ignores.</param>
+    /// <returns>The Folder Workspace presenting the ordered Folder Tree.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="rootPath"/> is null or blank.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="listing"/> is null.</exception>
+    public static FolderWorkspace From(string rootPath, FolderListing listing)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
-        ArgumentNullException.ThrowIfNull(relativeMarkdownPaths);
+        ArgumentNullException.ThrowIfNull(listing);
 
         var root = new Builder();
-        foreach (var path in relativeMarkdownPaths)
+        foreach (var segments in UsableSegments(listing.Folders))
         {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                continue;
-            }
-
-            // The input contract is '/'-separated; only real path separators split segments.
-            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length == 0 || !MarkdownFile.IsMarkdown(segments[^1]))
-            {
-                continue;
-            }
-
-            var folder = root;
-            for (var depth = 0; depth < segments.Length - 1; depth++)
-            {
-                folder = folder.Folder(segments[depth]);
-            }
-
-            folder.AddFile(segments[^1]);
+            root.FolderAt(segments);
         }
 
-        return new FolderWorkspace(rootPath, DisplayName(rootPath), root.ToEntries());
+        foreach (var segments in UsableSegments(listing.Files))
+        {
+            var folder = root.FolderAt(segments[..^1]);
+            if (MarkdownFile.IsMarkdown(segments[^1]))
+            {
+                folder.AddFile(segments[^1]);
+            }
+        }
+
+        return new FolderWorkspace(rootPath, DisplayName(rootPath), root.ToEntries(listing.Ignored, isIgnored: false));
     }
+
+    // Each path split into its segments, skipping a blank path and anything inside an Excluded Folder.
+    // The input contract is '/'-separated; only real path separators split segments.
+    private static IEnumerable<string[]> UsableSegments(IEnumerable<string> paths) =>
+        paths.Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => path.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            .Where(segments => segments.Length > 0 && !segments.Any(FolderListing.IsExcluded));
 
     /// <summary>
     /// Resolves a Folder Entry to its canonical absolute path — <see cref="RootPath"/> combined with the
@@ -188,7 +204,7 @@ public sealed class FolderWorkspace
             !IsSameEntry(sibling, file) && string.Equals(sibling.Name, name, StringComparison.OrdinalIgnoreCase));
         if (taken)
         {
-            return FileRename.Refused(file, name, RenameRefusal.NameTaken);
+            return FileRename.Refused(file, name, NameRefusal.NameTaken);
         }
 
         var relativePath = folder.Length == 0 ? name : $"{folder}/{name}";
@@ -288,8 +304,8 @@ public sealed class FolderWorkspace
     /// <summary>
     /// Mutable scaffolding for one folder while the tree is assembled. Folders and files are kept in
     /// separate maps (keyed by segment name) so a folder and a file that share a name coexist, and so
-    /// the folders-before-files ordering falls out naturally. A Builder is created only while walking
-    /// toward a Markdown file, so every Builder yields at least one File — hence no empty branches.
+    /// the folders-before-files ordering falls out naturally. A Builder may end up holding nothing: an
+    /// empty folder is a Folder like any other (INV-042).
     /// </summary>
     private sealed class Builder
     {
@@ -302,7 +318,47 @@ public sealed class FolderWorkspace
 
         private string RelativePath { get; }
 
-        public Builder Folder(string name)
+        // The folder at the given segments beneath this one, creating each on the way.
+        public Builder FolderAt(IEnumerable<string> segments)
+        {
+            var folder = this;
+            foreach (var segment in segments)
+            {
+                folder = folder.Folder(segment);
+            }
+
+            return folder;
+        }
+
+        public void AddFile(string name) => _files[name] = Join(RelativePath, name);
+
+        // An entry is Ignored when it is listed as ignored or sits beneath a Folder that is (INV-084).
+        public IReadOnlyList<FolderEntry> ToEntries(IReadOnlySet<string> ignored, bool isIgnored)
+        {
+            var entries = new List<FolderEntry>(_folders.Count + _files.Count);
+
+            foreach (var (name, folder) in _folders.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                var folderIgnored = isIgnored || ignored.Contains(folder.RelativePath);
+                entries.Add(new FolderEntry(
+                    FolderEntryKind.Folder, name, folder.RelativePath, folder.ToEntries(ignored, folderIgnored))
+                {
+                    IsIgnored = folderIgnored,
+                });
+            }
+
+            foreach (var (name, path) in _files.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                entries.Add(new FolderEntry(FolderEntryKind.File, name, path, [])
+                {
+                    IsIgnored = isIgnored || ignored.Contains(path),
+                });
+            }
+
+            return entries;
+        }
+
+        private Builder Folder(string name)
         {
             if (!_folders.TryGetValue(name, out var child))
             {
@@ -311,26 +367,6 @@ public sealed class FolderWorkspace
             }
 
             return child;
-        }
-
-        public void AddFile(string name) => _files[name] = Join(RelativePath, name);
-
-        public IReadOnlyList<FolderEntry> ToEntries()
-        {
-            var entries = new List<FolderEntry>(_folders.Count + _files.Count);
-
-            foreach (var folder in _folders.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
-            {
-                entries.Add(new FolderEntry(
-                    FolderEntryKind.Folder, folder.Key, folder.Value.RelativePath, folder.Value.ToEntries()));
-            }
-
-            foreach (var file in _files.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
-            {
-                entries.Add(new FolderEntry(FolderEntryKind.File, file.Key, file.Value, []));
-            }
-
-            return entries;
         }
 
         private static string Join(string parent, string name) =>

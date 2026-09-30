@@ -867,15 +867,20 @@ and tested.
   `Convert_PreformattedHtmlHoldingOneElementPerLine_KeepsTheLinesApart_INV041` — and
   `CfHtmlTests.ExtractFragment_*`.
 
-### INV-042 — A Folder Workspace is the pruned, ordered, Markdown-only tree of its root
+### INV-042 — A Folder Workspace is every folder of its root, with its Markdown files, in order
 - **Statement:** A Folder Workspace presents its root folder as a Folder Tree that is a pure,
-  deterministic function of the root and the set of file paths beneath it (the Folder-Workspace
-  counterpart of INV-002/INV-003). Four rules bound it:
+  deterministic function of the root and its **Folder Listing** — the folders and files beneath it
+  (the Folder-Workspace counterpart of INV-002/INV-003). It lays a folder out the way VS Code's
+  Explorer does. Five rules bound it:
   - **Markdown files only.** A file becomes a **File** exactly when its name ends in `.md` or
     `.markdown` (compared case-insensitively); every other file is omitted.
-  - **Empty branches are pruned.** A **Folder** appears only if at least one Markdown Document exists
-    beneath it, directly or transitively. A folder — or a chain of folders — containing no Markdown is
-    not shown; a deep chain leading to a single Markdown file is kept whole.
+  - **Every folder appears.** Every folder beneath the root is a **Folder** of the tree, whether it
+    holds Markdown, only other files, or nothing at all — so a folder the user has just created, which
+    is empty, is in the tree at once. A Folder a file path passes through appears even when the listing
+    does not name it itself.
+  - **Excluded Folders never appear.** A folder named `.git`, `.svn`, `.hg`, or `.jj` (compared
+    case-insensitively) — the version-control stores VS Code's `files.exclude` hides by default — is
+    omitted at any depth, together with every folder and file beneath it.
   - **Deterministic ordering.** Within every folder, and at the root, the child **Folder**s precede
     the **File**s, and each group is ordered case-insensitively by name. Shuffling the input paths
     yields an identical Folder Tree.
@@ -883,13 +888,20 @@ and tested.
     `AbsolutePathOf` resolves one to a canonical absolute path — so a file opened from the Folder Tree
     is the same path string as the same file opened through the picker, which is what lets INV-009
     dedupe them (it compares absolute paths case-insensitively).
+- **Why:** A tree that hides empty folders hides the one the user just made, so there is nowhere to
+  put the first note of a new topic. Showing every folder is also what VS Code, and every other editor
+  with a file tree, does — so the Folder Panel matches the disk the user sees in Explorer.
 - **Enforced by:** The pure `FolderWorkspace.From` (Domain — no I/O), which builds the nested
-  `FolderEntry` tree from `/`-separated relative paths, prunes Markdown-empty branches, and orders
-  folders-before-files / case-insensitively; the shared `MarkdownFile.IsMarkdown` rule; and
-  `FolderWorkspace.AbsolutePathOf`. Enumerating the files on disk is Infrastructure's job
-  (`FileSystemMarkdownFolderReader`), so the Domain stays pure.
-- **Tested by:** `FolderWorkspaceTests.*_INV042` (extension filter, transitive pruning, folders-before-
-  files ordering, determinism under shuffling, and the `AbsolutePathOf` path round-trip).
+  `FolderEntry` tree from a `FolderListing`'s `/`-separated relative paths, drops Excluded Folders
+  (`FolderListing.IsExcluded`), and orders folders-before-files / case-insensitively; the shared
+  `MarkdownFile.IsMarkdown` rule; and `FolderWorkspace.AbsolutePathOf`. Reading the listing from disk is
+  Infrastructure's job (`FileSystemMarkdownFolderReader`, which does not descend into an Excluded Folder
+  or follow a symbolic link or junction, so a link loop cannot hang it), so the Domain stays pure.
+- **Tested by:** `FolderWorkspaceTests.*_INV042` (extension filter, empty folders and folders holding
+  only other files kept, Excluded Folders dropped at any depth, folders-before-files ordering,
+  determinism under shuffling, and the `AbsolutePathOf` path round-trip) and
+  `FileSystemMarkdownFolderReaderTests.*_INV042` (every folder listed, including empty and hidden ones;
+  only Markdown files; nothing beneath an Excluded Folder).
 
 ### INV-043 — Browsing a Folder Workspace is view-only; activating a File opens, never edits
 - **Statement:** Opening a Folder Workspace, showing or hiding the Folder Panel, and Expanding or
@@ -900,9 +912,10 @@ and tested.
   activates its existing Tab rather than duplicating it (INV-009), and opening it is not an edit.
   Activating a **Folder** does nothing but its own Expand/Collapse. **Depth does not matter:** a File
   nested any number of Folders down the Folder Tree activates exactly as one at the root does.
-- **Note (INV-081, INV-082):** Delete File and Rename File are not browsing. They are the two Folder
-  Panel actions that change the filesystem: Delete File only after the user confirms, and Rename File
-  only when the user commits a New Name. This invariant governs everything else the panel does.
+- **Note (INV-081, INV-082, INV-085, INV-086):** Delete File, Rename File, New File and New Folder are
+  not browsing. They are the four Folder Panel actions that change the filesystem: Delete File only after the user
+  confirms, Rename File only when the user commits a New Name, and New File and New Folder only when
+  the user commits an Entry Name. This invariant governs everything else the panel does.
 - **Enforced by:** `FolderWorkspaceViewModel` — its `OpenFolderCommand`, `ToggleFolderPanelCommand`,
   and `IsFolderPanelVisible` drive only presentation state, and its `ActivateEntryCommand` resolves a
   File to its absolute path and routes it to `WorkspaceViewModel.OpenPathAsync` (the same
@@ -914,12 +927,15 @@ and tested.
   root, one Folder down, and two Folders down; double-clicking a Folder activates nothing).
 
 ### INV-044 — A Folder Workspace tracks its root live
-- **Statement:** While a Folder Workspace is open, a Markdown Document added, removed, or renamed
-  anywhere under its root updates the Folder Tree to match — re-enumerated and rebuilt by the same
+- **Statement:** While a Folder Workspace is open, a Markdown Document or a folder added, removed, or
+  renamed anywhere under its root — or a `.gitignore` or `.git/info/exclude` changed, which changes
+  what is Ignored (INV-084), including those *above* a root nested inside a Git repository — updates
+  the Folder Tree to match — re-enumerated and rebuilt by the same
   deterministic projection (INV-042) — without changing any Markdown Document or Editor Session. It is
   the Folder-Workspace counterpart of INV-007's live reload, but view-only: the tree follows the disk,
   nothing is edited. A burst of filesystem events (an editor or tool often emits several for one
-  change) is debounced into a single rebuild.
+  change) is debounced into a single rebuild, and the bookkeeping Git does inside `.git` — every
+  commit, fetch and status writes there — is not a change to the tree and rebuilds nothing.
 - **The user's place survives a rebuild.** Rebuilding the Folder Tree, whether from the live refresh
   or after a Delete File (INV-081) or a Rename File (INV-082), changes only the Folder Panel Rows whose
   entries were added or removed. Every other row stays exactly as the user left it: an Expanded Folder stays Expanded and a
@@ -930,7 +946,9 @@ and tested.
 - **Enforced by:** `FolderWorkspaceViewModel` subscribing to `IFolderWatcher.Changed`, marshalling to
   the UI thread through `IUiDispatcher`, and re-running its reader-and-rebuild (its `RefreshCommand`);
   the `FileSystemFolderWatcher` adapter — a recursive `FileSystemWatcher` with a debounce, mirroring
-  `FileSystemDocumentWatcher`. The user's place is kept by the `FolderPanel` Control, which lists its
+  `FileSystemDocumentWatcher` — whose `FileSystemFolderWatcher.IsTreeChange` rule decides which events
+  rebuild the tree, and which also watches each file `FileSystemFolderWatcher.IgnoreSourcesAbove` names
+  for a nested root. The user's place is kept by the `FolderPanel` Control, which lists its
   own `FolderPanelRow`s rather than the Folder Entries themselves. `FolderPanelRow.Sync` applies each
   rebuild of the same root to those rows as a change: a row whose entry has gone is removed, a new
   entry gets a new row in its place, and every other row is kept and updated in place, so WPF never
@@ -938,7 +956,11 @@ and tested.
   WPF row, because WPF's virtualization clears a plain `IsExpanded` on every row it prepares. A
   different root builds fresh rows.
 - **Tested by:** `FolderWorkspaceViewModelTests.*_INV044` (a `Changed` from a fake watcher re-reads the
-  folder and the Folder Tree reflects the new file set, changing no document) and
+  folder and the Folder Tree reflects the new file set, changing no document),
+  `FileSystemFolderWatcherTests.*_INV044` (a Markdown file or a folder added, removed or renamed, and a
+  changed `.gitignore` or `.git/info/exclude`, rebuild the tree — for a root nested in a repository,
+  also a `.gitignore` above it and the repository's `.git/info/exclude`, over real file-system events;
+  a saved Markdown file, another file above the root, and Git's own writes inside `.git` do not) and
   `FolderPanelTests.*_INV044`, run against a virtualized panel as the real one is (a rebuild keeps an
   Expanded Folder, a nested Expanded Folder, and a Collapsed Folder as they were; keeps the very same
   row for an unchanged entry, the highlighted row highlighted, and the scroll offset; lists exactly the
@@ -2145,6 +2167,9 @@ and tested.
 - **Note (INV-083):** The Selected Folder Entry follows the Active Session, so switching to an unsaved
   Tab leaves nothing selected and the Save Folder falls back to the root. Highlighting a Folder after
   that still names it: the highlight changes only when the Active Session does.
+- **Note (INV-087, INV-088):** New Document no longer makes an unsaved Tab — it makes its file first,
+  in place in the Folder Panel or through this same prompt — so the rule matters for the untitled Tab
+  the Workspace starts with, and for Save As, which opens its prompt here too.
 - **Why:** A Folder Workspace turns the editor into a knowledge base, and every document a user makes
   while browsing one belongs in it. Opening the prompt at whatever folder Windows last used makes the
   user navigate back to where they already were, and quietly scatters a vault across the disk.
@@ -2245,7 +2270,7 @@ and tested.
   document must not cost the user their open Tab or their unsaved work, and a typo in the New Name must
   never destroy another file.
 - **Enforced by:** `FolderWorkspace.CanRename` and `FolderWorkspace.Rename`, the pure rules: a File the
-  tree still holds, and the tidied New Name, its new relative path, or its `RenameRefusal`, returned as
+  tree still holds, and the tidied New Name, its new relative path, or its `NameRefusal`, returned as
   a `FileRename`; `RecentFiles.Rename`; `FolderWorkspaceViewModel.RenameAsync` and its
   `RenameEntryCommand`, which apply the rule, refuse a New Name another Tab holds through the
   `IsFileOpen` callback, rename through the `IFileRenamer` port, explain a refusal through the
@@ -2277,7 +2302,9 @@ and tested.
   without the user going to find it. Five rules bound it:
   - **Changing the Active Session changes the highlight.** Selecting a Tab follows it, and so does
     every other way a Tab becomes the Active Session: opening a document, activating a File in the
-    Folder Panel itself, and Restoring the last run's Tabs.
+    Folder Panel itself, and Restoring the last run's Tabs. So does the Active Session getting a
+    different file without a change of Tab — Save As (INV-088), or saving an untitled Tab — once the
+    Folder Tree has been refreshed to hold it.
   - **Only a File the Folder Tree holds.** The Watched File is followed only when it resolves to a
     File of the open Folder Tree, compared as absolute paths without regard to capitals (as INV-009
     compares them). A document outside the open root has no row to highlight.
@@ -2314,6 +2341,175 @@ and tested.
   it); and `FolderPanelFollowTests.*_INV083` (a pushed entry highlights its row, a nested one Expands
   the Folders above it and is brought into view, an entry the tree does not hold highlights nothing,
   and following activates nothing).
+
+### INV-084 — What Git ignores is dimmed in the Folder Tree, never hidden
+- **Statement:** A Folder Entry the Git repository holding the root ignores is **Ignored**, and the
+  Folder Panel draws its name in the Ignored color — exactly as VS Code's Explorer draws an ignored
+  resource (`gitDecoration.ignoredResourceForeground`: `#8C8C8C` on the dark theme, `#8E8E90` on the
+  light). Five rules bound it:
+  - **Git decides.** An entry is Ignored when `git check-ignore` reports it — through a `.gitignore` at
+    any level, `.git/info/exclude`, or the user's global excludes — and not when the pattern that
+    matched it is a `!` negation, which re-includes it. A file Git tracks is not Ignored, whatever the
+    patterns say, because `git check-ignore` does not report it.
+  - **Ignoring is inherited.** Everything beneath an Ignored Folder is Ignored, at any depth, as it is
+    to Git itself: a folder Git skips is skipped whole.
+  - **Dimmed, never hidden.** An Ignored entry stays in the Folder Tree in its place and order
+    (INV-042). It browses, opens, highlights, Follows the Active Session, and is deleted, renamed, or
+    created in exactly as any other entry is — Ignored is how it looks, not what it can do. A
+    highlighted row draws its name in the highlight's own color, so it stays readable.
+  - **No Git, nothing Ignored.** A root that is not inside a Git repository, a machine without Git, and
+    a Git that fails or takes too long each leave nothing Ignored, rather than failing to open the
+    folder. The Folder Tree is still built.
+  - **It follows the disk.** A changed `.gitignore` or `.git/info/exclude` rebuilds the tree, so an
+    entry becomes Ignored, or stops being, without the user reopening the folder (INV-044). For a root
+    opened inside a repository, that includes every `.gitignore` above it up to the repository's root,
+    and the repository's own `.git/info/exclude`.
+- **Why:** Showing every folder (INV-042) brings build output, package caches and other generated
+  folders into the tree. Hiding them would hide real folders from the user; dimming them says "this is
+  not your content" while leaving it one click away — which is what VS Code does, so it is what a user
+  who knows VS Code expects.
+- **Enforced by:** `FolderListing.Ignored` and the pure `FolderWorkspace.From`, which marks
+  `FolderEntry.IsIgnored` for every listed Ignored path and everything beneath an Ignored Folder; the
+  `GitIgnoreChecker` (Infrastructure), which runs `git check-ignore -v -z --stdin` in the root exactly
+  as VS Code's Git extension does, drops `!` matches, and answers nothing when Git is absent, fails, or
+  times out; `FileSystemMarkdownFolderReader`, which asks it about every listed path; and the
+  `FolderPanel`'s `FolderTreeTemplate`, which draws an Ignored row's name in `IgnoredTextBrush` unless
+  the row is highlighted.
+- **Tested by:** `FolderWorkspaceIgnoredTests.*_INV084` (a listed Ignored folder and file are Ignored,
+  their descendants inherit it, nothing else is, and the tree is otherwise unchanged);
+  `FolderPanelNewFolderTests.*_INV084` (a row is Ignored exactly when its entry is, and a rebuild that
+  changes it updates the same row);
+  `GitIgnoreCheckerTests.*_INV084` (ignored folders and files, a file inside an ignored folder, a `!`
+  negation, a tracked file, a root that is not a repository, and a root nested inside one); and
+  `FileSystemMarkdownFolderReaderTests.*_INV084` (the listing names what Git ignores); and
+  `FileSystemFolderWatcherTests.IgnoreSourcesAbove_*_INV084` (the ignore files above a nested root; none
+  for a repository's root or outside any repository).
+
+### INV-085 — New Folder creates an empty Folder in the Save Folder, only when the user commits a valid Entry Name
+- **Statement:** New Folder creates an empty folder on disk. It is one of the Folder Panel actions that
+  change the filesystem, with Delete File (INV-081), Rename File (INV-082) and New File (INV-086);
+  everything else the panel does is browsing (INV-043). It is VS Code's Explorer **New Folder**. Five
+  rules bound it:
+  - **It is created in the Save Folder.** A Selected Folder gets the new folder inside it; a Selected
+    File gets it beside itself, in the folder holding it; and with nothing selected — or an entry the
+    live refresh has dropped — it goes in the root (INV-080). Right-clicking empty space in the panel
+    selects nothing, so its New Folder goes in the root, as it does in VS Code.
+  - **Only when the user commits.** The **New folder** button in the panel's header and **New folder** on
+    the panel's context menu — over any row or over empty space — each open an empty name editor at the
+    top of the Save Folder, which is Expanded to show it. Enter, or moving away from the editor, commits
+    the Entry Name. Escape, and an Entry Name that is blank once tidied, create nothing and say nothing,
+    as in VS Code.
+  - **The Entry Name may be a path.** `a/b` (or `a\b`) creates `b` inside `a`, creating `a` too when it
+    is not there, as VS Code does. Every name in it is tidied — spaces before and after, and dots after,
+    dropped — and gains no extension.
+  - **An Entry Name that cannot be used is refused, and never overwrites.** It is refused when one of its
+    names is blank; when it starts with a separator; when a name holds a character Windows forbids
+    (`: * ? " < > |`, or a control character) or is one Windows reserves for a device, with or without
+    an extension; and when the Folder Tree already holds an entry at that path, or a File on the way to
+    it, compared without regard to capitals. A refusal tells the user why and changes nothing. A path
+    the disk itself holds already (a file the Folder Tree does not show, say) is refused the same way,
+    since nothing is ever overwritten.
+  - **The new Folder is shown, highlighted.** Once created, the Folder Tree is refreshed; the new Folder
+    appears in it, empty (INV-042), and is the Selected Folder Entry, revealed — so it is the Save Folder
+    for the next new document. No Tab and no Markdown Document changes.
+- **Why:** A knowledge base grows new topics as well as new notes, and the Folder Panel is where the
+  user is already organising them. Going out to Windows Explorer to make a folder, then back, breaks
+  the flow — and VS Code, the tree the user knows, makes a folder in place.
+- **Enforced by:** `FolderWorkspace.SaveFolderEntryFor` and `FolderWorkspace.NewFolder`, the pure
+  rules: where the new folder goes, and the tidied Entry Name, the new Folder's relative path, or its
+  `NameRefusal`, returned as an `EntryCreation`; `EntryName`, which splits, tidies and checks a path of
+  names; `FolderWorkspaceViewModel.NewFolderAsync` and its `NewFolderCommand`, which apply the rule,
+  create through the `IEntryCreator` port, explain a refusal or a disk failure through the
+  `INewEntryNotice` port, and refresh the Folder Tree; the `FileSystemEntryCreator` adapter, which
+  refuses a path that anything already has; and the `FolderPanel` Control, whose `CreateFolder` command
+  opens the name editor at the top of the Save Folder, commits it on Enter or on focus leaving it,
+  abandons it on Escape or a blank name, raises its `NewFolderCommand` with a `NewEntryRequest`, and
+  highlights the new Folder once the rebuilt Folder Tree holds it.
+- **Tested by:** `FolderWorkspaceNewFolderTests.*_INV085` (the Save Folder for a Folder, a File,
+  nothing, and a dropped entry; the Entry Name is tidied, may be a path, and gains no extension; each
+  refusal); `FileSystemEntryCreatorTests.*_INV085` (the folder is created, with the folders on the way;
+  a path a folder or a file already has is never overwritten); `FolderWorkspaceViewModelNewFolderTests.*_INV085`
+  (the canonical path is created and the tree refreshed; each refusal is explained and creates nothing;
+  a disk failure is explained; nothing is created with no Folder Workspace open); and
+  `FolderPanelNewFolderTests.*_INV085` (the command opens an empty editor in the Save Folder, Expanding
+  it; Enter and focus leaving commit the typed name; Escape and a blank name commit nothing; a rebuild
+  while typing keeps the editor; the context menu offers New folder over a Folder, a File, and empty
+  space, and only the new-entry actions over a Folder; the new Folder is highlighted after the rebuild).
+
+### INV-086 — New File creates an empty Markdown Document in the Save Folder and opens it
+- **Statement:** New File is VS Code's Explorer **New File**: it creates an empty Markdown Document on
+  disk and opens it in a Tab. It is New Folder's twin (INV-085) — the same Save Folder, the same name
+  editor, the same Entry Name rules and refusals, never overwriting — with four differences:
+  - **Where the editor goes.** The empty name editor appears at the top of the Save Folder's **files**,
+    below its Folders, where VS Code puts it.
+  - **It stays Markdown.** A last name without a Markdown extension gains `.md` — `ideas` creates
+    `ideas.md` — so the new file is a Markdown Document the Folder Tree shows; `ideas.markdown` keeps its
+    own. An Entry Name ending in a separator (`drafts/`) creates a Folder instead, exactly as New Folder.
+  - **It opens, ready to type into.** Once created, the file opens as a Watched File in a new Tab,
+    which becomes the Active Session, the Folder Tree highlights it (INV-083), and keyboard focus moves
+    to the editor, as VS Code's does. Nothing is saved: the file is created empty and the Tab starts
+    with no unsaved edits. A file gone again before it could open opens nothing.
+  - **Where it is reached.** The **New file** button in the Folder Panel's header, **New file** on the
+    panel's context menu, and New Document while a Folder Entry is selected (INV-087).
+- **Why:** In a knowledge base a new note belongs somewhere from its first keystroke. Naming it where it
+  goes, as VS Code does, means it never needs a save prompt at all, and Rename File and Delete File
+  (INV-081, INV-082) make changing one's mind cheap.
+- **Enforced by:** `FolderWorkspace.NewFile`, the pure rule, returning an `EntryCreation`;
+  `FolderWorkspaceViewModel.NewFileAsync` and its `NewFileCommand`, which create through
+  `IEntryCreator.CreateFileAsync`, refresh the Folder Tree, open the file through the `OpenFile`
+  callback (the same dedupe-and-load path as the picker, INV-009), and ask for the editor through the
+  `FocusEditor` callback (wired to `WorkspaceViewModel.RequestEditorFocus`, which the editor answers
+  through the `FocusOnRequest` behavior); `FileSystemEntryCreator`, which never
+  overwrites; and the `FolderPanel`'s `CreateFile` command and its `NewFileCommand`.
+- **Tested by:** `FolderWorkspaceNewFileTests.*_INV086` (the Save Folder; `.md` added, a Markdown
+  extension kept; a path; a trailing separator makes a Folder; each refusal);
+  `FileSystemEntryCreatorTests.*_INV086`; `FolderWorkspaceViewModelNewFileTests.*_INV086` (the file is
+  created, the tree refreshed, the file opened, and the editor asked for; a refusal, a disk failure,
+  or a file gone before it opens opens nothing); `FocusOnRequestTests.*_INV086`; and
+  `FolderPanelNewFileTests.*_INV086` (the editor goes below the Folders; Enter commits; Escape and a
+  blank name commit nothing).
+
+### INV-087 — New Document always makes a file: in place with a Folder Entry selected, otherwise through the save prompt
+- **Statement:** New Document (Ctrl+N, and the New document buttons) never leaves an untitled document
+  behind. Two rules bound it:
+  - **A Folder Entry selected: New File.** With a Folder Workspace open and a Folder Entry selected, New
+    Document is New File in the Save Folder (INV-086): the Folder Panel is shown, on its Side Dock tab,
+    and its name editor opens there.
+  - **Nothing selected: ask first.** With nothing selected, or no Folder Workspace open, the save prompt
+    opens at once — in the Save Folder, which is the open root when a Folder Workspace is open (INV-080)
+    — suggesting `Untitled.md`. The picked file is created empty (the prompt itself asks before
+    replacing a file that is there) and opened in a new Tab, which becomes the Active Session, with the
+    Folder Tree refreshed first so it highlights the file (INV-083) and keyboard focus in the editor.
+    A file another Tab already holds brings that Tab forward instead and is not overwritten (INV-009).
+    Cancelling the prompt creates nothing and opens no Tab.
+- **Why:** The user asked for it: a new document should be saved from the start, not at the first
+  Ctrl+S, where the folder the user meant has long since been lost to a change of Tab.
+- **Enforced by:** `WorkspaceViewModel.NewDocumentAsync`, run by `NewCommand`, which asks the
+  `FolderWorkspaceViewModel` to start New File (`RequestNewFile`, observed by the `FolderPanel` through
+  its `NewFileRequest` property) or otherwise prompts through `IFilePicker.PickSave`, creates the file
+  through the `IDocumentStore`, and opens it through `OpenPathAsync`.
+- **Tested by:** `WorkspaceViewModelNewDocumentTests.*_INV087` (a selected Folder or File requests New
+  File and shows the Folder Panel; nothing selected, and no Folder Workspace, prompt in the Save Folder
+  and open the created file, highlighted and with the editor asked for; a file another Tab holds is
+  not overwritten; cancelling creates and opens nothing) and
+  `FolderPanelNewFileTests.ANewFileRequest_*_INV087` (the request opens the name editor once).
+
+### INV-088 — Save As saves the Active Session to a file the user picks
+- **Statement:** Save As (Ctrl+Shift+S) always prompts, even for a Tab with a Watched File: the prompt
+  opens in that file's own folder with its name, or in the Save Folder for a Tab without one (INV-080).
+  The Tab's text is saved to the picked file, and the Tab then holds and watches it (INV-007); the file
+  it had before is left on disk as it was. The Folder Panel Follows the Tab to its new file (INV-083) —
+  highlighting it, or nothing when it lies outside the open root — so the Save Folder the next New
+  Document uses names where the document now lives. Cancelling saves nothing. Picking a file another Tab holds
+  saves nothing and brings that Tab forward instead, so the user sees at once why, and one file is never
+  open in two Tabs (INV-009). Picking the Tab's own file is a plain save.
+- **Why:** With New Document saving into the folder being browsed (INV-087), Save As is the one way to
+  put a document somewhere else — as in every editor.
+- **Enforced by:** `WorkspaceViewModel.SaveAsActiveAsync` and its `SaveAsCommand`, bound to Ctrl+Shift+S.
+- **Tested by:** `WorkspaceViewModelNewDocumentTests.SaveAs*_INV088` (the prompt's folder and name for a
+  Tab with and without a file; the Tab holds the picked file and the old one is untouched; the tree
+  highlights the new file, or nothing outside the open root; cancelling; a file another Tab holds;
+  available with nothing unsaved) and `WorkspaceViewModelNewDocumentTests.Save_AnUntitledTab_*_INV080_INV083`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

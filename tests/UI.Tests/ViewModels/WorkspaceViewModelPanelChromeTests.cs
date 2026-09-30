@@ -29,7 +29,7 @@ public sealed class WorkspaceViewModelPanelChromeTests
     {
         EditorSessionFactory factory = () =>
             new EditorSessionViewModel(_store, new FakeDocumentWatcher(), _dispatcher, _roundTrip);
-        var folder = new FolderWorkspaceViewModel(_folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice());
+        var folder = new FolderWorkspaceViewModel(_folderPicker, _folderReader, _folderWatcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice(), new FakeEntryCreator(), new StubNewEntryNotice());
         return new WorkspaceViewModel(
             factory,
             _picker,

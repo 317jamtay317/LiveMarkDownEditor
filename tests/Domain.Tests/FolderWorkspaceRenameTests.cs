@@ -120,7 +120,7 @@ public sealed class FolderWorkspaceRenameTests
 
         var rename = workspace.Rename(Entry(workspace, "note.md"), typed);
 
-        rename.Refusal.ShouldBe(RenameRefusal.Blank);
+        rename.Refusal.ShouldBe(NameRefusal.Blank);
         rename.Renamed.ShouldBeNull();
     }
 
@@ -139,7 +139,7 @@ public sealed class FolderWorkspaceRenameTests
         var workspace = FolderWorkspace.From(Root, ["sub/note.md"]);
 
         // Refusing a path separator is also what keeps the File in its own folder.
-        workspace.Rename(Entry(workspace, "sub/note.md"), typed).Refusal.ShouldBe(RenameRefusal.InvalidCharacter);
+        workspace.Rename(Entry(workspace, "sub/note.md"), typed).Refusal.ShouldBe(NameRefusal.InvalidCharacter);
     }
 
     [Theory]
@@ -157,7 +157,7 @@ public sealed class FolderWorkspaceRenameTests
     {
         var workspace = FolderWorkspace.From(Root, ["note.md"]);
 
-        workspace.Rename(Entry(workspace, "note.md"), typed).Refusal.ShouldBe(RenameRefusal.ReservedName);
+        workspace.Rename(Entry(workspace, "note.md"), typed).Refusal.ShouldBe(NameRefusal.ReservedName);
     }
 
     [Theory]
@@ -183,7 +183,7 @@ public sealed class FolderWorkspaceRenameTests
         var rename = workspace.Rename(Entry(workspace, "sub/note.md"), typed);
 
         // Windows compares names without regard to capitals, so a rename must never overwrite.
-        rename.Refusal.ShouldBe(RenameRefusal.NameTaken);
+        rename.Refusal.ShouldBe(NameRefusal.NameTaken);
         rename.Renamed.ShouldBeNull();
     }
 
@@ -192,7 +192,7 @@ public sealed class FolderWorkspaceRenameTests
     {
         var workspace = FolderWorkspace.From(Root, ["archive.md/old.md", "note.md"]);
 
-        workspace.Rename(Entry(workspace, "note.md"), "archive.md").Refusal.ShouldBe(RenameRefusal.NameTaken);
+        workspace.Rename(Entry(workspace, "note.md"), "archive.md").Refusal.ShouldBe(NameRefusal.NameTaken);
     }
 
     [Fact]

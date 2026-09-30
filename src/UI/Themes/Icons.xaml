@@ -141,6 +141,12 @@
     <Geometry x:Key="Icon.Folder">M3 19 V6 H9 L11 9 H21 V19 Z</Geometry>
     <Geometry x:Key="Icon.MarkdownFile">M6 3 H14 L18 7 V21 H6 Z M14 3 V7 H18 M9 12 H15 M9 15 H14</Geometry>
 
+    <!-- New Folder: a folder left open at its corner for a plus, as VS Code's New Folder button draws it. -->
+    <Geometry x:Key="Icon.NewFolder">M12 19 H3 V6 H9 L11 9 H21 V12 M18 15 V21 M15 18 H21</Geometry>
+
+    <!-- New File: a page left open at its corner for a plus, the New Folder button's twin. -->
+    <Geometry x:Key="Icon.NewFile">M12 21 H6 V3 H14 L19 8 V12 M14 3 V8 H19 M18 15 V21 M15 18 H21</Geometry>
+
     <!-- A circular arrow, for re-reading the Folder Workspace from disk (Refresh). -->
     <Geometry x:Key="Icon.Refresh">M18 8 A7 7 0 1 0 19 12 M18 8 H14 M18 8 V12</Geometry>
 

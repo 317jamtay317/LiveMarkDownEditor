@@ -78,6 +78,68 @@ otes";
         Layout(panel);
     }
 
+    /// <summary>Rebuilds the panel's tree from a full Folder Listing: folders, files, and what Git ignores.</summary>
+    internal static void Rebuild(FolderPanel panel, FolderListing listing)
+    {
+        panel.Workspace = FolderWorkspace.From(Root, listing);
+        Layout(panel);
+    }
+
+    internal static FolderPanel BuildNewFolderPanel(out List<NewEntryRequest> created, params string[] relativePaths)
+    {
+        var panel = BuildPanel(out _, relativePaths);
+        var recorded = new List<NewEntryRequest>();
+        created = recorded;
+        panel.NewFolderCommand = new RecordingNewEntries(recorded);
+        return panel;
+    }
+
+    internal static FolderPanel BuildNewFilePanel(out List<NewEntryRequest> created, params string[] relativePaths)
+    {
+        var panel = BuildPanel(out _, relativePaths);
+        var recorded = new List<NewEntryRequest>();
+        created = recorded;
+        panel.NewFileCommand = new RecordingNewEntries(recorded);
+        return panel;
+    }
+
+    /// <summary>Runs New File on the panel, as the header button and the context menu do (INV-086).</summary>
+    internal static void StartNewFile(FolderPanel panel)
+    {
+        FolderPanel.CreateFile.CanExecute(null, panel).ShouldBeTrue();
+        FolderPanel.CreateFile.Execute(null, panel);
+        Layout(panel);
+    }
+
+    /// <summary>Runs New Folder on the panel, as the header button and the context menu do (INV-085).</summary>
+    internal static void StartNewFolder(FolderPanel panel)
+    {
+        FolderPanel.CreateFolder.CanExecute(null, panel).ShouldBeTrue();
+        FolderPanel.CreateFolder.Execute(null, panel);
+        Layout(panel);
+    }
+
+    /// <summary>The New Folder row being named, wherever in the tree it is, or null when there is none.</summary>
+    internal static FolderPanelRow? NewEntryRowOf(System.Collections.Generic.IEnumerable<FolderPanelRow> rows)
+    {
+        foreach (var row in rows)
+        {
+            if (row.IsNewEntry)
+            {
+                return row;
+            }
+
+            if (NewEntryRowOf(row.Children) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    internal static IEnumerable<FolderPanelRow> TopRows(FolderPanel panel) => panel.Items.Cast<FolderPanelRow>();
+
     /// <summary>Finds a row as the panel left it, without Expanding anything on the way.</summary>
     internal static TreeViewItem ExistingRow(FolderPanel panel, params string[] names)
     {
@@ -298,6 +360,19 @@ otes";
         public bool CanExecute(object? parameter) => true;
 
         public void Execute(object? parameter) => activated.Add((FolderEntry)parameter!);
+    }
+
+    internal sealed class RecordingNewEntries(List<NewEntryRequest> created) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => created.Add((NewEntryRequest)parameter!);
     }
 
     internal sealed class RecordingRenames(List<RenameFileRequest> renamed) : ICommand

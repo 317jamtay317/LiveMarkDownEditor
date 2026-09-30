@@ -143,7 +143,7 @@ public sealed class FolderWorkspaceViewModelDeleteFileTests
     {
         _reader.Result = relativePaths;
         var folder = new FolderWorkspaceViewModel(
-            _picker, _reader, _watcher, _dispatcher, _prompt, _deleter, new FakeFileRenamer(), new StubRenameFileNotice())
+            _picker, _reader, _watcher, _dispatcher, _prompt, _deleter, new FakeFileRenamer(), new StubRenameFileNotice(), new FakeEntryCreator(), new StubNewEntryNotice())
         {
             CloseFile = path =>
             {

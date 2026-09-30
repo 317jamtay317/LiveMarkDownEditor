@@ -137,7 +137,7 @@ public sealed class FolderWorkspaceViewModelFollowActiveSessionTests
     }
 
     private FolderWorkspaceViewModel Create() =>
-        new(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice())
+        new(_picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), new FakeFileRenamer(), new StubRenameFileNotice(), new FakeEntryCreator(), new StubNewEntryNotice())
         {
             OpenFile = path =>
             {
