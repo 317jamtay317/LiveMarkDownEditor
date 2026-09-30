@@ -15,6 +15,8 @@
 
     <SolidColorBrush x:Key="TextBrush" Color="#E6E6E9" />
     <SolidColorBrush x:Key="MutedTextBrush" Color="#8B8B95" />
+    <!-- An Ignored Folder Entry's name: VS Code's gitDecoration.ignoredResourceForeground (INV-084). -->
+    <SolidColorBrush x:Key="IgnoredTextBrush" Color="#8C8C8C" />
     <SolidColorBrush x:Key="BorderBrush" Color="#2E2E34" />
 
     <SolidColorBrush x:Key="AccentBrush" Color="#7C6CF0" />

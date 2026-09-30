@@ -191,7 +191,7 @@ public sealed class FolderWorkspaceViewModelRenameFileTests
     {
         _reader.Result = relativePaths;
         var folder = new FolderWorkspaceViewModel(
-            _picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), _renamer, _notice)
+            _picker, _reader, _watcher, _dispatcher, new StubDeleteFilePrompt(), new FakeFileDeleter(), _renamer, _notice, new FakeEntryCreator(), new StubNewEntryNotice())
         {
             FileRenamed = (path, newPath) =>
             {

@@ -9,13 +9,19 @@ namespace UI.Controls;
 /// panel-only <see cref="IsExpanded"/> state. The panel keeps its rows when the Folder Tree is
 /// rebuilt and changes only the rows whose entries were added or removed, so every other row keeps its
 /// Expanded state, its highlight and its place on screen (INV-044). Expanding or Collapsing a row is
-/// view-only and changes no document (INV-043).
+/// view-only and changes no document (INV-043). While New File or New Folder is naming an entry, one
+/// row of the panel is the <see cref="IsNewEntry"/> row: it stands for the entry that is not yet on
+/// disk, and a rebuild leaves it where it is (INV-085, INV-086).
 /// </summary>
 public sealed class FolderPanelRow : ObservableObject
 {
     private bool _isExpanded;
     private bool _isRenaming;
     private string _newName = string.Empty;
+
+    // The path segment a New Entry row sits under. No real name can hold a NUL, so no Folder Entry of
+    // the tree ever has the same path, and a rebuild never mistakes one for the other.
+    private const string NewEntrySegment = "\0new entry";
 
     /// <summary>Creates the row for a Folder Entry, with a row for each of its children, all Collapsed.</summary>
     /// <param name="entry">The Folder Entry the row shows.</param>
@@ -36,6 +42,22 @@ public sealed class FolderPanelRow : ObservableObject
 
     /// <summary>The entry's display name, shown as the row's label.</summary>
     public string Name => Entry.Name;
+
+    /// <summary>
+    /// Whether Git ignores the row's entry, so the panel dims its name (INV-084). It follows the entry
+    /// through every rebuild, so a changed <c>.gitignore</c> dims or undims the same row.
+    /// </summary>
+    public bool IsIgnored => Entry.IsIgnored;
+
+    /// <summary>
+    /// Whether this row is New File's or New Folder's name editor rather than an entry of the Folder
+    /// Tree: it stands for the entry being named, which is not on disk yet, and its <see cref="Kind"/> is
+    /// the kind being made (INV-085, INV-086).
+    /// </summary>
+    public bool IsNewEntry { get; private init; }
+
+    /// <summary>Whether the row's entry is a File — the rows Delete File and Rename File act on.</summary>
+    public bool IsFile => Kind == FolderEntryKind.File;
 
     /// <summary>The rows nested under this one: a Folder's children, folders before files, each A–Z. Empty for a File.</summary>
     public ObservableCollection<FolderPanelRow> Children { get; } = [];
@@ -61,13 +83,31 @@ public sealed class FolderPanelRow : ObservableObject
     }
 
     /// <summary>
-    /// The New Name being typed into the row's name editor for Rename File (INV-082), exactly as typed.
-    /// It starts as the File's current name each time editing starts.
+    /// The name being typed into the row's name editor, exactly as typed: the New Name for Rename File
+    /// (INV-082), which starts as the File's current name each time editing starts, or the Entry Name
+    /// for New Folder (INV-085), which starts empty.
     /// </summary>
     public string NewName
     {
         get => _newName;
         set => Set(ref _newName, value);
+    }
+
+    /// <summary>
+    /// The row for New File's or New Folder's name editor in the folder at <paramref name="parentPath"/>
+    /// (the root is the empty path), already editing an empty Entry Name (INV-085, INV-086).
+    /// </summary>
+    /// <param name="parentPath">The relative path of the Save Folder the new entry goes in.</param>
+    /// <param name="kind">What is being made: a File (New File) or a Folder (New Folder).</param>
+    /// <returns>The New Entry row.</returns>
+    internal static FolderPanelRow ForNewEntry(string parentPath, FolderEntryKind kind)
+    {
+        var path = parentPath.Length == 0 ? NewEntrySegment : $"{parentPath}/{NewEntrySegment}";
+        return new FolderPanelRow(new FolderEntry(kind, string.Empty, path, []))
+        {
+            IsNewEntry = true,
+            IsRenaming = true,
+        };
     }
 
     /// <summary>The row's name, which is what UI Automation and screen readers announce for it.</summary>
@@ -78,16 +118,19 @@ public sealed class FolderPanelRow : ObservableObject
     /// Brings <paramref name="rows"/> in line with a rebuilt level of the Folder Tree. A row whose entry
     /// has gone is removed. A row whose entry is still there is kept and updated in place, together with
     /// the rows beneath it. A new entry gets a new row in its place. A row is identified by its entry's
-    /// kind and relative path.
+    /// kind and relative path. A New Entry row is left exactly where it is, so the Entry Name being typed
+    /// survives a rebuild (INV-085, INV-086).
     /// </summary>
     /// <param name="rows">The rows of one level of the panel, updated in place.</param>
     /// <param name="entries">The same level of the rebuilt Folder Tree, in its order.</param>
     internal static void Sync(ObservableCollection<FolderPanelRow> rows, IReadOnlyList<FolderEntry> entries)
     {
+        // A New Entry row is not an entry of the tree: the tree's rows are synced around it, never moving it.
+        var pending = rows.FirstOrDefault(row => row.IsNewEntry);
         var present = entries.Select(KeyOf).ToHashSet();
         for (var index = rows.Count - 1; index >= 0; index--)
         {
-            if (!present.Contains(KeyOf(rows[index].Entry)))
+            if (!rows[index].IsNewEntry && !present.Contains(KeyOf(rows[index].Entry)))
             {
                 rows.RemoveAt(index);
             }
@@ -95,29 +138,43 @@ public sealed class FolderPanelRow : ObservableObject
 
         for (var index = 0; index < entries.Count; index++)
         {
+            var position = PositionOf(rows, pending, index);
             var key = KeyOf(entries[index]);
-            var existing = IndexOf(rows, key, from: index);
+            var existing = IndexOf(rows, key, from: position);
             if (existing < 0)
             {
-                rows.Insert(index, new FolderPanelRow(entries[index]));
+                rows.Insert(position, new FolderPanelRow(entries[index]));
                 continue;
             }
 
             // The Folder Tree's order is deterministic (INV-042), so a surviving row is normally already
             // in place. Moving it, rather than re-creating it, keeps its state if it ever is not.
-            if (existing != index)
+            if (existing != position)
             {
-                rows.Move(existing, index);
+                rows.Move(existing, position);
             }
 
-            rows[index].Update(entries[index]);
+            rows[position].Update(entries[index]);
         }
     }
 
     private void Update(FolderEntry entry)
     {
+        var wasIgnored = IsIgnored;
         Entry = entry;
+        if (wasIgnored != IsIgnored)
+        {
+            Raise(nameof(IsIgnored));
+        }
+
         Sync(Children, entry.Children);
+    }
+
+    // Where the tree's row at the given index sits among the rows: one further on once past the New Entry row.
+    private static int PositionOf(ObservableCollection<FolderPanelRow> rows, FolderPanelRow? pending, int index)
+    {
+        var pendingAt = pending is null ? -1 : rows.IndexOf(pending);
+        return pendingAt >= 0 && index >= pendingAt ? index + 1 : index;
     }
 
     private static int IndexOf(ObservableCollection<FolderPanelRow> rows, (FolderEntryKind, string) key, int from)

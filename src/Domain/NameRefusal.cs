@@ -1,13 +1,20 @@
 namespace Domain;
 
 /// <summary>
-/// A Rename Refusal: why a New Name cannot be used, so Rename File changes nothing and tells the user
-/// (INV-082).
+/// A Name Refusal: why a New Name or an Entry Name cannot be used, so Rename File, New File or New Folder changes
+/// nothing and tells the user (INV-082, INV-085, INV-086). Where a member speaks of the New Name, an Entry Name is
+/// refused for exactly the same reason.
 /// </summary>
-public enum RenameRefusal
+public enum NameRefusal
 {
     /// <summary>The New Name is empty once tidied: nothing but spaces and dots.</summary>
     Blank,
+
+    /// <summary>
+    /// The Entry Name starts with a separator (<c>/</c> or <c>\</c>), which would reach outside the
+    /// Folder Workspace rather than into the Save Folder (INV-085, INV-086).
+    /// </summary>
+    StartsWithSeparator,
 
     /// <summary>
     /// The New Name holds a character Windows forbids in a file name (<c>\ / : * ? " &lt; &gt; |</c>, or

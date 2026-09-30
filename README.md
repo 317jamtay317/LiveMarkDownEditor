@@ -143,21 +143,25 @@ headings, say — raises no conflict and no reload at all.
 ### Folder workspace — a lightweight knowledge base
 
 Open a folder and browse its Markdown files as a tree; double-click a file to open it in a tab. The tree
-**updates live** as files are added, renamed, or removed on disk — by you or any tool. Only Markdown
-files show and folders with none are hidden, so a repository or vault stays tidy. Your open folder
-reopens the next time you launch.
+**updates live** as files and folders are added, renamed, or removed on disk — by you or any tool. It
+shows a folder the way VS Code's Explorer does: **every folder** appears, even an empty one, alongside
+your Markdown files, while version-control stores such as `.git` stay hidden. Anything your
+`.gitignore` ignores — `node_modules`, `bin`, build output — is shown **dimmed** rather than hidden, so
+it is out of your way but still one click away. Your open folder reopens the next time you launch.
 
 **The tree follows your tabs.** Switch tabs and the file that tab is editing is highlighted in the
 tree — the folders above it open and it scrolls into view — so you can always see where the document
 you are reading lives. A tab holding a file from outside the open folder, or one you have not saved
 yet, leaves nothing highlighted.
 
-**New documents save into the folder you are browsing.** With a folder open, saving a new document
-opens the save dialog there rather than wherever Windows was last — and if you have a subfolder
-selected in the tree, it opens in that subfolder. Click a file instead and it opens beside that file.
-(Pick the folder after you have made the new document: changing tabs moves the highlight.)
-Nothing is redirected: it is only where the dialog starts, and a document that already has a file is
-saved where it lives.
+**New documents are made where you are browsing — and saved from the start.** Press **Ctrl+N** (or
+click the new-file icon at the top of the tree) with a folder or file selected, and a name box appears
+right in the tree, just like VS Code's **New File**: inside the selected folder, or beside the selected
+file. Type a name and press **Enter** — the `.md` is added for you, and `drafts/ideas` makes the
+`drafts` folder too — and the new file opens in a tab, ready to type into. With nothing selected (or no
+folder open), **Ctrl+N** asks where to save the new document first, starting in the open folder.
+Either way there is no "Untitled" to remember to save later. **Ctrl+Shift+S** (Save As) saves the
+current document somewhere else.
 
 **Delete files from the tree.** Right-click a file and choose **Delete file**, or select it and press
 **Delete**. You are always asked whether you are sure first, and the file goes to the Recycle Bin, so
@@ -170,6 +174,14 @@ file**, then type the new name right there in the tree. Press **Enter** (or clic
 name that can't be used, such as one another file in the folder already has, is explained and nothing
 changes, so a typo never overwrites another file. If the file is open in a tab, the tab stays open
 under the new name, unsaved changes and all. Folders cannot be renamed from the tree.
+
+**Create files and folders in the tree.** Click the **New file** or **New folder** button at the top of
+the tree, or right-click a folder, a file, or empty space and choose **New file** or **New folder**, then
+type the name right there. It goes inside
+the folder you have selected, beside the file you have selected, or at the top of the open folder when
+nothing is — just as in VS Code. Press **Enter** (or click away) to create it, or **Escape** to change
+your mind. A name that can't be used, such as one already taken in that folder, is explained and
+nothing is created. The new folder is highlighted, so a new document you save next goes straight into it.
 
 ![The folder workspace](docs/images/folder-workspace.png)
 
@@ -243,6 +255,7 @@ And there is a **dark theme**.
 | | |
 | --- | --- |
 | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` | New · Open · Save |
+| `Ctrl+Shift+S` | Save As |
 | `Ctrl+W` | Close tab |
 | `Ctrl+1`…`Ctrl+6` / `Ctrl+0` | Heading level 1–6 · back to paragraph |
 | `Ctrl+B` / `Ctrl+I` | Bold · Italic |

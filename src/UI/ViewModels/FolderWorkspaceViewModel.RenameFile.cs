@@ -98,11 +98,11 @@ public sealed partial class FolderWorkspaceViewModel
 
     private static string ReasonFor(FileRename rename) => rename.Refusal switch
     {
-        RenameRefusal.Blank => "A file name can’t be blank.",
-        RenameRefusal.InvalidCharacter =>
+        NameRefusal.Blank => "A file name can’t be blank.",
+        NameRefusal.InvalidCharacter =>
             "A file name can’t contain any of these characters: \\ / : * ? \" < > |",
-        RenameRefusal.ReservedName => $"“{rename.NewName}” is a name Windows keeps for itself, so no file can have it.",
-        RenameRefusal.NameTaken => $"There is already a file or folder named “{rename.NewName}” here.",
+        NameRefusal.ReservedName => $"“{rename.NewName}” is a name Windows keeps for itself, so no file can have it.",
+        NameRefusal.NameTaken => $"There is already a file or folder named “{rename.NewName}” here.",
         _ => $"“{rename.File.Name}” could not be renamed.",
     };
 }

@@ -6,10 +6,10 @@ using Xunit;
 namespace Domain.Tests;
 
 /// <summary>
-/// Tests for <see cref="FolderWorkspace"/> and <see cref="FolderEntry"/> — the pruned, ordered,
-/// Markdown-only Folder Tree a Folder Workspace presents (INV-042). The builder is pure: it takes the
-/// root and the set of root-relative, <c>/</c>-separated file paths beneath it and yields a
-/// deterministic tree.
+/// Tests for <see cref="FolderWorkspace"/> and <see cref="FolderEntry"/> — the ordered Folder Tree a
+/// Folder Workspace presents: every folder but an Excluded Folder, only Markdown files (INV-042), with
+/// what Git ignores marked Ignored (INV-084). The builder is pure: it takes the root and its Folder
+/// Listing of root-relative, <c>/</c>-separated paths and yields a deterministic tree.
 /// </summary>
 public sealed class FolderWorkspaceTests
 {
@@ -84,11 +84,100 @@ public sealed class FolderWorkspaceTests
     }
 
     [Fact]
-    public void From_PrunesFoldersWithNoMarkdownBeneath_INV042()
+    public void From_KeepsAFolderHoldingOnlyOtherFiles_INV042()
     {
         var workspace = FolderWorkspace.From(Root, ["docs/readme.txt", "assets/logo.png", "notes/a.md"]);
 
+        Flatten(workspace).ShouldBe(["Folder assets", "Folder docs", "Folder notes", "File notes/a.md"]);
+    }
+
+    [Fact]
+    public void From_KeepsAnEmptyFolder_INV042()
+    {
+        var workspace = FolderWorkspace.From(Root, new FolderListing(["drafts", "notes"], ["notes/a.md"]));
+
+        Flatten(workspace).ShouldBe(["Folder drafts", "Folder notes", "File notes/a.md"]);
+        workspace.Entries[0].Children.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void From_KeepsAnEmptyFolderNestedInAnother_INV042()
+    {
+        var workspace = FolderWorkspace.From(Root, new FolderListing(["a", "a/b", "a/b/empty"], []));
+
+        Flatten(workspace).ShouldBe(["Folder a", "Folder a/b", "Folder a/b/empty"]);
+    }
+
+    [Fact]
+    public void From_ListsAFolderOnce_WhenTheListingNamesItAndAFileInIt_INV042()
+    {
+        var workspace = FolderWorkspace.From(Root, new FolderListing(["notes"], ["notes/a.md", "notes/b.md"]));
+
+        Flatten(workspace).ShouldBe(["Folder notes", "File notes/a.md", "File notes/b.md"]);
+    }
+
+    [Fact]
+    public void From_ListsAFolderAFilePassesThrough_EvenWhenTheListingDoesNotNameIt_INV042()
+    {
+        var workspace = FolderWorkspace.From(Root, new FolderListing([], ["a/b/note.md"]));
+
+        Flatten(workspace).ShouldBe(["Folder a", "Folder a/b", "File a/b/note.md"]);
+    }
+
+    [Theory]
+    [InlineData(".git")]
+    [InlineData(".svn")]
+    [InlineData(".hg")]
+    [InlineData(".jj")]
+    [InlineData(".GIT")]
+    public void From_OmitsAnExcludedFolder_AndEverythingBeneathIt_INV042(string excluded)
+    {
+        var listing = new FolderListing(
+            [excluded, $"{excluded}/objects", "notes"],
+            [$"{excluded}/description.md", $"{excluded}/objects/x.md", "notes/a.md"]);
+
+        var workspace = FolderWorkspace.From(Root, listing);
+
         Flatten(workspace).ShouldBe(["Folder notes", "File notes/a.md"]);
+    }
+
+    [Fact]
+    public void From_OmitsAnExcludedFolder_AtAnyDepth_INV042()
+    {
+        var listing = new FolderListing(["vendor", "vendor/lib", "vendor/lib/.git"], ["vendor/lib/.git/HEAD.md"]);
+
+        var workspace = FolderWorkspace.From(Root, listing);
+
+        Flatten(workspace).ShouldBe(["Folder vendor", "Folder vendor/lib"]);
+    }
+
+    [Theory]
+    [InlineData("git")]
+    [InlineData(".github")]
+    [InlineData(".gitlab")]
+    [InlineData(".obsidian")]
+    [InlineData("node_modules")]
+    public void From_KeepsAFolderThatIsNotExcluded_EvenWhenItsNameIsCloseToOne_INV042(string name)
+    {
+        var workspace = FolderWorkspace.From(Root, new FolderListing([name], []));
+
+        Flatten(workspace).ShouldBe([$"Folder {name}"]);
+    }
+
+    [Theory]
+    [InlineData(".git", true)]
+    [InlineData(".Hg", true)]
+    [InlineData(".github", false)]
+    [InlineData("src", false)]
+    public void IsExcluded_NamesTheVersionControlStores_INV042(string name, bool excluded)
+    {
+        FolderListing.IsExcluded(name).ShouldBe(excluded);
+    }
+
+    [Fact]
+    public void From_GivenANullListing_Throws_INV042()
+    {
+        Should.Throw<ArgumentNullException>(() => FolderWorkspace.From(Root, (FolderListing)null!));
     }
 
     [Fact]
@@ -130,11 +219,11 @@ public sealed class FolderWorkspaceTests
     }
 
     [Fact]
-    public void From_GivenNoMarkdown_HasNoEntries_INV042()
+    public void From_GivenNoMarkdown_ListsOnlyTheFolders_INV042()
     {
         var workspace = FolderWorkspace.From(Root, ["readme.txt", "img/logo.png"]);
 
-        workspace.Entries.ShouldBeEmpty();
+        Flatten(workspace).ShouldBe(["Folder img"]);
     }
 
     [Fact]
@@ -164,7 +253,7 @@ public sealed class FolderWorkspaceTests
     [Fact]
     public void From_GivenNullPaths_Throws_INV042()
     {
-        Should.Throw<ArgumentNullException>(() => FolderWorkspace.From(Root, null!));
+        Should.Throw<ArgumentNullException>(() => FolderWorkspace.From(Root, (IEnumerable<string>)null!));
     }
 
     [Theory]

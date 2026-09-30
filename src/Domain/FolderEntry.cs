@@ -36,6 +36,15 @@ public sealed record FolderEntry
     /// <summary>The entry's path relative to the Folder Workspace root, <c>/</c>-separated.</summary>
     public string RelativePath { get; }
 
-    /// <summary>The child Folder Entries — folders before files, each ordered A–Z. Empty for a File.</summary>
+    /// <summary>
+    /// The child Folder Entries — folders before files, each ordered A–Z. Empty for a File, and for a
+    /// Folder that holds nothing the Folder Tree shows (INV-042).
+    /// </summary>
     public IReadOnlyList<FolderEntry> Children { get; }
+
+    /// <summary>
+    /// Whether the Git repository holding the root ignores this entry, or a Folder above it (INV-084).
+    /// An Ignored entry is shown dimmed, never hidden, and behaves exactly as any other.
+    /// </summary>
+    public bool IsIgnored { get; init; }
 }

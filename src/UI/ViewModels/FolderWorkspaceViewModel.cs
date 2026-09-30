@@ -13,7 +13,8 @@ namespace UI.ViewModels;
 /// <see cref="OpenFile"/> callback that opens it in a Tab. The tree tracks the disk live (INV-044), and
 /// the open root is persisted and Restored across runs (INV-045). Its two actions that are not
 /// browsing are Delete File, which removes a File from disk only once the user confirms (INV-081),
-/// and Rename File, which gives a File a New Name only once the user commits one (INV-082). It is
+/// Rename File, which gives a File a New Name only once the user commits one (INV-082), and New File
+/// and New Folder, which create an entry only once the user commits its Entry Name (INV-085, INV-086). It is
 /// composed as a child of the <see cref="WorkspaceViewModel"/>, alongside the Appearance and Export
 /// ViewModels.
 /// </summary>
@@ -27,6 +28,8 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
     private readonly IFileDeleter _deleter;
     private readonly IFileRenamer _renamer;
     private readonly IRenameFileNotice _renameNotice;
+    private readonly IEntryCreator _entryCreator;
+    private readonly INewEntryNotice _newEntryNotice;
 
     private FolderWorkspace? _folder;
     private FolderEntry? _selectedEntry;
@@ -34,13 +37,15 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
 
     /// <summary>Creates the Folder Workspace shell.</summary>
     /// <param name="picker">Prompts for a folder to open (INV-043).</param>
-    /// <param name="reader">Enumerates the Markdown Documents beneath a folder (INV-042).</param>
+    /// <param name="reader">Reads the Folder Listing beneath a folder (INV-042, INV-084).</param>
     /// <param name="watcher">Watches the open folder for structural change, driving live refresh (INV-044).</param>
     /// <param name="dispatcher">Marshals the watcher's background notification onto the UI thread.</param>
     /// <param name="deletePrompt">Asks whether the user is sure before Delete File (INV-081).</param>
     /// <param name="deleter">Deletes a File from disk by sending it to the Recycle Bin (INV-081).</param>
     /// <param name="renamer">Gives a File its New Name on disk, never overwriting (INV-082).</param>
     /// <param name="renameNotice">Tells the user why a Rename File renamed nothing (INV-082).</param>
+    /// <param name="entryCreator">Creates New File's and New Folder's empty entry on disk, never overwriting (INV-085, INV-086).</param>
+    /// <param name="newEntryNotice">Tells the user why a New File or New Folder created nothing (INV-085, INV-086).</param>
     public FolderWorkspaceViewModel(
         IFolderPicker picker,
         IMarkdownFolderReader reader,
@@ -49,7 +54,9 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
         IDeleteFilePrompt deletePrompt,
         IFileDeleter deleter,
         IFileRenamer renamer,
-        IRenameFileNotice renameNotice)
+        IRenameFileNotice renameNotice,
+        IEntryCreator entryCreator,
+        INewEntryNotice newEntryNotice)
     {
         _picker = picker ?? throw new ArgumentNullException(nameof(picker));
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
@@ -59,6 +66,8 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
         _deleter = deleter ?? throw new ArgumentNullException(nameof(deleter));
         _renamer = renamer ?? throw new ArgumentNullException(nameof(renamer));
         _renameNotice = renameNotice ?? throw new ArgumentNullException(nameof(renameNotice));
+        _entryCreator = entryCreator ?? throw new ArgumentNullException(nameof(entryCreator));
+        _newEntryNotice = newEntryNotice ?? throw new ArgumentNullException(nameof(newEntryNotice));
 
         _watcher.Changed += OnWatcherChanged;
 
@@ -67,6 +76,8 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
         ActivateEntryCommand = new AsyncRelayCommand<FolderEntry>(ActivateAsync);
         DeleteEntryCommand = new AsyncRelayCommand<FolderEntry>(DeleteAsync, CanDelete);
         RenameEntryCommand = new AsyncRelayCommand<RenameFileRequest>(RenameAsync, CanRename);
+        NewFolderCommand = new AsyncRelayCommand<NewEntryRequest>(NewFolderAsync, CanCreate);
+        NewFileCommand = new AsyncRelayCommand<NewEntryRequest>(NewFileAsync, CanCreate);
         ToggleFolderPanelCommand = new RelayCommand(ToggleFolderPanel);
     }
 
@@ -192,8 +203,8 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
 
         try
         {
-            var files = await _reader.EnumerateMarkdownFilesAsync(root).ConfigureAwait(true);
-            Folder = FolderWorkspace.From(root, files);
+            var listing = await _reader.ReadListingAsync(root).ConfigureAwait(true);
+            Folder = FolderWorkspace.From(root, listing);
         }
         catch (IOException)
         {
@@ -256,12 +267,12 @@ public sealed partial class FolderWorkspaceViewModel : ObservableObject, IDispos
 
     private async Task LoadRootAsync(string rootPath)
     {
-        var files = await _reader.EnumerateMarkdownFilesAsync(rootPath).ConfigureAwait(true);
+        var listing = await _reader.ReadListingAsync(rootPath).ConfigureAwait(true);
 
         // A different root is a different tree, so nothing in the old one stays selected — but the new
         // one highlights the Active Session's File when it holds it (INV-083).
         SelectedEntry = null;
-        Folder = FolderWorkspace.From(rootPath, files);
+        Folder = FolderWorkspace.From(rootPath, listing);
         FollowActiveFile();
         _watcher.StopWatching();
         _watcher.Watch(rootPath);
