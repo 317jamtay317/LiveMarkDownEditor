@@ -445,23 +445,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     private bool CanSaveActive() =>
         ActiveSession is not null && (ActiveSession.HasUnsavedEdits || ActiveSession.FilePath is null);
 
-    private async Task<bool> TrySaveAsync(EditorSessionViewModel session)
-    {
-        // A Tab that has no Watched File yet is saved wherever the user is browsing: the open Folder
-        // Workspace's Save Folder (INV-080). One that already has a file is saved where it lives.
-        var path = session.FilePath
-                   ?? _filePicker.PickSave(suggestedFileName: "Untitled.md", folder: Folder.SaveFolder);
-        if (path is null)
-        {
-            return false;
-        }
-
-        await session.SaveAsync(path).ConfigureAwait(true);
-        RememberRecent(path);
-        await PersistStateAsync().ConfigureAwait(true);
-        return true;
-    }
-
     private void RemoveSession(EditorSessionViewModel session)
     {
         // Tab order spans both rows, so the neighbour a closing Tab hands activation to may be in the

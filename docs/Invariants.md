@@ -929,7 +929,8 @@ and tested.
 ### INV-044 — A Folder Workspace tracks its root live
 - **Statement:** While a Folder Workspace is open, a Markdown Document or a folder added, removed, or
   renamed anywhere under its root — or a `.gitignore` or `.git/info/exclude` changed, which changes
-  what is Ignored (INV-084) — updates the Folder Tree to match — re-enumerated and rebuilt by the same
+  what is Ignored (INV-084), including those *above* a root nested inside a Git repository — updates
+  the Folder Tree to match — re-enumerated and rebuilt by the same
   deterministic projection (INV-042) — without changing any Markdown Document or Editor Session. It is
   the Folder-Workspace counterpart of INV-007's live reload, but view-only: the tree follows the disk,
   nothing is edited. A burst of filesystem events (an editor or tool often emits several for one
@@ -946,7 +947,8 @@ and tested.
   the UI thread through `IUiDispatcher`, and re-running its reader-and-rebuild (its `RefreshCommand`);
   the `FileSystemFolderWatcher` adapter — a recursive `FileSystemWatcher` with a debounce, mirroring
   `FileSystemDocumentWatcher` — whose `FileSystemFolderWatcher.IsTreeChange` rule decides which events
-  rebuild the tree. The user's place is kept by the `FolderPanel` Control, which lists its
+  rebuild the tree, and which also watches each file `FileSystemFolderWatcher.IgnoreSourcesAbove` names
+  for a nested root. The user's place is kept by the `FolderPanel` Control, which lists its
   own `FolderPanelRow`s rather than the Folder Entries themselves. `FolderPanelRow.Sync` applies each
   rebuild of the same root to those rows as a change: a row whose entry has gone is removed, a new
   entry gets a new row in its place, and every other row is kept and updated in place, so WPF never
@@ -956,8 +958,10 @@ and tested.
 - **Tested by:** `FolderWorkspaceViewModelTests.*_INV044` (a `Changed` from a fake watcher re-reads the
   folder and the Folder Tree reflects the new file set, changing no document),
   `FileSystemFolderWatcherTests.*_INV044` (a Markdown file or a folder added, removed or renamed, and a
-  changed `.gitignore` or `.git/info/exclude`, rebuild the tree; a saved Markdown file and Git's own
-  writes inside `.git` do not) and `FolderPanelTests.*_INV044`, run against a virtualized panel as the real one is (a rebuild keeps an
+  changed `.gitignore` or `.git/info/exclude`, rebuild the tree — for a root nested in a repository,
+  also a `.gitignore` above it and the repository's `.git/info/exclude`, over real file-system events;
+  a saved Markdown file, another file above the root, and Git's own writes inside `.git` do not) and
+  `FolderPanelTests.*_INV044`, run against a virtualized panel as the real one is (a rebuild keeps an
   Expanded Folder, a nested Expanded Folder, and a Collapsed Folder as they were; keeps the very same
   row for an unchanged entry, the highlighted row highlighted, and the scroll offset; lists exactly the
   new Folder Tree after additions, removals, and renames; a different root starts Collapsed).
@@ -2298,7 +2302,9 @@ and tested.
   without the user going to find it. Five rules bound it:
   - **Changing the Active Session changes the highlight.** Selecting a Tab follows it, and so does
     every other way a Tab becomes the Active Session: opening a document, activating a File in the
-    Folder Panel itself, and Restoring the last run's Tabs.
+    Folder Panel itself, and Restoring the last run's Tabs. So does the Active Session getting a
+    different file without a change of Tab — Save As (INV-088), or saving an untitled Tab — once the
+    Folder Tree has been refreshed to hold it.
   - **Only a File the Folder Tree holds.** The Watched File is followed only when it resolves to a
     File of the open Folder Tree, compared as absolute paths without regard to capitals (as INV-009
     compares them). A document outside the open root has no row to highlight.
@@ -2355,7 +2361,9 @@ and tested.
     a Git that fails or takes too long each leave nothing Ignored, rather than failing to open the
     folder. The Folder Tree is still built.
   - **It follows the disk.** A changed `.gitignore` or `.git/info/exclude` rebuilds the tree, so an
-    entry becomes Ignored, or stops being, without the user reopening the folder (INV-044).
+    entry becomes Ignored, or stops being, without the user reopening the folder (INV-044). For a root
+    opened inside a repository, that includes every `.gitignore` above it up to the repository's root,
+    and the repository's own `.git/info/exclude`.
 - **Why:** Showing every folder (INV-042) brings build output, package caches and other generated
   folders into the tree. Hiding them would hide real folders from the user; dimming them says "this is
   not your content" while leaving it one click away — which is what VS Code does, so it is what a user
@@ -2373,7 +2381,9 @@ and tested.
   changes it updates the same row);
   `GitIgnoreCheckerTests.*_INV084` (ignored folders and files, a file inside an ignored folder, a `!`
   negation, a tracked file, a root that is not a repository, and a root nested inside one); and
-  `FileSystemMarkdownFolderReaderTests.*_INV084` (the listing names what Git ignores).
+  `FileSystemMarkdownFolderReaderTests.*_INV084` (the listing names what Git ignores); and
+  `FileSystemFolderWatcherTests.IgnoreSourcesAbove_*_INV084` (the ignore files above a nested root; none
+  for a repository's root or outside any repository).
 
 ### INV-085 — New Folder creates an empty Folder in the Save Folder, only when the user commits a valid Entry Name
 - **Statement:** New Folder creates an empty folder on disk. It is one of the Folder Panel actions that
@@ -2488,15 +2498,18 @@ and tested.
 - **Statement:** Save As (Ctrl+Shift+S) always prompts, even for a Tab with a Watched File: the prompt
   opens in that file's own folder with its name, or in the Save Folder for a Tab without one (INV-080).
   The Tab's text is saved to the picked file, and the Tab then holds and watches it (INV-007); the file
-  it had before is left on disk as it was. Cancelling saves nothing. Picking a file another Tab holds
+  it had before is left on disk as it was. The Folder Panel Follows the Tab to its new file (INV-083) —
+  highlighting it, or nothing when it lies outside the open root — so the Save Folder the next New
+  Document uses names where the document now lives. Cancelling saves nothing. Picking a file another Tab holds
   saves nothing and brings that Tab forward instead, so the user sees at once why, and one file is never
   open in two Tabs (INV-009). Picking the Tab's own file is a plain save.
 - **Why:** With New Document saving into the folder being browsed (INV-087), Save As is the one way to
   put a document somewhere else — as in every editor.
 - **Enforced by:** `WorkspaceViewModel.SaveAsActiveAsync` and its `SaveAsCommand`, bound to Ctrl+Shift+S.
 - **Tested by:** `WorkspaceViewModelNewDocumentTests.SaveAs*_INV088` (the prompt's folder and name for a
-  Tab with and without a file; the Tab holds the picked file and the old one is untouched; cancelling;
-  a file another Tab holds; available with nothing unsaved).
+  Tab with and without a file; the Tab holds the picked file and the old one is untouched; the tree
+  highlights the new file, or nothing outside the open root; cancelling; a file another Tab holds;
+  available with nothing unsaved) and `WorkspaceViewModelNewDocumentTests.Save_AnUntitledTab_*_INV080_INV083`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

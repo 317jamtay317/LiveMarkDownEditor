@@ -4,9 +4,10 @@ using System.Windows.Input;
 namespace UI.ViewModels;
 
 /// <summary>
-/// New Document and Save As. A new Markdown Document always has its file from the start: New File in
-/// place in the Folder Panel while a Folder Entry is selected, otherwise the save prompt asks first
-/// (INV-087). Save As saves the Active Session to a file the user picks (INV-088).
+/// New Document, Save and Save As. A new Markdown Document always has its file from the start: New File
+/// in place in the Folder Panel while a Folder Entry is selected, otherwise the save prompt asks first
+/// (INV-087). Save As saves the Active Session to a file the user picks (INV-088). Whenever a save gives
+/// a Tab a different file, the Folder Panel Follows it there (INV-083).
 /// </summary>
 public sealed partial class WorkspaceViewModel
 {
@@ -90,8 +91,47 @@ public sealed partial class WorkspaceViewModel
         }
 
         await session.SaveAsync(path).ConfigureAwait(true);
+        await FollowSavedAsync(session).ConfigureAwait(true);
         RememberRecent(path);
         await PersistStateAsync().ConfigureAwait(true);
+    }
+
+    private async Task<bool> TrySaveAsync(EditorSessionViewModel session)
+    {
+        // A Tab that has no Watched File yet is saved wherever the user is browsing: the open Folder
+        // Workspace's Save Folder (INV-080). One that already has a file is saved where it lives.
+        var isNewFile = session.FilePath is null;
+        var path = session.FilePath
+                   ?? _filePicker.PickSave(suggestedFileName: UntitledFileName, folder: Folder.SaveFolder);
+        if (path is null)
+        {
+            return false;
+        }
+
+        await session.SaveAsync(path).ConfigureAwait(true);
+        if (isNewFile)
+        {
+            await FollowSavedAsync(session).ConfigureAwait(true);
+        }
+
+        RememberRecent(path);
+        await PersistStateAsync().ConfigureAwait(true);
+        return true;
+    }
+
+    // A save that gave the Tab a different file changes FilePath without changing the Active Session, so
+    // the setter that Follows it never runs. Refresh the Folder Tree to hold the new file, then Follow the
+    // file explicitly — highlighting it in the tree, or nothing when it lies outside the open root — so
+    // the highlight, and the Save Folder the next New Document uses, name where it now lives (INV-083).
+    private async Task FollowSavedAsync(EditorSessionViewModel session)
+    {
+        if (session != ActiveSession)
+        {
+            return;
+        }
+
+        await Folder.RefreshAsync().ConfigureAwait(true);
+        Folder.FollowActiveSession(session.FilePath);
     }
 
     // Brings forward the Tab — other than the given one — that already holds the file at the path, so one

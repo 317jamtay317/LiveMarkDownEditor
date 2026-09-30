@@ -221,6 +221,49 @@ public sealed class WorkspaceViewModelNewDocumentTests
     }
 
     [Fact]
+    public async Task SaveAs_IntoTheOpenFolder_HighlightsTheNewFile_INV088_INV083()
+    {
+        var workspace = await OpenVaultAsync("sub/note.md");
+        _store.Seed(VaultPath(@"sub\note.md"), "# Note");
+        await workspace.OpenPathAsync(VaultPath(@"sub\note.md"));
+        workspace.Folder.SelectedEntry!.RelativePath.ShouldBe("sub/note.md");
+        _picker.SaveResult = VaultPath("copy.md");
+        _folderReader.Result = ["copy.md", "sub/note.md"]; // the disk, once Save As has written the copy
+
+        await workspace.SaveAsActiveAsync();
+
+        workspace.Folder.SelectedEntry!.RelativePath.ShouldBe("copy.md");
+        workspace.Folder.SaveFolder.ShouldBe(System.IO.Path.GetFullPath(Vault));
+    }
+
+    [Fact]
+    public async Task SaveAs_OutsideTheOpenFolder_LeavesNothingHighlighted_INV088_INV083()
+    {
+        var workspace = await OpenVaultAsync("sub/note.md");
+        _store.Seed(VaultPath(@"sub\note.md"), "# Note");
+        await workspace.OpenPathAsync(VaultPath(@"sub\note.md"));
+        _picker.SaveResult = @"C:\elsewhere\copy.md";
+
+        await workspace.SaveAsActiveAsync();
+
+        workspace.Folder.SelectedEntry.ShouldBeNull();
+        workspace.Folder.SaveFolder.ShouldBe(System.IO.Path.GetFullPath(Vault));
+    }
+
+    [Fact]
+    public async Task Save_AnUntitledTab_IntoTheOpenFolder_HighlightsTheFile_INV080_INV083()
+    {
+        var workspace = await OpenVaultAsync("top.md");
+        workspace.ActiveSession = workspace.Sessions[0]; // the untitled Tab the Workspace starts with
+        _picker.SaveResult = VaultPath("ideas.md");
+        _folderReader.Result = ["ideas.md", "top.md"];
+
+        await workspace.SaveActiveAsync();
+
+        workspace.Folder.SelectedEntry!.RelativePath.ShouldBe("ideas.md");
+    }
+
+    [Fact]
     public async Task SaveAs_WhenCancelled_SavesNothing_INV088()
     {
         _store.Seed(NotePath, "# Note");
