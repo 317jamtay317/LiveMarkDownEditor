@@ -132,7 +132,8 @@ public static class Program
                 () => OpenForwardedDocument(window, workspace, path)));
 
             // Restore the previous session's Tabs and Recent Files, then open any Startup Document on
-            // top of them (INV-037, INV-020). Queued so it runs once the dispatcher starts pumping.
+            // top of them, with its folder in the Folder Panel (INV-037, INV-020, INV-089). Queued so it
+            // runs once the dispatcher starts pumping.
             application.Dispatcher.InvokeAsync(async () =>
             {
                 await workspace.RestoreAsync();
@@ -174,14 +175,15 @@ public static class Program
         window.Activate();
     }
 
-    // Opens a Startup Document into the Workspace, tolerating a path that no longer exists.
+    // Opens a Startup Document into the Workspace and its folder in the Folder Panel (INV-089),
+    // tolerating a path that no longer exists.
     private static async void OpenDocument(WorkspaceViewModel workspace, string path)
     {
         try
         {
             if (File.Exists(path))
             {
-                await workspace.OpenPathAsync(path);
+                await workspace.OpenStartupDocumentAsync(path);
             }
         }
         catch (Exception exception)
