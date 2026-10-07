@@ -307,60 +307,6 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Restores the Workspace from the last run: reopens the Watched Files that were open — skipping
-    /// any that have since gone — loads the Recent Files, and puts every Dockable Panel back in the
-    /// Placement it was left in (INV-067). Only saved documents are restored; an unsaved Tab was never
-    /// persisted (INV-037). Call once at startup.
-    /// </summary>
-    public async Task RestoreAsync()
-    {
-        var state = _stateStore.Load();
-        _recent = Domain.RecentFiles.From(state.RecentFiles);
-        Raise(nameof(RecentFiles));
-
-        // Reopen the Folder Workspace that was open last run, skipping a root that has gone (INV-045).
-        await Folder.RestoreAsync(state.WorkspaceFolder).ConfigureAwait(true);
-
-        // Put every Dockable Panel back where the last run left it. After the folder, because opening
-        // one shows its Folder Panel — the persisted layout has the last word on that (INV-067).
-        RestorePanelLayout(state.Panels);
-
-        // The empty Tab the constructor seeds is a placeholder; replace it if we restore real Tabs.
-        var seeded = Sessions;
-        var placeholder = seeded.Count == 1 && seeded[0].FilePath is null && !seeded[0].HasUnsavedEdits
-            ? seeded[0]
-            : null;
-
-        _isRestoring = true;
-        try
-        {
-            foreach (var path in state.OpenDocuments)
-            {
-                try
-                {
-                    await OpenPathAsync(path).ConfigureAwait(true);
-                }
-                catch (IOException)
-                {
-                    // A Watched File that has gone is simply not restored (INV-037).
-                }
-            }
-        }
-        finally
-        {
-            _isRestoring = false;
-        }
-
-        if (placeholder is not null && Sessions.Count > 1)
-        {
-            RemoveSession(placeholder);
-        }
-
-        // Put the Pinned Row back as the last run left it, after every Tab is open (INV-071).
-        RestorePinnedTabs(state.PinnedDocuments);
-    }
-
-    /// <summary>
     /// Persists the Workspace: the open Tabs' Watched File paths (unsaved Tabs are skipped), the
     /// Recent Files, the open Folder Workspace's root, and the Panel Layout, so the next run can
     /// restore them (INV-037, INV-045, INV-067).

@@ -333,7 +333,8 @@ and tested.
   instance — whose Workspace opens it, or activates its existing Tab (INV-009) — and no second
   editor window appears (Single Instance). The holder is reachable the moment it starts listening —
   a launch that forwards while the holder is still starting up is heard, not dropped. Either way the
-  Folder Panel opens on the folder the Startup Document lives in (INV-089).
+  Folder Panel opens on the folder the Startup Document lives in (INV-089); a launch that opens one
+  does not reopen the previous run's Tabs (INV-090).
 - **Enforced by:** `StartupArguments` (parsing the Startup Document from the command line),
   `WorkspaceViewModel.OpenPathAsync` (the same dedupe-and-load path the file picker uses), and the
   `SingleInstanceGuard` (a named mutex plus named pipe that forwards the path to the first instance) —
@@ -2539,6 +2540,31 @@ and tested.
   `FolderPanel` can highlight only a row it has laid out; `Program` routes both the launch's and a
   forwarded Startup Document through it.
 - **Tested by:** `WorkspaceViewModelStartupDocumentTests.*_INV089`.
+
+### INV-090 — Launching with a Startup Document does not Restore the previous run's Tabs
+- **Statement:** When the editor is launched with a Startup Document (INV-020) — the user double-clicked
+  an `.md` file while the editor was not running — that document opens on its own: the previous run's
+  Tabs, and their pins, are not reopened. Four rules bound it:
+  - **The rest of the Workspace State is still Restored.** The Recent Files, the Panel Layout, and the
+    Folder Workspace's root come back as in any Restore (INV-037, INV-045, INV-067); INV-089 then keeps
+    that root or opens the Startup Document's folder instead.
+  - **The Startup Document takes the placeholder's place.** The Workspace holds exactly one Tab — the
+    Startup Document, as the Active Session — with no empty Tab beside it (INV-008).
+  - **Only at launch.** A Startup Document forwarded to the running editor joins the Tabs already open
+    (INV-020); none of them is closed.
+  - **A Startup Document that fails to open Restores as usual.** A launch whose Startup Document cannot
+    be opened reopens the previous run's Tabs exactly as a launch without one would, so a bad path never
+    costs the user their Tabs.
+- **Why:** This is what VS Code does. Its default `window.restoreWindows` (`all`) reopens the previous
+  session *unless* a file is opened from the command line — which is how the shell opens a
+  double-clicked file — and then shows that file without the previously open editors. Reopening the
+  last run's Tabs around a file the user just double-clicked, often from an unrelated folder, buries
+  the document they asked for among ones they did not.
+- **Enforced by:** `WorkspaceViewModel.RestoreForStartupDocumentAsync`, which Restores everything but
+  the Tabs, opens the Startup Document through `OpenStartupDocumentAsync` (INV-089), removes the
+  placeholder Tab, and falls back to reopening the persisted Tabs when the open fails; `Program` calls
+  it instead of `RestoreAsync` when it was launched with a Startup Document that exists.
+- **Tested by:** `WorkspaceViewModelStartupDocumentTests.*_INV090`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

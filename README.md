@@ -150,7 +150,10 @@ your Markdown files, while version-control stores such as `.git` stay hidden. An
 it is out of your way but still one click away. Your open folder reopens the next time you launch.
 
 **Double-click a `.md` file in Windows Explorer** and the tree opens on the folder it lives in, with the
-file highlighted. If the folder you already have open contains the file, that folder stays open.
+file highlighted. If the folder you already have open contains the file, that folder stays open. Like
+VS Code, a file you double-click while the editor is closed opens **on its own** — the tabs from
+last time are not reopened around it. Launch the editor without a file and your tabs come back as you
+left them.
 
 **The tree follows your tabs.** Switch tabs and the file that tab is editing is highlighted in the
 tree — the folders above it open and it scrolls into view — so you can always see where the document

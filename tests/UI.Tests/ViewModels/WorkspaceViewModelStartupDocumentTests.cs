@@ -1,4 +1,5 @@
 using System.IO;
+using Application;
 using Infrastructure.Markdown;
 using Shouldly;
 using UI.Tests.TestDoubles;
@@ -10,7 +11,8 @@ namespace UI.Tests.ViewModels;
 /// <summary>
 /// Tests for how opening a Startup Document brings the Folder Panel to where the file lives (INV-089):
 /// its folder becomes the Folder Workspace unless the open Folder Tree already holds it, the panel is
-/// shown and highlights the file, and a document that fails to open changes no folder.
+/// shown and highlights the file, and a document that fails to open changes no folder. Also how a launch
+/// with a Startup Document Restores everything but the previous run's Tabs (INV-090).
 /// </summary>
 public sealed class WorkspaceViewModelStartupDocumentTests
 {
@@ -29,6 +31,8 @@ public sealed class WorkspaceViewModelStartupDocumentTests
     private static string StartupPath => Path.GetFullPath(@"C:\docs\notes\readme.md");
 
     private static string VaultSecondPath => Path.GetFullPath(@"C:\vault\sub\second.md");
+
+    private static string PreviousPath => Path.GetFullPath(@"C:\elsewhere\previous.md");
 
     [Fact]
     public async Task OpenStartupDocument_WithNoFolderOpen_OpensItsFolder_INV089()
@@ -159,6 +163,87 @@ public sealed class WorkspaceViewModelStartupDocumentTests
         await workspace.OpenPathAsync(StartupPath);
 
         workspace.Folder.Folder!.RootPath.ShouldBe(Vault);
+    }
+
+    [Fact]
+    public async Task RestoreForStartupDocument_DoesNotReopenThePreviousTabs_INV090()
+    {
+        _store.Seed(StartupPath, "# Readme");
+        _store.Seed(PreviousPath, "# Previous");
+        _stateStore.StateToLoad = new WorkspaceState([PreviousPath], []) { PinnedDocuments = [PreviousPath] };
+        var workspace = Create();
+
+        await workspace.RestoreForStartupDocumentAsync(StartupPath);
+
+        workspace.Sessions.Select(session => session.FilePath).ShouldBe([StartupPath]);
+        workspace.ActiveSession!.FilePath.ShouldBe(StartupPath);
+        workspace.PinnedTabs.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RestoreForStartupDocument_RestoresTheRecentFilesAndFolder_INV090()
+    {
+        _store.Seed(VaultSecondPath, "# Second");
+        _stateStore.StateToLoad = new WorkspaceState([PreviousPath], [PreviousPath], Vault);
+        var workspace = Create();
+
+        await workspace.RestoreForStartupDocumentAsync(VaultSecondPath);
+
+        workspace.RecentFiles.ShouldBe([VaultSecondPath, PreviousPath]);
+        workspace.Folder.Folder!.RootPath.ShouldBe(Vault);
+        workspace.Folder.SelectedEntry?.RelativePath.ShouldBe("sub/second.md");
+    }
+
+    [Fact]
+    public async Task RestoreForStartupDocument_OutsideTheRestoredFolder_OpensItsFolder_INV090()
+    {
+        _store.Seed(StartupPath, "# Readme");
+        _stateStore.StateToLoad = new WorkspaceState([], [], Vault);
+        var workspace = Create();
+
+        await workspace.RestoreForStartupDocumentAsync(StartupPath);
+
+        workspace.Folder.Folder!.RootPath.ShouldBe(NotesFolder);
+    }
+
+    [Fact]
+    public async Task RestoreForStartupDocument_PersistsOnlyTheStartupDocument_INV090()
+    {
+        _store.Seed(StartupPath, "# Readme");
+        _store.Seed(PreviousPath, "# Previous");
+        _stateStore.StateToLoad = new WorkspaceState([PreviousPath], []);
+        var workspace = Create();
+
+        await workspace.RestoreForStartupDocumentAsync(StartupPath);
+
+        _stateStore.SavedState!.OpenDocuments.ShouldBe([StartupPath]);
+    }
+
+    [Fact]
+    public async Task RestoreForStartupDocument_ThatFailsToOpen_ReopensThePreviousTabs_INV090()
+    {
+        _store.Seed(PreviousPath, "# Previous");
+        _stateStore.StateToLoad = new WorkspaceState([PreviousPath], []) { PinnedDocuments = [PreviousPath] };
+        var workspace = Create();
+
+        await Should.ThrowAsync<IOException>(() => workspace.RestoreForStartupDocumentAsync(StartupPath));
+
+        workspace.Sessions.Select(session => session.FilePath).ShouldBe([PreviousPath]);
+        workspace.PinnedTabs.Select(session => session.FilePath).ShouldBe([PreviousPath]);
+    }
+
+    [Fact]
+    public async Task OpenStartupDocument_ForwardedToTheRunningEditor_KeepsTheOpenTabs_INV090()
+    {
+        _store.Seed(StartupPath, "# Readme");
+        _store.Seed(PreviousPath, "# Previous");
+        var workspace = Create();
+        await workspace.OpenPathAsync(PreviousPath);
+
+        await workspace.OpenStartupDocumentAsync(StartupPath);
+
+        workspace.Sessions.Select(session => session.FilePath).ShouldContain(PreviousPath);
+        workspace.ActiveSession!.FilePath.ShouldBe(StartupPath);
     }
 
     private WorkspaceViewModel Create()
