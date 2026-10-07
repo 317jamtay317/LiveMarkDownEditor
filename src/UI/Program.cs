@@ -131,17 +131,11 @@ public static class Program
             instance.Listen(path => application.Dispatcher.InvokeAsync(
                 () => OpenForwardedDocument(window, workspace, path)));
 
-            // Restore the previous session's Tabs and Recent Files, then open any Startup Document on
-            // top of them, with its folder in the Folder Panel (INV-037, INV-020, INV-089). Queued so it
-            // runs once the dispatcher starts pumping.
-            application.Dispatcher.InvokeAsync(async () =>
-            {
-                await workspace.RestoreAsync();
-                if (startupDocument is not null)
-                {
-                    OpenDocument(workspace, startupDocument);
-                }
-            });
+            // Restore the previous session's Tabs and Recent Files (INV-037) — or, launched with a
+            // Startup Document, everything but the Tabs, opening that document on its own with its
+            // folder in the Folder Panel, as VS Code does (INV-020, INV-089, INV-090). Queued so it runs
+            // once the dispatcher starts pumping.
+            application.Dispatcher.InvokeAsync(() => RestoreWorkspaceAsync(workspace, startupDocument));
 
             application.Run(window);
 
@@ -173,6 +167,26 @@ public static class Program
         }
 
         window.Activate();
+    }
+
+    // Restores the Workspace at launch. A Startup Document that no longer exists is treated as none, so
+    // the previous run's Tabs come back; one that fails to open restores them too (INV-090).
+    private static async Task RestoreWorkspaceAsync(WorkspaceViewModel workspace, string? startupDocument)
+    {
+        if (startupDocument is null || !File.Exists(startupDocument))
+        {
+            await workspace.RestoreAsync();
+            return;
+        }
+
+        try
+        {
+            await workspace.RestoreForStartupDocumentAsync(startupDocument);
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "Failed to open the Startup Document {Path}", startupDocument);
+        }
     }
 
     // Opens a Startup Document into the Workspace and its folder in the Folder Panel (INV-089),
