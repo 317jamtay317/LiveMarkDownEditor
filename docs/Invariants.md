@@ -332,7 +332,8 @@ and tested.
   startup. If the editor is already running, the Startup Document is forwarded to the running
   instance — whose Workspace opens it, or activates its existing Tab (INV-009) — and no second
   editor window appears (Single Instance). The holder is reachable the moment it starts listening —
-  a launch that forwards while the holder is still starting up is heard, not dropped.
+  a launch that forwards while the holder is still starting up is heard, not dropped. Either way the
+  Folder Panel opens on the folder the Startup Document lives in (INV-089).
 - **Enforced by:** `StartupArguments` (parsing the Startup Document from the command line),
   `WorkspaceViewModel.OpenPathAsync` (the same dedupe-and-load path the file picker uses), and the
   `SingleInstanceGuard` (a named mutex plus named pipe that forwards the path to the first instance) —
@@ -2510,6 +2511,34 @@ and tested.
   Tab with and without a file; the Tab holds the picked file and the old one is untouched; the tree
   highlights the new file, or nothing outside the open root; cancelling; a file another Tab holds;
   available with nothing unsaved) and `WorkspaceViewModelNewDocumentTests.Save_AnUntitledTab_*_INV080_INV083`.
+
+### INV-089 — A Startup Document opens the Folder Workspace it lives in
+- **Statement:** Opening a Startup Document (INV-020) — at launch, or forwarded to the running editor
+  by a later launch — also brings the Folder Panel to where that file lives, so the user who
+  double-clicked a `.md` file in Windows Explorer sees its folder. Four rules bound it:
+  - **Its folder becomes the root.** When no Folder Workspace is open, or the open Folder Tree does not
+    hold the Startup Document's File (INV-083), the folder containing the Startup Document is opened as
+    the Folder Workspace, and the new root is persisted (INV-045).
+  - **A root that already holds it is kept.** When the open Folder Tree already holds the Startup
+    Document's File, the root stays as it is — the user's wider Folder Workspace is not narrowed to one
+    of its subfolders.
+  - **Either way it is shown and followed.** The Folder Panel is shown, its tab is the Side Dock's
+    Selected tab even when the Outline was in front (INV-046), and it highlights the Startup Document's
+    File (INV-083).
+  - **Only a document that opened.** A Startup Document that fails to open changes no Folder Workspace,
+    and a folder that cannot be read leaves the open one as it was. Only the Startup Document does this:
+    opening a file from inside the editor (the file picker, Recent Files, a followed Link) never changes
+    the root.
+- **Why:** An editor that is the default application for `.md` files is mostly entered by
+  double-clicking a file. Showing the previous run's folder then puts the sidebar somewhere unrelated to
+  the document on screen, and the user has to go and find the folder they just came from.
+- **Enforced by:** `WorkspaceViewModel.OpenStartupDocumentAsync`, which opens the Tab through
+  `OpenPathAsync` (INV-009, INV-020) and then asks `FolderWorkspaceViewModel.OpenFolderHoldingAsync`,
+  which keeps a root whose Folder Tree holds the file (`FolderWorkspace.FileFor`) and otherwise opens the
+  file's folder — selecting the Side Dock's Folder tab *before* the tree is built, since the
+  `FolderPanel` can highlight only a row it has laid out; `Program` routes both the launch's and a
+  forwarded Startup Document through it.
+- **Tested by:** `WorkspaceViewModelStartupDocumentTests.*_INV089`.
 
 <!--
 Add new invariants above using the next INV-### number. Never reuse a retired number.

@@ -149,6 +149,9 @@ your Markdown files, while version-control stores such as `.git` stay hidden. An
 `.gitignore` ignores — `node_modules`, `bin`, build output — is shown **dimmed** rather than hidden, so
 it is out of your way but still one click away. Your open folder reopens the next time you launch.
 
+**Double-click a `.md` file in Windows Explorer** and the tree opens on the folder it lives in, with the
+file highlighted. If the folder you already have open contains the file, that folder stays open.
+
 **The tree follows your tabs.** Switch tabs and the file that tab is editing is highlighted in the
 tree — the folders above it open and it scrolls into view — so you can always see where the document
 you are reading lives. A tab holding a file from outside the open folder, or one you have not saved
